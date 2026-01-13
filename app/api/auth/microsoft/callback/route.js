@@ -1,5 +1,6 @@
-import { ConfidentialClientApplication } from '@azure/msal-node';
-import db from '../../../../lib/db'; // Adjust path to lib/db.js which is ESM
+import db from '@/lib/db';
+
+export const dynamic = 'force-dynamic';
 
 // Initialize MSAL lazily
 const getMsalConfig = () => ({
@@ -20,6 +21,7 @@ export async function GET(request) {
     }
 
     try {
+        const { ConfidentialClientApplication } = await import('@azure/msal-node');
         const msalConfig = getMsalConfig();
         if (!msalConfig.auth.clientId || !msalConfig.auth.clientSecret) {
             throw new Error('Microsoft Auth not configured');

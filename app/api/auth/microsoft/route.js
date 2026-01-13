@@ -1,4 +1,5 @@
-import { ConfidentialClientApplication } from '@azure/msal-node';
+// Remote import moved to dynamic import to fix build
+export const dynamic = 'force-dynamic';
 
 // Initialize MSAL lazily to prevent crash if env vars are missing
 const getMsalConfig = () => ({
@@ -24,6 +25,7 @@ export async function GET(request) {
     };
 
     try {
+        const { ConfidentialClientApplication } = await import('@azure/msal-node');
         const msalConfig = getMsalConfig();
         if (!msalConfig.auth.clientId || !msalConfig.auth.clientSecret) {
             return Response.json({ error: 'Microsoft Auth not configured (Missing ID/Secret)' }, { status: 500 });
