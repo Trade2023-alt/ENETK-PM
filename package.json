@@ -1,0 +1,21 @@
+{
+  "name": "antigravityproject",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^3.8.4",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.5.0",
+    "next": "16.0.10",
+    "node-cron": "^4.2.1",
+    "papaparse": "^5.5.3",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
+  }
+}
