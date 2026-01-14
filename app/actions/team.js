@@ -1,7 +1,8 @@
 'use server'
 
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 
 export async function createTeamMember(formData) {
@@ -16,21 +17,26 @@ export async function createTeamMember(formData) {
     }
 
     try {
-        const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+        const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('username', username)
+            .single();
+
         if (existingUser) {
             return { error: 'Username already taken' };
         }
 
         const hash = bcrypt.hashSync(password, 10);
-        const stmt = db.prepare(`
-      INSERT INTO users (username, password_hash, role, email, phone)
-      VALUES (?, ?, ?, ?, ?)
-    `);
+        const { error } = await supabase
+            .from('users')
+            .insert([{ username, password_hash: hash, role, email: email || null, phone: phone || null }]);
 
-        stmt.run(username, hash, role, email || null, phone || null);
+        if (error) throw error;
+        revalidatePath('/team');
     } catch (error) {
         console.error('Error creating user:', error);
-        return { error: 'Failed to create team member' };
+        return { error: 'Failed to create team member: ' + error.message };
     }
 
     redirect('/team');
@@ -49,22 +55,39 @@ export async function updateTeamMember(formData) {
     }
 
     try {
-        const existingUser = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, id);
+        const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('username', username)
+            .neq('id', id)
+            .single();
+
         if (existingUser) {
             return { error: 'Username already taken' };
         }
 
+        const data = {
+            username,
+            role,
+            email: email || null,
+            phone: phone || null,
+            updated_at: new Date().toISOString()
+        };
+
         if (password && password.trim() !== '') {
-            const hash = bcrypt.hashSync(password, 10);
-            db.prepare('UPDATE users SET username = ?, role = ?, password_hash = ?, email = ?, phone = ? WHERE id = ?')
-                .run(username, role, hash, email || null, phone || null, id);
-        } else {
-            db.prepare('UPDATE users SET username = ?, role = ?, email = ?, phone = ? WHERE id = ?')
-                .run(username, role, email || null, phone || null, id);
+            data.password_hash = bcrypt.hashSync(password, 10);
         }
+
+        const { error } = await supabase
+            .from('users')
+            .update(data)
+            .eq('id', id);
+
+        if (error) throw error;
+        revalidatePath('/team');
     } catch (error) {
         console.error('Error updating user:', error);
-        return { error: 'Failed to update team member' };
+        return { error: 'Failed to update team member: ' + error.message };
     }
 
     redirect('/team');
@@ -72,7 +95,13 @@ export async function updateTeamMember(formData) {
 
 export async function deleteTeamMember(id) {
     try {
-        db.prepare('DELETE FROM users WHERE id = ?').run(id);
+        const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        revalidatePath('/team');
     } catch (error) {
         console.error('Error deleting user:', error);
         return { error: 'Failed to delete team member' };
@@ -80,3 +109,4 @@ export async function deleteTeamMember(id) {
 
     redirect('/team');
 }
+

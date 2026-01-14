@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { updateTeamMember } from '@/app/actions/team';
 
 export default async function EditTeamPage({ params }) {
@@ -11,9 +11,13 @@ export default async function EditTeamPage({ params }) {
 
     if (userRole !== 'admin') redirect('/');
 
-    const user = db.prepare('SELECT id, username, role, email, phone FROM users WHERE id = ?').get(id);
+    const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, username, role, email, phone')
+        .eq('id', id)
+        .single();
 
-    if (!user) {
+    if (userError || !user) {
         return (
             <div className="container">
                 <Header userRole={userRole} />
@@ -77,3 +81,4 @@ export default async function EditTeamPage({ params }) {
         </div>
     );
 }
+

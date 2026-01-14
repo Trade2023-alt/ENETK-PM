@@ -1,8 +1,7 @@
 'use server'
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 
 export async function updateJobStatus(formData) {
     const jobId = formData.get('job_id');
@@ -11,66 +10,48 @@ export async function updateJobStatus(formData) {
     const usedHours = formData.get('used_hours');
     const estimatedHours = formData.get('estimated_hours');
     const dueDate = formData.get('due_date');
-    const description = formData.get('description'); // Optional description update
+    const description = formData.get('description');
 
     try {
-        // Prepare dynamic update
-        const updates = [];
-        const values = [];
+        const updateData = {};
+        if (status) updateData.status = status;
+        if (priority) updateData.priority = priority;
+        if (usedHours !== null && usedHours !== undefined) updateData.actual_hours = parseFloat(usedHours || '0');
+        if (estimatedHours !== null && estimatedHours !== undefined) updateData.estimated_hours = parseFloat(estimatedHours || '0');
+        if (dueDate !== null) updateData.due_date = dueDate === '' ? null : dueDate;
+        if (description !== null) updateData.description = description;
 
-        if (status) {
-            updates.push('status = ?');
-            values.push(status);
-        }
-        if (priority) {
-            updates.push('priority = ?');
-            values.push(priority);
-        }
-        if (usedHours) {
-            updates.push('used_hours = ?');
-            values.push(usedHours);
-        }
-        if (estimatedHours) {
-            updates.push('estimated_hours = ?');
-            values.push(estimatedHours);
-        }
-        if (dueDate) {
-            updates.push('due_date = ?');
-            values.push(dueDate);
-        }
-        if (description) {
-            updates.push('description = ?');
-            values.push(description);
+        updateData.updated_at = new Date().toISOString();
+
+        if (Object.keys(updateData).length > 0) {
+            const { error: jobError } = await supabase
+                .from('jobs')
+                .update(updateData)
+                .eq('id', jobId);
+
+            if (jobError) throw jobError;
         }
 
-        if (updates.length > 0) {
-            values.push(jobId);
-            const stmt = db.prepare(`UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`);
-            stmt.run(...values);
-        }
-
-        // Handle Assignment Updates
-        // We get the list of checked IDs. If none checked, it's an empty array.
-        // We always wipe and re-insert to match the form state.
         const assignedUserIds = formData.getAll('assigned_user_ids');
 
-        // Transaction for assignments
-        db.transaction(() => {
-            // Remove existing
-            db.prepare('DELETE FROM job_assignments WHERE job_id = ?').run(jobId);
+        // Update Assignments
+        await supabase.from('job_assignments').delete().eq('job_id', jobId);
 
-            // Insert new
-            const insert = db.prepare('INSERT INTO job_assignments (job_id, user_id) VALUES (?, ?)');
-            for (const userId of assignedUserIds) {
-                insert.run(jobId, userId);
-            }
-        })();
+        if (assignedUserIds.length > 0) {
+            const assignments = assignedUserIds.map(userId => ({
+                job_id: jobId,
+                user_id: userId
+            }));
+            const { error: assignmentError } = await supabase.from('job_assignments').insert(assignments);
+            if (assignmentError) throw assignmentError;
+        }
 
         revalidatePath(`/jobs/${jobId}`);
         revalidatePath('/');
 
     } catch (error) {
         console.error('Error updating job:', error);
-        return { error: 'Failed to update job' };
+        return { error: 'Failed to update job: ' + error.message };
     }
 }
+

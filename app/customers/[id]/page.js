@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { createContact } from '@/app/actions/contacts';
@@ -12,17 +12,26 @@ export default async function CustomerDetailPage({ params }) {
     if (!userRole) redirect('/login');
 
     const { id } = await params;
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
 
-    if (!customer) {
+    // Fetch customer
+    const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (customerError || !customer) {
         return <div className="container">Customer not found</div>;
     }
 
-    // Fetch jobs
-    const jobs = db.prepare('SELECT * FROM jobs WHERE customer_id = ? ORDER BY scheduled_date DESC').all(id);
-
-    // Fetch contacts
-    const contacts = db.prepare('SELECT * FROM customer_contacts WHERE customer_id = ? ORDER BY name').all(id);
+    // Fetch jobs and contacts in parallel
+    const [
+        { data: jobs },
+        { data: contacts }
+    ] = await Promise.all([
+        supabase.from('jobs').select('*').eq('customer_id', id).order('scheduled_date', { ascending: false }),
+        supabase.from('customer_contacts').select('*').eq('customer_id', id).order('name')
+    ]);
 
     return (
         <div className="container" style={{ paddingBottom: '4rem' }}>
@@ -32,8 +41,6 @@ export default async function CustomerDetailPage({ params }) {
                 <h2>{customer.name}</h2>
                 <p className="label">{customer.address}</p>
                 <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                    {/* Fallback to main customer contact info if no contacts exist yet? 
-                 Or just show them as "Main Office" */}
                     <div>Main Phone: {customer.phone}</div>
                     <div>Main Email: {customer.email}</div>
                 </div>
@@ -48,7 +55,7 @@ export default async function CustomerDetailPage({ params }) {
                     </div>
 
                     <div className="card" style={{ marginBottom: '1.5rem' }}>
-                        {contacts.length === 0 ? (
+                        {!contacts || contacts.length === 0 ? (
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>No specific contacts added.</p>
                         ) : (
                             <ul style={{ listStyle: 'none' }}>
@@ -98,7 +105,7 @@ export default async function CustomerDetailPage({ params }) {
                 <div>
                     <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Job History</h3>
                     <div className="card">
-                        {jobs.length === 0 ? (
+                        {!jobs || jobs.length === 0 ? (
                             <p style={{ color: 'var(--text-muted)' }}>No jobs found for this customer.</p>
                         ) : (
                             <ul style={{ listStyle: 'none' }}>
@@ -109,7 +116,7 @@ export default async function CustomerDetailPage({ params }) {
                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{job.status}</span>
                                         </div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                            {new Date(job.scheduled_date).toLocaleDateString()}
+                                            {job.scheduled_date ? new Date(job.scheduled_date).toLocaleDateString() : 'Not set'}
                                         </div>
                                     </li>
                                 ))}
@@ -122,3 +129,4 @@ export default async function CustomerDetailPage({ params }) {
         </div>
     );
 }
+

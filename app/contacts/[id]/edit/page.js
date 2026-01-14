@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import { updateContact } from '@/app/actions/updateContact';
 
@@ -11,15 +11,22 @@ export default async function EditContactPage({ params }) {
     if (!userRole) redirect('/login');
 
     const { id } = await params;
-    const contact = db.prepare(`
-    SELECT * FROM customer_contacts WHERE id = ?
-  `).get(id);
 
-    if (!contact) {
+    const { data: contact, error: contactError } = await supabase
+        .from('customer_contacts')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (contactError || !contact) {
         return <div className="container">Contact not found</div>;
     }
 
-    const customer = db.prepare('SELECT name FROM customers WHERE id = ?').get(contact.customer_id);
+    const { data: customer } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', contact.customer_id)
+        .single();
 
     return (
         <div className="container">
@@ -60,3 +67,4 @@ export default async function EditContactPage({ params }) {
         </div>
     );
 }
+

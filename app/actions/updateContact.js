@@ -1,7 +1,8 @@
 'use server'
 
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
 
 export async function updateContact(formData) {
     const contactId = formData.get('contact_id');
@@ -12,18 +13,19 @@ export async function updateContact(formData) {
     const role = formData.get('role');
 
     try {
-        const stmt = db.prepare(`
-        UPDATE customer_contacts 
-        SET name = ?, email = ?, phone = ?, role = ?
-        WHERE id = ?
-    `);
+        const { error } = await supabase
+            .from('customer_contacts')
+            .update({ name, email, phone, role, updated_at: new Date().toISOString() })
+            .eq('id', contactId);
 
-        stmt.run(name, email, phone, role, contactId);
+        if (error) throw error;
+
+        revalidatePath(`/customers/${customerId}`);
     } catch (error) {
         console.error('Error updating contact:', error);
-        return { error: 'Failed to update contact' };
+        return { error: 'Failed to update contact: ' + error.message };
     }
 
-    // Redirect back to the customer detail page
     redirect(`/customers/${customerId}`);
 }
+

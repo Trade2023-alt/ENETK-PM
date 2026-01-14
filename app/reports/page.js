@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import ReportView from '@/components/ReportView';
 
@@ -11,9 +11,15 @@ export default async function ReportsPage() {
 
     if (!userId) redirect('/login');
 
-    const jobs = db.prepare('SELECT * FROM jobs').all();
-    const subTasks = db.prepare('SELECT * FROM sub_tasks').all();
-    const users = db.prepare('SELECT id, username FROM users').all();
+    const [
+        { data: jobs },
+        { data: subTasks },
+        { data: users }
+    ] = await Promise.all([
+        supabase.from('jobs').select('*'),
+        supabase.from('sub_tasks').select('*'),
+        supabase.from('users').select('id, username'),
+    ]);
 
     return (
         <div className="container">
@@ -22,7 +28,8 @@ export default async function ReportsPage() {
                 <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Reports</h1>
                 <p style={{ color: 'var(--text-muted)' }}>Weekly summary and alerts.</p>
             </div>
-            <ReportView jobs={jobs} subTasks={subTasks} users={users} />
+            <ReportView jobs={jobs || []} subTasks={subTasks || []} users={users || []} />
         </div>
     );
 }
+

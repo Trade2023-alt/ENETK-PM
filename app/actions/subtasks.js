@@ -1,15 +1,14 @@
 'use server'
 
-import { redirect } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
-import db from '@/lib/db';
 
 export async function createSubTask(formData) {
     const jobId = formData.get('job_id');
     const title = formData.get('title');
     const assignedUserIds = formData.getAll('assigned_user_ids');
     const dueDate = formData.get('due_date');
-    const estimatedHours = formData.get('estimated_hours');
+    const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
     const priority = formData.get('priority') || 'Normal';
 
     if (!jobId || !title) {
@@ -17,35 +16,43 @@ export async function createSubTask(formData) {
     }
 
     try {
-        const insertTask = db.prepare(`
-            INSERT INTO sub_tasks (job_id, title, due_date, estimated_hours, priority)
-            VALUES (?, ?, ?, ?, ?)
-        `);
+        const { data: taskData, error: taskError } = await supabase
+            .from('sub_tasks')
+            .insert([{
+                job_id: jobId,
+                title,
+                due_date: dueDate === '' ? null : dueDate,
+                estimated_hours: estimatedHours,
+                priority
+            }])
+            .select()
+            .single();
 
-        // Transaction
-        const runTransaction = db.transaction(() => {
-            const result = insertTask.run(jobId, title, dueDate || null, estimatedHours || 0, priority);
-            const subTaskId = result.lastInsertRowid;
+        if (taskError) throw taskError;
 
-            const insertAssignment = db.prepare('INSERT INTO sub_task_assignments (sub_task_id, user_id) VALUES (?, ?)');
-            for (const userId of assignedUserIds) {
-                insertAssignment.run(subTaskId, userId);
-            }
-        });
+        const subTaskId = taskData.id;
 
-        runTransaction();
+        const assignments = assignedUserIds.map(userId => ({
+            sub_task_id: subTaskId,
+            user_id: userId
+        }));
+
+        const { error: assignmentError } = await supabase
+            .from('sub_task_assignments')
+            .insert(assignments);
+
+        if (assignmentError) throw assignmentError;
+
         revalidatePath(`/jobs/${jobId}`);
     } catch (error) {
         console.error('Error creating subtask:', error);
-        return { error: 'Failed to create subtask' };
+        return { error: 'Failed to create subtask: ' + error.message };
     }
 }
 
 export async function updateSubTask(formData) {
     const id = formData.get('id');
     const jobId = formData.get('job_id');
-
-    // Check if this is a full update (has title)
     const title = formData.get('title');
 
     try {
@@ -53,44 +60,54 @@ export async function updateSubTask(formData) {
             // Full Update
             const priority = formData.get('priority');
             const dueDate = formData.get('due_date');
-            const estimatedHours = formData.get('estimated_hours');
-            const usedHours = formData.get('used_hours'); // Allow updating used hours in full edit too
+            const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
+            const usedHours = parseFloat(formData.get('used_hours') || '0');
             const assignedUserIds = formData.getAll('assigned_user_ids');
 
-            // Transaction for full update
-            db.transaction(() => {
-                const stmt = db.prepare(`
-                    UPDATE sub_tasks 
-                    SET title = ?, priority = ?, due_date = ?, estimated_hours = ?, used_hours = ?
-                    WHERE id = ?
-                `);
-                stmt.run(title, priority, dueDate || null, estimatedHours || 0, usedHours || 0, id);
+            const { error: updateError } = await supabase
+                .from('sub_tasks')
+                .update({
+                    title,
+                    priority,
+                    due_date: dueDate === '' ? null : dueDate,
+                    estimated_hours: estimatedHours,
+                    used_hours: usedHours,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id);
 
-                // Update Assignments
-                db.prepare('DELETE FROM sub_task_assignments WHERE sub_task_id = ?').run(id);
-                const insertAssignment = db.prepare('INSERT INTO sub_task_assignments (sub_task_id, user_id) VALUES (?, ?)');
-                for (const userId of assignedUserIds) {
-                    insertAssignment.run(id, userId);
-                }
-            })();
+            if (updateError) throw updateError;
+
+            // Update Assignments (Delete then Insert)
+            await supabase.from('sub_task_assignments').delete().eq('sub_task_id', id);
+
+            const assignments = assignedUserIds.map(userId => ({
+                sub_task_id: id,
+                user_id: userId
+            }));
+
+            if (assignments.length > 0) {
+                await supabase.from('sub_task_assignments').insert(assignments);
+            }
 
         } else {
             // Quick Status/Hours Update
             const status = formData.get('status') === 'on' ? 'Complete' : 'Pending';
-            const usedHours = formData.get('used_hours');
+            const usedHoursRaw = formData.get('used_hours');
 
-            if (usedHours !== null) {
-                const stmt = db.prepare('UPDATE sub_tasks SET used_hours = ? WHERE id = ?');
-                stmt.run(usedHours, id);
+            if (usedHoursRaw !== null) {
+                const usedHours = parseFloat(usedHoursRaw || '0');
+                const { error } = await supabase
+                    .from('sub_tasks')
+                    .update({ used_hours: usedHours, updated_at: new Date().toISOString() })
+                    .eq('id', id);
+                if (error) throw error;
             } else {
-                // Status Toggle (Status checkbox sends 'on' if checked, nothing if not. 
-                // Wait, if unchecked, it sends nothing? 
-                // The toggle works by submitting the form. If I uncheck, the change event fires. 
-                // But if the checkbox is unchecked, formData.get('status') is null.
-                // My previous logic: `const status = formData.get('status') === 'on' ? 'Complete' : 'Pending';`
-                // This implies if it's null (unchecked), it becomes Pending. This is correct for a toggle.
-                const stmt = db.prepare('UPDATE sub_tasks SET status = ? WHERE id = ?');
-                stmt.run(status, id);
+                const { error } = await supabase
+                    .from('sub_tasks')
+                    .update({ status: status, updated_at: new Date().toISOString() })
+                    .eq('id', id);
+                if (error) throw error;
             }
         }
         revalidatePath(`/jobs/${jobId}`);
@@ -98,3 +115,4 @@ export async function updateSubTask(formData) {
         console.error('Error updating subtask:', error);
     }
 }
+

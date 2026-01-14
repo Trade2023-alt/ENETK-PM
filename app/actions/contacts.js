@@ -1,7 +1,8 @@
 'use server'
 
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
 
 export async function createContact(formData) {
     const customerId = formData.get('customer_id');
@@ -15,16 +16,18 @@ export async function createContact(formData) {
     }
 
     try {
-        const stmt = db.prepare(`
-      INSERT INTO customer_contacts (customer_id, name, email, phone, role)
-      VALUES (?, ?, ?, ?, ?)
-    `);
+        const { error } = await supabase
+            .from('customer_contacts')
+            .insert([{ customer_id: customerId, name, email, phone, role }]);
 
-        stmt.run(customerId, name, email, phone, role);
+        if (error) throw error;
+
+        revalidatePath(`/customers/${customerId}`);
     } catch (error) {
         console.error('Error creating contact:', error);
-        return { error: 'Failed to create contact' };
+        return { error: 'Failed to create contact: ' + error.message };
     }
 
     redirect(`/customers/${customerId}`);
 }
+

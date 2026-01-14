@@ -1,7 +1,8 @@
 'use server'
 
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
 
 export async function createCustomer(formData) {
     const name = formData.get('name');
@@ -14,16 +15,18 @@ export async function createCustomer(formData) {
     }
 
     try {
-        const stmt = db.prepare(`
-      INSERT INTO customers (name, email, phone, address)
-      VALUES (?, ?, ?, ?)
-    `);
+        const { error } = await supabase
+            .from('customers')
+            .insert([{ name, email, phone, address }]);
 
-        stmt.run(name, email, phone, address);
+        if (error) throw error;
+
+        revalidatePath('/customers');
     } catch (error) {
         console.error('Error creating customer:', error);
-        return { error: 'Failed to create customer' };
+        return { error: 'Failed to create customer: ' + error.message };
     }
 
     redirect('/customers');
 }
+

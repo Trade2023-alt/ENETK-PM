@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Link from 'next/link';
 
@@ -10,7 +10,11 @@ export default async function CustomersPage() {
 
     if (!userRole) redirect('/login');
 
-    const customers = db.prepare('SELECT * FROM customers ORDER BY name').all();
+    const { data: customers, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('name', { ascending: true });
+
 
     return (
         <div className="container" style={{ paddingBottom: '4rem' }}>

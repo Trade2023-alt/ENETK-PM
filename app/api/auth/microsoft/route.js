@@ -20,7 +20,7 @@ export async function GET(request) {
 
     const authCodeUrlParameters = {
         scopes: ['Mail.Send', 'Calendars.ReadWrite', 'User.Read', 'offline_access'],
-        redirectUri: process.env.MS_REDIRECT_URI || 'http://localhost:3000/api/auth/microsoft/callback',
+        redirectUri: process.env.MS_REDIRECT_URI || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/microsoft/callback`,
         state: userId // Passing userId in state to retrieve it in callback
     };
 

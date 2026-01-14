@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import JobForm from '@/components/JobForm';
 
@@ -11,9 +11,15 @@ export default async function NewJobPage() {
     if (!userRole) redirect('/login');
 
     // Fetch data for form
-    const customers = db.prepare('SELECT id, name FROM customers ORDER BY name').all();
-    const users = db.prepare('SELECT id, username FROM users ORDER BY username').all();
-    const contacts = db.prepare('SELECT id, customer_id, name, role FROM customer_contacts ORDER BY name').all();
+    const [
+        { data: customers },
+        { data: users },
+        { data: contacts }
+    ] = await Promise.all([
+        supabase.from('customers').select('id, name').order('name'),
+        supabase.from('users').select('id, username').order('username'),
+        supabase.from('customer_contacts').select('id, customer_id, name, role').order('name')
+    ]);
 
     return (
         <div className="container">
@@ -21,8 +27,9 @@ export default async function NewJobPage() {
 
             <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
                 <h2 style={{ marginBottom: '1.5rem' }}>Schedule New Job</h2>
-                <JobForm customers={customers} users={users} contacts={contacts} />
+                <JobForm customers={customers || []} users={users || []} contacts={contacts || []} />
             </div>
         </div>
     );
 }
+

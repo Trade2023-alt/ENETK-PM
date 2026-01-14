@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: [
-    'better-sqlite3',
     '@azure/msal-node',
     '@azure/msal-common',
     '@microsoft/microsoft-graph-client'
@@ -15,7 +14,6 @@ const nextConfig = {
         ...config.watchOptions,
         ignored: [
           '**/data/**',
-          '**/contractor.db*',
           '**/.next/**',
           '**/node_modules/**'
         ],

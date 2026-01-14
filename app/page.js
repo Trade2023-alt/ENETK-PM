@@ -1,8 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
-import JobCard from '@/components/JobCard';
 import Link from 'next/link';
 import DashboardClient from '@/components/DashboardClient';
 
@@ -17,40 +16,44 @@ export default async function Home() {
     redirect('/login');
   }
 
-  // Fetch jobs with customer info
-  // If admin, fetch all. If user, fetch assigned.
   let jobs = [];
   try {
-    const query = userRole === 'admin'
-      ? `
-        SELECT jobs.*, 
-               customers.name as customer_name, 
-               customers.address as customer_address,
-               GROUP_CONCAT(users.username, ', ') as assigned_users
-        FROM jobs 
-        JOIN customers ON jobs.customer_id = customers.id 
-        LEFT JOIN job_assignments ON jobs.id = job_assignments.job_id
-        LEFT JOIN users ON job_assignments.user_id = users.id
-        GROUP BY jobs.id
-        ORDER BY scheduled_date ASC
-      `
-      : `
-        SELECT jobs.*, 
-               customers.name as customer_name, 
-               customers.address as customer_address,
-               GROUP_CONCAT(users.username, ', ') as assigned_users
-        FROM jobs 
-        JOIN customers ON jobs.customer_id = customers.id 
-        JOIN job_assignments ON jobs.id = job_assignments.job_id
-        JOIN users ON job_assignments.user_id = users.id
-        WHERE job_assignments.user_id = ? 
-        GROUP BY jobs.id
-        ORDER BY scheduled_date ASC
-      `;
+    let query = supabase
+      .from('jobs')
+      .select(`
+                *,
+                customer:customers(name, address),
+                assignments:job_assignments(
+                    user:users(username)
+                )
+            `)
+      .order('scheduled_date', { ascending: true });
 
-    jobs = userRole === 'admin'
-      ? db.prepare(query).all()
-      : db.prepare(query).all(userId);
+    if (userRole !== 'admin') {
+      // Filter to only jobs assigned to this user
+      // In Supabase we might need to filter by child relation or use a separate join table query
+      // Simplest for now: Fetch assignments first or use a join-like filter
+      // Improved way: 
+      const { data: userAssignments } = await supabase
+        .from('job_assignments')
+        .select('job_id')
+        .eq('user_id', userId);
+
+      const jobIds = userAssignments?.map(a => a.job_id) || [];
+      query = query.in('id', jobIds);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Transform data to match existing UI structure
+    jobs = data.map(job => ({
+      ...job,
+      customer_name: job.customer?.name,
+      customer_address: job.customer?.address,
+      assigned_users: job.assignments?.map(a => a.user?.username).filter(Boolean).join(', ')
+    }));
 
   } catch (error) {
     console.error('Error fetching jobs:', error);

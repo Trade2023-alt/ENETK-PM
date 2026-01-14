@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Calendar from '@/components/Calendar';
 import Link from 'next/link';
@@ -12,23 +12,38 @@ export default async function SchedulePage() {
 
     if (!userId) redirect('/login');
 
-    // Fetch all jobs with assignments
-    const jobs = db.prepare(`
-        SELECT jobs.*, GROUP_CONCAT(job_assignments.user_id) as assigned_ids 
-        FROM jobs 
-        LEFT JOIN job_assignments ON jobs.id = job_assignments.job_id
-        GROUP BY jobs.id
-    `).all();
+    // Fetch jobs with assignments
+    const { data: jobsRaw } = await supabase
+        .from('jobs')
+        .select(`
+            *,
+            assignments:job_assignments(user_id)
+        `);
 
-    // Fetch all sub-tasks with assignments
-    const subTasks = db.prepare(`
-        SELECT sub_tasks.*, GROUP_CONCAT(sub_task_assignments.user_id) as assigned_ids
-        FROM sub_tasks
-        LEFT JOIN sub_task_assignments ON sub_tasks.id = sub_task_assignments.sub_task_id
-        GROUP BY sub_tasks.id
-    `).all();
+    // Fetch sub-tasks with assignments
+    const { data: subTasksRaw } = await supabase
+        .from('sub_tasks')
+        .select(`
+            *,
+            assignments:sub_task_assignments(user_id)
+        `);
 
-    const users = db.prepare('SELECT id, username FROM users ORDER BY username').all();
+    // Fetch users
+    const { data: users } = await supabase
+        .from('users')
+        .select('id, username')
+        .order('username');
+
+    // Transform for UI (GROUP_CONCAT equivalent)
+    const jobs = (jobsRaw || []).map(job => ({
+        ...job,
+        assigned_ids: job.assignments?.map(a => a.user_id).join(',')
+    }));
+
+    const subTasks = (subTasksRaw || []).map(st => ({
+        ...st,
+        assigned_ids: st.assignments?.map(a => a.user_id).join(',')
+    }));
 
     return (
         <div className="container" style={{ paddingBottom: '4rem' }}>
@@ -41,7 +56,8 @@ export default async function SchedulePage() {
                 </Link>
             </div>
 
-            <Calendar jobs={jobs} subTasks={subTasks} users={users} />
+            <Calendar jobs={jobs} subTasks={subTasks} users={users || []} />
         </div>
     );
 }
+

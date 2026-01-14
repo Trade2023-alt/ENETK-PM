@@ -1,8 +1,8 @@
 'use server'
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
+import { revalidatePath } from 'next/cache';
 
 export async function createJob(formData) {
     const title = formData.get('title');
@@ -11,7 +11,7 @@ export async function createJob(formData) {
     const customerContactId = formData.get('customer_contact_id') || null;
     const assignedUserIds = formData.getAll('assigned_user_ids');
     const scheduledDate = formData.get('scheduled_date');
-    const estimatedHours = formData.get('estimated_hours');
+    const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
     const dueDate = formData.get('due_date');
     const priority = formData.get('priority') || 'Normal';
 
@@ -20,29 +20,45 @@ export async function createJob(formData) {
     }
 
     try {
-        const insertJob = db.prepare(`
-            INSERT INTO jobs (title, description, customer_id, customer_contact_id, scheduled_date, estimated_hours, due_date, status, priority)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'Scheduled', ?)
-        `);
+        // Insert job
+        const { data: jobData, error: jobError } = await supabase
+            .from('jobs')
+            .insert([{
+                title,
+                description,
+                customer_id: customerId,
+                customer_contact_id: customerContactId === '' ? null : customerContactId,
+                scheduled_date: scheduledDate,
+                estimated_hours: estimatedHours,
+                due_date: dueDate === '' ? null : dueDate,
+                status: 'Scheduled',
+                priority
+            }])
+            .select()
+            .single();
 
-        // Insert job first to get ID
-        const result = insertJob.run(title, description, customerId, customerContactId, scheduledDate, estimatedHours, dueDate || null, priority);
-        const jobId = result.lastInsertRowid;
+        if (jobError) throw jobError;
 
-        // Insert assignments
-        const insertAssignment = db.prepare('INSERT INTO job_assignments (job_id, user_id) VALUES (?, ?)');
+        const jobId = jobData.id;
 
-        // Transaction for better performance and safety
-        db.transaction(() => {
-            for (const userId of assignedUserIds) {
-                insertAssignment.run(jobId, userId);
-            }
-        })();
+        // Insert job assignments
+        const assignments = assignedUserIds.map(userId => ({
+            job_id: jobId,
+            user_id: userId
+        }));
+
+        const { error: assignmentError } = await supabase
+            .from('job_assignments')
+            .insert(assignments);
+
+        if (assignmentError) throw assignmentError;
 
     } catch (error) {
         console.error('Error creating job:', error);
-        return { error: 'Failed to create job' };
+        return { error: 'Failed to create job: ' + error.message };
     }
 
+    revalidatePath('/');
     redirect('/');
 }
+

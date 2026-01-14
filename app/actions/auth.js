@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 
 export async function login(prevState, formData) {
@@ -14,41 +14,55 @@ export async function login(prevState, formData) {
     }
 
     try {
-        let user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+        // Check users table
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .single();
+
         let role = 'user';
         let id = null;
+        let found = false;
+        let passwordHash = null;
 
         if (user) {
-            if (!bcrypt.compareSync(password, user.password_hash)) {
-                return { error: 'Invalid credentials' };
-            }
+            found = true;
             role = user.role;
             id = user.id;
+            passwordHash = user.password_hash;
         } else {
             // Check customers table
-            const customer = db.prepare('SELECT * FROM customers WHERE username = ?').get(username);
+            const { data: customer, error: customerError } = await supabase
+                .from('customers')
+                .select('*')
+                .eq('username', username)
+                .single();
+
             if (customer) {
-                if (!bcrypt.compareSync(password, customer.password_hash)) {
-                    return { error: 'Invalid credentials' };
-                }
+                found = true;
                 role = 'customer';
                 id = customer.id;
-            } else {
-                return { error: 'Invalid credentials' };
+                passwordHash = customer.password_hash;
             }
         }
 
-        // Set a simple cookie for now (In a real app, use JWT or proper session store)
-        // For this local app, storing user ID is acceptable for MVP
+        if (!found || !bcrypt.compareSync(password, passwordHash)) {
+            return { error: 'Invalid credentials' };
+        }
+
+        // Set cookies
         const cookieStore = await cookies();
         cookieStore.set('user_id', id.toString(), {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7 // 1 week
         });
         cookieStore.set('user_role', role, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7
         });
 
@@ -61,7 +75,7 @@ export async function login(prevState, formData) {
             throw error;
         }
         console.error('Login error:', error);
-        return { error: 'An unexpected error occurred' };
+        return { error: 'An unexpected error occurred: ' + error.message };
     }
 
     redirect('/');
@@ -73,3 +87,4 @@ export async function logout() {
     cookieStore.delete('user_role');
     redirect('/login');
 }
+

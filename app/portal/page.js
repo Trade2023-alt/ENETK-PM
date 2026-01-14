@@ -1,21 +1,27 @@
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 
 export default async function CustomerPortalPage() {
     const cookieStore = await cookies();
     const customerId = cookieStore.get('user_id')?.value;
 
-    // Fetch jobs for this customer
-    const jobs = db.prepare(`
-        SELECT jobs.*, 
-               GROUP_CONCAT(sub_tasks.title, '||') as sub_task_titles,
-               GROUP_CONCAT(sub_tasks.status, '||') as sub_task_statuses
-        FROM jobs 
-        LEFT JOIN sub_tasks ON jobs.id = sub_tasks.job_id
-        WHERE jobs.customer_id = ?
-        GROUP BY jobs.id
-        ORDER BY scheduled_date DESC
-    `).all(customerId);
+    if (!customerId) return null;
+
+    // Fetch jobs for this customer with subtasks
+    const { data: jobsRaw, error } = await supabase
+        .from('jobs')
+        .select(`
+            *,
+            sub_tasks (title, status)
+        `)
+        .eq('customer_id', customerId)
+        .order('scheduled_date', { ascending: false });
+
+    const jobs = (jobsRaw || []).map(job => ({
+        ...job,
+        sub_task_titles: job.sub_tasks?.map(st => st.title).join('||'),
+        sub_task_statuses: job.sub_tasks?.map(st => st.status).join('||')
+    }));
 
     return (
         <div>
@@ -48,7 +54,7 @@ export default async function CustomerPortalPage() {
 
                             <div style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>
                                 <div style={{ color: 'var(--text-muted)' }}>Scheduled Date</div>
-                                <div>{new Date(job.scheduled_date).toLocaleDateString()}</div>
+                                <div>{job.scheduled_date ? new Date(job.scheduled_date).toLocaleDateString() : 'Not set'}</div>
                             </div>
 
                             {job.sub_task_titles && (
@@ -81,3 +87,4 @@ export default async function CustomerPortalPage() {
         </div>
     );
 }
+

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import DeleteUserButton from '@/components/DeleteUserButton';
@@ -20,7 +20,11 @@ export default async function TeamPage() {
         );
     }
 
-    const users = db.prepare('SELECT id, username, role, email, phone FROM users ORDER BY username').all();
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('id, username, role, email, phone')
+        .order('username', { ascending: true });
+
 
     return (
         <div className="container" style={{ paddingBottom: '4rem' }}>
