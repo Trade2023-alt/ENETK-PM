@@ -219,9 +219,9 @@ export default function QuoteGenerator({ initialData = null }) {
                                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Import a file from EH or add items manually.</p>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                <input type="file" id="eh-import" style={{ display: 'none' }} onChange={handleFileUpload} accept=".rtf,.xml,.txt" />
+                                <input type="file" id="eh-import" style={{ display: 'none' }} onChange={handleFileUpload} accept=".rtf,.xml,.txt,.csv" />
                                 <label htmlFor="eh-import" className="btn" style={{ background: 'var(--card-border)', cursor: 'pointer' }}>
-                                    {loading ? 'Processing...' : '📁 Import EH File (RTF/XML)'}
+                                    {loading ? 'Processing...' : '📁 Import EH File (RTF/XML/CSV)'}
                                 </label>
                                 <button onClick={() => {
                                     const text = prompt("Paste raw EH Quote text here:");

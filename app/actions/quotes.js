@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import Papa from 'papaparse';
 
 /**
  * Parses EH Quote data from various formats (RTF text, XML, or Excel logic)
@@ -17,10 +18,10 @@ export async function parseEHQuote(fileContent, fileType) {
             items = parseRTFContent(fileContent);
         } else if (fileType === 'xml') {
             items = parseXMLContent(fileContent);
-        } else if (fileType === 'xlsx' || fileType === 'csv') {
-            // Processing Excel/CSV usually requires a library like papaparse or exceljs
-            // If we are on the server, we might need different handling
-            items = []; // Placeholder
+        } else if (fileType === 'csv' || fileType === 'txt' && fileContent.includes(',')) {
+            items = parseCSVContent(fileContent);
+        } else if (fileType === 'xlsx') {
+            return { success: false, error: "XLSX parsing requires server-side processing. Please convert to CSV for now." };
         }
 
         return { success: true, items };
@@ -81,6 +82,35 @@ function parseRTFContent(content) {
 function parseXMLContent(content) {
     // Placeholder for XML parsing using a DOM parser or regex
     return [];
+}
+
+function parseCSVContent(content) {
+    const results = Papa.parse(content, {
+        header: true,
+        skipEmptyLines: true
+    });
+
+    return results.data.map(row => {
+        // Try to find the right columns based on common names
+        const keys = Object.keys(row);
+        const findKey = (keywords) => keys.find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
+
+        const descKey = findKey(['description', 'product', 'name', 'item']);
+        const modelKey = findKey(['model', 'part', 'sku', 'material']);
+        const qtyKey = findKey(['qty', 'quantity', 'amount']);
+        const priceKey = findKey(['price', 'cost', 'unit price']);
+        const codeKey = findKey(['order code', 'code', 'material number']);
+
+        return {
+            description: row[descKey] || 'Imported Item',
+            model: row[modelKey] || '',
+            order_code: row[codeKey] || '',
+            quantity: parseInt(row[qtyKey]) || 1,
+            unit: 'PC',
+            unit_price: parseFloat(String(row[priceKey]).replace(/[$,]/g, '')) || 0.0,
+            config: row.Configuration || ''
+        };
+    }).filter(item => item.description.length > 2 || item.model);
 }
 
 export async function saveQuote(quoteData, lineItems) {
