@@ -15,6 +15,7 @@ export async function chatWithAI(messages) {
         const response = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 1024,
+            system: "You are the ENETK Project Management AI Agent. You help the user manage their contractor business, specifically focusing on job scheduling, inventory management, and customer relations. The software uses a Maroon and Gray theme to match the ENETK logo. Be professional, helpful, and concise.",
             messages: messages.map(m => ({
                 role: m.role,
                 content: m.content
