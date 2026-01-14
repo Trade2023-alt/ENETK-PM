@@ -101,19 +101,23 @@ export async function updateMaterial(id, formData) {
 
 export async function deleteMaterial(id) {
     try {
-        // Ensure id is passed correctly (Supabase eq handles numbers/strings usually, but let's be safe)
+        console.log(`Attempting to delete material with ID: ${id}`);
         const { error } = await supabase
             .from('material_inventory')
             .delete()
             .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Delete Error:', error);
+            throw error;
+        }
 
+        console.log(`Successfully deleted material: ${id}`);
         revalidatePath('/inventory');
         return { success: true };
     } catch (error) {
-        console.error('Error deleting material:', error);
-        return { error: 'Failed to delete material: ' + error.message };
+        console.error('Action Error (deleteMaterial):', error);
+        return { error: 'Failed to delete material: ' + (error.message || 'Unknown error') };
     }
 }
 
@@ -177,18 +181,23 @@ export async function bulkDeleteMaterials(ids) {
     if (!ids || !Array.isArray(ids) || ids.length === 0) return { success: true };
 
     try {
+        console.log(`Attempting bulk delete for ${ids.length} items`);
         const { error } = await supabase
             .from('material_inventory')
             .delete()
             .in('id', ids);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Bulk Delete Error:', error);
+            throw error;
+        }
 
+        console.log(`Successfully bulk deleted items`);
         revalidatePath('/inventory');
         return { success: true };
     } catch (error) {
-        console.error('Error bulk deleting materials:', error);
-        return { error: 'Failed to delete selected materials' };
+        console.error('Action Error (bulkDeleteMaterials):', error);
+        return { error: 'Failed to delete selected materials: ' + (error.message || 'Unknown error') };
     }
 }
 

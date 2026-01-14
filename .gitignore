@@ -50,3 +50,9 @@ backups/
 
 # ENETK Sensitive Info
 API_INFO.txt
+API_INFO_r2.txt
+API_INFO_r2.md
+DB PW.txt
+*.csv
+prospects.txt
+migrate-prospects.js
