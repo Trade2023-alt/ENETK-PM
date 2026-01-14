@@ -63,6 +63,30 @@ export default async function Home() {
     <div className="container" style={{ paddingBottom: '4rem' }}>
       <Header userRole={userRole} />
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+        <Link href="/pipeline" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid var(--primary)' }}>
+          <div style={{ fontSize: '1.5rem' }}>💰</div>
+          <div>
+            <div style={{ fontWeight: 600 }}>Sales Pipeline</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Manage Prospects</div>
+          </div>
+        </Link>
+        <Link href="/reports" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #10b981' }}>
+          <div style={{ fontSize: '1.5rem' }}>📊</div>
+          <div>
+            <div style={{ fontWeight: 600 }}>Analytics</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Winning/Losing Bids</div>
+          </div>
+        </Link>
+        <Link href="/ai-chat" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #8b0000' }}>
+          <div style={{ fontSize: '1.5rem' }}>🤖</div>
+          <div>
+            <div style={{ fontWeight: 600 }}>AI Assistant</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ask Anything</div>
+          </div>
+        </Link>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.5rem' }}>Upcoming Jobs</h2>
         <Link href="/jobs/new" className="btn btn-primary">

@@ -85,6 +85,16 @@ const tools = [
             },
             required: ["item_id"]
         }
+    },
+    {
+        name: "get_prospects",
+        description: "Search the sales pipeline for potential customers (prospects).",
+        input_schema: {
+            type: "object",
+            properties: {
+                query: { type: "string", description: "Search term for company name, industry, or state" }
+            }
+        }
     }
 ];
 
@@ -150,6 +160,15 @@ async function handleToolCall(toolName, input) {
                 if (error) throw error;
                 return { success: true, updated_item: data[0] };
             }
+            case "get_prospects": {
+                let query = supabase.from('prospects').select('*');
+                if (input.query) {
+                    query = query.or(`name.ilike.%${input.query}%,description.ilike.%${input.query}%,state.ilike.%${input.query}%`);
+                }
+                const { data, error } = await query.limit(20);
+                if (error) throw error;
+                return data;
+            }
             default:
                 return { error: "Unknown tool" };
         }
@@ -203,7 +222,7 @@ export async function chatWithAI(messages, conversationId = null) {
         }
 
         let response = await anthropic.messages.create({
-            model: "claude-3-5-sonnet-20241022",
+            model: "claude-3-5-sonnet-latest",
             max_tokens: 1024,
             system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. ALWAYS use tools to check real data. Keep track of costs and let users know if you are being too expensive if they ask. Current User ID: " + userId,
             tools: tools,
@@ -226,7 +245,7 @@ export async function chatWithAI(messages, conversationId = null) {
             }
 
             const finalResponse = await anthropic.messages.create({
-                model: "claude-3-5-sonnet-20241022",
+                model: "claude-3-5-sonnet-latest",
                 max_tokens: 1024,
                 system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. ALWAYS use tools to check real data.",
                 tools: tools,
