@@ -11,29 +11,40 @@ export async function checkIn(notes = '') {
     if (!userId) return { error: 'Not authenticated' };
 
     try {
-        // Check if already checked in today (and not checked out)
-        const today = new Date().toISOString().split('T')[0];
-        const { data: existing } = await supabase
+        // Check if already checked in (active session)
+        const { data: existing, error: checkError } = await supabase
             .from('attendance')
-            .select('*')
+            .select('id')
             .eq('user_id', userId)
             .is('check_out', null)
-            .gte('check_in', `${today}T00:00:00`)
-            .single();
+            .maybeSingle();
 
+        if (checkError) throw checkError;
         if (existing) {
             return { error: 'You are already checked in.' };
         }
 
+        // Attempt insert - using a clean object without notes if it might be missing
+        const insertData = { user_id: userId };
+        if (notes) insertData.notes = notes;
+
         const { error } = await supabase
             .from('attendance')
-            .insert([{ user_id: userId, notes: notes }]);
+            .insert([insertData]);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Attendance insertion error:', error);
+            if (error.code === '42703') { // Column does not exist
+                return { error: 'Database schema mismatch. Please run the SQL migration to add the "notes" column.' };
+            }
+            throw error;
+        }
+
         revalidatePath('/');
         return { success: true };
     } catch (error) {
-        return { error: error.message };
+        console.error('Check-in failed:', error);
+        return { error: error.message || 'Check-in failed.' };
     }
 }
 
@@ -76,16 +87,20 @@ export async function getAttendanceStatus() {
     const userId = cookieStore.get('user_id')?.value;
     if (!userId) return null;
 
-    const { data } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('user_id', userId)
-        .is('check_out', null)
-        .order('check_in', { ascending: false })
-        .limit(1)
-        .single();
+    try {
+        const { data } = await supabase
+            .from('attendance')
+            .select('*')
+            .eq('user_id', userId)
+            .is('check_out', null)
+            .order('check_in', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-    return data;
+        return data;
+    } catch (e) {
+        return null;
+    }
 }
 
 export async function getAllAttendanceLogs() {
