@@ -84,6 +84,13 @@ export default async function Home() {
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Winning/Losing Bids</div>
           </div>
         </Link>
+        <Link href="/quotes" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #ef4444' }}>
+          <div style={{ fontSize: '1.5rem' }}>📄</div>
+          <div>
+            <div style={{ fontWeight: 600 }}>Quote Generator</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>EH Import & Proposals</div>
+          </div>
+        </Link>
         <Link href="/ai-chat" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #8b0000' }}>
           <div style={{ fontSize: '1.5rem' }}>🤖</div>
           <div>

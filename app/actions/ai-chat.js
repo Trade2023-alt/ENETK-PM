@@ -225,7 +225,7 @@ export async function chatWithAI(messages, conversationId = null) {
         let response = await anthropic.messages.create({
             model: "claude-sonnet-4-5-20250929",
             max_tokens: 1024,
-            system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. You also manage 'ENETK Prospects' (Sales Leads). ALWAYS use tools to check real data. Keep track of costs and let users know if you are being too expensive if they ask. Current User ID: " + userId,
+            system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, customers, and quotes. You also handle EH quote imports and 'ENETK Prospects' (Sales Leads). ALWAYS use tools to check real data. Current User ID: " + userId,
             tools: tools,
             messages: currentMessages
         });
