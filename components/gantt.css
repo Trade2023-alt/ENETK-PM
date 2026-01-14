@@ -1,0 +1,77 @@
+/* Gantt Chart Custom Styles for ENETK Theme */
+
+.gantt-container {
+    background: transparent;
+}
+
+.gantt .grid-header {
+    fill: #1a1a1a;
+    stroke: var(--card-border);
+}
+
+.gantt .grid-row {
+    fill: #1a1a1a;
+}
+
+.gantt .grid-row:nth-child(even) {
+    fill: #222;
+}
+
+.gantt .row-line {
+    stroke: var(--card-border);
+}
+
+.gantt .tick {
+    stroke: var(--card-border);
+}
+
+.gantt .bar-wrapper .bar {
+    fill: var(--primary);
+}
+
+.gantt .bar-wrapper .bar-progress {
+    fill: #10b981;
+}
+
+.gantt .bar-label {
+    fill: #fff;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.gantt .date-range-highlight {
+    fill: rgba(255, 255, 255, 0.05);
+}
+
+/* Priority Classes */
+.gantt .bar-wrapper.priority-high .bar {
+    fill: #ef4444;
+}
+
+.gantt .bar-wrapper.priority-normal .bar {
+    fill: var(--primary);
+}
+
+.gantt .bar-wrapper.priority-low .bar {
+    fill: #4a5568;
+}
+
+/* Popup */
+.gantt-popup {
+    background: #111;
+    border: 1px solid var(--card-border);
+    padding: 10px;
+    border-radius: 6px;
+    color: white;
+}
+
+.gantt-popup .title {
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--primary);
+}
+
+.gantt-popup .subtitle {
+    font-size: 11px;
+    color: #888;
+}

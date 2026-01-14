@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Calendar from '@/components/Calendar';
+import JobGantt from '@/components/JobGantt';
 import Link from 'next/link';
 
 export default async function SchedulePage() {
@@ -28,7 +29,7 @@ export default async function SchedulePage() {
             assignments:sub_task_assignments(user_id)
         `);
 
-    // Fetch users
+    // Fetch users (needed for workers display on Gantt)
     const { data: users } = await supabase
         .from('users')
         .select('id, username')
@@ -50,12 +51,17 @@ export default async function SchedulePage() {
             <Header userRole={userRole} />
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.5rem' }}>Schedule</h2>
+                <h2 style={{ fontSize: '1.5rem' }}>Master Schedule & Man-Loading</h2>
                 <Link href="/jobs/new" className="btn btn-primary">
                     + Add Job
                 </Link>
             </div>
 
+            <div style={{ marginBottom: '3rem' }}>
+                <JobGantt jobs={jobs} users={users || []} />
+            </div>
+
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Monthly Calendar</h3>
             <Calendar jobs={jobs} subTasks={subTasks} users={users || []} />
         </div>
     );

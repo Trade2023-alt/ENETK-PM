@@ -2,10 +2,15 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Claude 3.5 Sonnet Pricing
+const PRICE_INPUT = 3 / 1000000;
+const PRICE_OUTPUT = 15 / 1000000;
 
 const tools = [
     {
@@ -154,10 +159,33 @@ async function handleToolCall(toolName, input) {
     }
 }
 
-export async function chatWithAI(messages) {
+async function logAiUsage(userId, response) {
+    try {
+        const inputTokens = response.usage.input_tokens;
+        const outputTokens = response.usage.output_tokens;
+        const cost = (inputTokens * PRICE_INPUT) + (outputTokens * PRICE_OUTPUT);
+
+        await supabase.from('ai_usage').insert({
+            user_id: userId,
+            model: response.model,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            cost_usd: cost
+        });
+        return cost;
+    } catch (e) {
+        console.warn('AI Usage logging failed (table might be missing):', e.message);
+        return 0;
+    }
+}
+
+export async function chatWithAI(messages, conversationId = null) {
     if (!process.env.ANTHROPIC_API_KEY) {
         return { error: 'Anthropic API key not configured.' };
     }
+
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
 
     try {
         let currentMessages = messages.map(m => ({
@@ -165,16 +193,25 @@ export async function chatWithAI(messages) {
             content: m.content
         }));
 
+        // If conversationId is provided, save the last user message
+        if (conversationId && currentMessages[currentMessages.length - 1].role === 'user') {
+            await supabase.from('chat_messages').insert({
+                conversation_id: conversationId,
+                role: 'user',
+                content: currentMessages[currentMessages.length - 1].content
+            }).catch(() => { });
+        }
+
         let response = await anthropic.messages.create({
             model: "claude-3-5-sonnet-20241022",
             max_tokens: 1024,
-            system: "You are the ENETK Project Management AI Agent. You help the user manage their contractor business. You HAVE TOOLS to search inventory, jobs, and customers, and can also update jobs and customers. Always use these tools to provide accurate, real-time data when asked. If you update something, confirm it with the user.",
+            system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. ALWAYS use tools to check real data. Keep track of costs and let users know if you are being too expensive if they ask. Current User ID: " + userId,
             tools: tools,
             messages: currentMessages
         });
 
-        // Loop to handle potential multiple tool calls or iterative reasoning
-        // For simplicity in a server action, we handle one round of tool use if present
+        const usageCost = await logAiUsage(userId, response);
+
         if (response.stop_reason === "tool_use") {
             const toolResults = [];
             for (const contentBlock of response.content) {
@@ -188,11 +225,10 @@ export async function chatWithAI(messages) {
                 }
             }
 
-            // Send back the results to Claude
             const finalResponse = await anthropic.messages.create({
                 model: "claude-3-5-sonnet-20241022",
                 max_tokens: 1024,
-                system: "You are the ENETK Project Management AI Agent. You help the user manage their contractor business. You HAVE TOOLS to search inventory, jobs, and customers, and can also update jobs and customers. Always use these tools to provide accurate, real-time data when asked. If you update something, confirm it with the user.",
+                system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. ALWAYS use tools to check real data.",
                 tools: tools,
                 messages: [
                     ...currentMessages,
@@ -201,18 +237,71 @@ export async function chatWithAI(messages) {
                 ]
             });
 
+            await logAiUsage(userId, finalResponse);
+
+            const assistantOutput = finalResponse.content[0].text;
+            if (conversationId) {
+                await supabase.from('chat_messages').insert({
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: assistantOutput
+                }).catch(() => { });
+            }
+
             return {
                 role: 'assistant',
-                content: finalResponse.content[0].text
+                content: assistantOutput,
+                cost: usageCost.toFixed(5)
             };
+        }
+
+        const assistantOutput = response.content[0].text;
+        if (conversationId) {
+            await supabase.from('chat_messages').insert({
+                conversation_id: conversationId,
+                role: 'assistant',
+                content: assistantOutput
+            }).catch(() => { });
         }
 
         return {
             role: 'assistant',
-            content: response.content[0].text
+            content: assistantOutput,
+            cost: usageCost.toFixed(5)
         };
     } catch (error) {
         console.error('Claude API Error:', error);
         return { error: 'Failed to get response from Claude: ' + error.message };
     }
+}
+
+export async function createConversation(title) {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    const { data, error } = await supabase.from('chat_conversations')
+        .insert({ user_id: userId, title: title || 'New Chat' })
+        .select()
+        .single();
+    if (error) return { error: error.message };
+    return data;
+}
+
+export async function getConversations() {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    const { data, error } = await supabase.from('chat_conversations')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+    if (error) return [];
+    return data || [];
+}
+
+export async function getChatHistory(conversationId) {
+    const { data, error } = await supabase.from('chat_messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+    if (error) return [];
+    return data || [];
 }
