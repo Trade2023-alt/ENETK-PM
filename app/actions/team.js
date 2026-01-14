@@ -11,6 +11,7 @@ export async function createTeamMember(formData) {
     const role = formData.get('role');
     const email = formData.get('email');
     const phone = formData.get('phone');
+    const company = formData.get('company') || 'ENETK';
 
     if (!username || !password || !role) {
         return { error: 'All fields are required' };
@@ -30,7 +31,7 @@ export async function createTeamMember(formData) {
         const hash = bcrypt.hashSync(password, 10);
         const { error } = await supabase
             .from('users')
-            .insert([{ username, password_hash: hash, role, email: email || null, phone: phone || null }]);
+            .insert([{ username, password_hash: hash, role, email: email || null, phone: phone || null, company: company }]);
 
         if (error) throw error;
         revalidatePath('/team');
@@ -49,6 +50,7 @@ export async function updateTeamMember(formData) {
     const password = formData.get('password');
     const email = formData.get('email');
     const phone = formData.get('phone');
+    const company = formData.get('company') || 'ENETK';
 
     if (!id || !username || !role) {
         return { error: 'Missing required fields' };
@@ -71,6 +73,7 @@ export async function updateTeamMember(formData) {
             role,
             email: email || null,
             phone: phone || null,
+            company: company || 'ENETK',
             updated_at: new Date().toISOString()
         };
 

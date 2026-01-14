@@ -13,7 +13,7 @@ export default async function EditTeamPage({ params }) {
 
     const { data: user, error: userError } = await supabase
         .from('users')
-        .select('id, username, role, email, phone')
+        .select('id, username, role, email, phone, company')
         .eq('id', id)
         .single();
 
@@ -57,6 +57,11 @@ export default async function EditTeamPage({ params }) {
                     <div style={{ marginBottom: '1rem' }}>
                         <label className="label">Email</label>
                         <input name="email" type="email" className="input" defaultValue={user.email} placeholder="user@example.com" />
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label className="label">Company</label>
+                        <input name="company" type="text" className="input" defaultValue={user.company || 'ENETK'} />
                     </div>
 
                     <div style={{ marginBottom: '1rem' }}>

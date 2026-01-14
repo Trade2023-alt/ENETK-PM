@@ -29,7 +29,10 @@ export default function Header({ userRole }) {
                     <Link href="/reports" style={{ color: 'var(--text-muted)' }}>Reports</Link>
                     <Link href="/ai-chat" style={{ color: 'var(--primary)', fontWeight: 600 }}>AI Agent</Link>
                     {userRole === 'admin' && (
-                        <Link href="/team" style={{ color: 'var(--text-muted)' }}>Team</Link>
+                        <>
+                            <Link href="/team" style={{ color: 'var(--text-muted)' }}>Team</Link>
+                            <Link href="/attendance" style={{ color: 'var(--text-muted)' }}>Attendance</Link>
+                        </>
                     )}
                 </nav>
             </div>

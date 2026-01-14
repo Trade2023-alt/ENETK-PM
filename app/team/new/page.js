@@ -33,6 +33,11 @@ export default async function NewTeamPage() {
                     </div>
 
                     <div style={{ marginBottom: '1rem' }}>
+                        <label className="label">Company</label>
+                        <input name="company" type="text" className="input" defaultValue="ENETK" placeholder="e.g. ENETK" />
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
                         <label className="label">Phone</label>
                         <input name="phone" type="tel" className="input" placeholder="(555) 123-4567" />
                     </div>

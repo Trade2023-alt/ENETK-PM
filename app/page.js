@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import DashboardClient from '@/components/DashboardClient';
+import AttendanceModule from '@/components/AttendanceModule';
+import { getAttendanceStatus } from './actions/attendance';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +17,8 @@ export default async function Home() {
   if (!userId) {
     redirect('/login');
   }
+
+  const attendanceStatus = await getAttendanceStatus();
 
   let jobs = [];
   try {
@@ -63,7 +67,9 @@ export default async function Home() {
     <div className="container" style={{ paddingBottom: '4rem' }}>
       <Header userRole={userRole} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
+        <AttendanceModule initialStatus={attendanceStatus} />
+
         <Link href="/pipeline" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid var(--primary)' }}>
           <div style={{ fontSize: '1.5rem' }}>💰</div>
           <div>

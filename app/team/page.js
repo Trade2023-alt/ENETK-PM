@@ -22,7 +22,7 @@ export default async function TeamPage() {
 
     const { data: users, error } = await supabase
         .from('users')
-        .select('id, username, role, email, phone')
+        .select('id, username, role, email, phone, company')
         .order('username', { ascending: true });
 
 
@@ -43,6 +43,7 @@ export default async function TeamPage() {
                         <tr style={{ borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>
                             <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Username</th>
                             <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Role</th>
+                            <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Company</th>
                             <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Email</th>
                             <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Phone</th>
                             <th style={{ padding: '0.75rem' }}></th>
@@ -63,6 +64,7 @@ export default async function TeamPage() {
                                         {user.role}
                                     </span>
                                 </td>
+                                <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{user.company || 'ENETK'}</td>
                                 <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{user.email || '-'}</td>
                                 <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{user.phone || '-'}</td>
                                 <td style={{ padding: '0.75rem', textAlign: 'right' }}>

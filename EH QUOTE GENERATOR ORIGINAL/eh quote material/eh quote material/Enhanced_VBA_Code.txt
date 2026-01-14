@@ -1,0 +1,496 @@
+Sub BrowseFiles()
+    Dim fileDialog As FileDialog
+    Dim selectedFile As String
+    Dim fileExtension As String
+    Dim fileName As String
+    
+    ' Create file dialog
+    Set fileDialog = Application.FileDialog(msoFileDialogFilePicker)
+    
+    ' Configure file dialog
+    With fileDialog
+        .Title = "Select File to Import"
+        .AllowMultiSelect = False
+        .Filters.Clear
+        .Filters.Add "Excel Files", "*.xlsx"
+        .Filters.Add "RTF Files", "*.rtf"
+        .Filters.Add "XML Files", "*.xml"
+        .Filters.Add "All Supported Files", "*.xlsx;*.rtf;*.xml"
+    End With
+    
+    ' Show dialog
+    If fileDialog.Show = -1 Then
+        selectedFile = fileDialog.SelectedItems(1)
+        fileName = Dir(selectedFile)
+        
+        ' Update file path
+        Range("B10").Value = selectedFile
+        
+        ' Determine file type
+        fileExtension = UCase(Right(fileName, 4))
+        Select Case fileExtension
+            Case ".XLSX"
+                Range("B11").Value = "Excel File"
+            Case ".RTF"
+                Range("B11").Value = "RTF File"
+            Case ".XML"
+                Range("B11").Value = "XML File"
+            Case Else
+                Range("B11").Value = "Unknown Type"
+        End Select
+        
+        ' Update status
+        Range("B12").Value = "File selected - Ready to import"
+        Range("B12").Interior.Color = RGB(200, 255, 200) ' Light green
+        
+    Else
+        Range("B12").Value = "No file selected"
+        Range("B12").Interior.Color = RGB(255, 200, 200) ' Light red
+    End If
+End Sub
+
+Sub ImportData()
+    Dim filePath As String
+    Dim fileExtension As String
+    Dim fileName As String
+    
+    ' Get selected file
+    filePath = Range("B10").Value
+    fileName = Dir(filePath)
+    
+    ' Check if file is selected
+    If filePath = "" Or filePath = "Click ""BROWSE"" to select file" Then
+        MsgBox "Please select a file first using the BROWSE button.", vbExclamation, "No File Selected"
+        Exit Sub
+    End If
+    
+    ' Check if file exists
+    If Dir(filePath) = "" Then
+        MsgBox "Selected file does not exist. Please select a valid file.", vbExclamation, "File Not Found"
+        Exit Sub
+    End If
+    
+    ' Determine file type and import
+    fileExtension = UCase(Right(fileName, 4))
+    
+    Select Case fileExtension
+        Case ".XLSX"
+            ImportExcelFile filePath
+        Case ".RTF"
+            ImportRTFFile filePath
+        Case ".XML"
+            ImportXMLFile filePath
+        Case Else
+            MsgBox "Unsupported file type. Please select .xlsx, .rtf, or .xml file.", vbExclamation, "Unsupported File Type"
+    End Select
+End Sub
+
+Sub ImportExcelFile(filePath As String)
+    Dim sourceWB As Workbook
+    Dim sourceWS As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim itemCount As Integer
+    
+    On Error GoTo ErrorHandler
+    
+    ' Open source workbook
+    Set sourceWB = Workbooks.Open(filePath)
+    Set sourceWS = sourceWB.Worksheets(1)
+    
+    ' Clear existing line items
+    Range("B29:B38").Value = ""
+    Range("C29:C38").Value = ""
+    Range("E29:E38").Value = ""
+    
+    ' Find last row with data
+    lastRow = sourceWS.Cells(sourceWS.Rows.Count, "A").End(xlUp).Row
+    
+    ' Import data (assuming standard format)
+    itemCount = 0
+    For i = 2 To lastRow ' Skip header row
+        If itemCount >= 10 Then Exit For ' Limit to 10 items
+        
+        ' Try to find data in common columns
+        If sourceWS.Cells(i, 1).Value <> "" Or sourceWS.Cells(i, 2).Value <> "" Then
+            itemCount = itemCount + 1
+            
+            ' Description (try column B or C)
+            If sourceWS.Cells(i, 2).Value <> "" Then
+                Range("B" & (28 + itemCount)).Value = sourceWS.Cells(i, 2).Value
+            ElseIf sourceWS.Cells(i, 3).Value <> "" Then
+                Range("B" & (28 + itemCount)).Value = sourceWS.Cells(i, 3).Value
+            End If
+            
+            ' Quantity (try column C or D)
+            If IsNumeric(sourceWS.Cells(i, 3).Value) Then
+                Range("C" & (28 + itemCount)).Value = sourceWS.Cells(i, 3).Value
+            ElseIf IsNumeric(sourceWS.Cells(i, 4).Value) Then
+                Range("C" & (28 + itemCount)).Value = sourceWS.Cells(i, 4).Value
+            End If
+            
+            ' Unit Price (try column D, E, or F)
+            If IsNumeric(sourceWS.Cells(i, 4).Value) Then
+                Range("E" & (28 + itemCount)).Value = sourceWS.Cells(i, 4).Value
+            ElseIf IsNumeric(sourceWS.Cells(i, 5).Value) Then
+                Range("E" & (28 + itemCount)).Value = sourceWS.Cells(i, 5).Value
+            ElseIf IsNumeric(sourceWS.Cells(i, 6).Value) Then
+                Range("E" & (28 + itemCount)).Value = sourceWS.Cells(i, 6).Value
+            End If
+        End If
+    Next i
+    
+    ' Close source workbook
+    sourceWB.Close False
+    
+    ' Update status
+    Range("B12").Value = "Excel file imported successfully - " & itemCount & " items"
+    Range("B12").Interior.Color = RGB(200, 255, 200) ' Light green
+    
+    MsgBox "Excel file imported successfully! " & itemCount & " items loaded.", vbInformation, "Import Complete"
+    Exit Sub
+    
+ErrorHandler:
+    If Not sourceWB Is Nothing Then sourceWB.Close False
+    MsgBox "Error importing Excel file: " & Err.Description, vbExclamation, "Import Error"
+    Range("B12").Value = "Import failed - " & Err.Description
+    Range("B12").Interior.Color = RGB(255, 200, 200) ' Light red
+End Sub
+
+Sub ImportRTFFile(filePath As String)
+    Dim fileContent As String
+    Dim lines() As String
+    Dim i As Long
+    Dim itemCount As Integer
+    Dim line As String
+    
+    On Error GoTo ErrorHandler
+    
+    ' Read RTF file
+    Open filePath For Input As #1
+    fileContent = Input(LOF(1), 1)
+    Close #1
+    
+    ' Split into lines
+    lines = Split(fileContent, vbCrLf)
+    
+    ' Clear existing line items
+    Range("B29:B38").Value = ""
+    Range("C29:C38").Value = ""
+    Range("E29:E38").Value = ""
+    
+    ' Parse RTF content (basic parsing)
+    itemCount = 0
+    For i = 0 To UBound(lines)
+        line = Trim(lines(i))
+        
+        ' Look for product descriptions (basic pattern matching)
+        If Len(line) > 10 And InStr(line, "Product") > 0 And itemCount < 10 Then
+            itemCount = itemCount + 1
+            Range("B" & (28 + itemCount)).Value = line
+            Range("C" & (28 + itemCount)).Value = "1" ' Default quantity
+            Range("E" & (28 + itemCount)).Value = "0.00" ' Default price
+        End If
+    Next i
+    
+    ' Update status
+    Range("B12").Value = "RTF file imported - " & itemCount & " items (basic parsing)"
+    Range("B12").Interior.Color = RGB(255, 255, 200) ' Light yellow
+    
+    MsgBox "RTF file imported with basic parsing! " & itemCount & " items loaded. You may need to adjust quantities and prices manually.", vbInformation, "Import Complete"
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Error importing RTF file: " & Err.Description, vbExclamation, "Import Error"
+    Range("B12").Value = "Import failed - " & Err.Description
+    Range("B12").Interior.Color = RGB(255, 200, 200) ' Light red
+End Sub
+
+Sub ImportXMLFile(filePath As String)
+    Dim xmlDoc As Object
+    Dim xmlNode As Object
+    Dim xmlNodes As Object
+    Dim i As Long
+    Dim itemCount As Integer
+    
+    On Error GoTo ErrorHandler
+    
+    ' Create XML document object
+    Set xmlDoc = CreateObject("MSXML2.DOMDocument")
+    xmlDoc.async = False
+    xmlDoc.Load filePath
+    
+    ' Check if XML loaded successfully
+    If xmlDoc.parseError.errorCode <> 0 Then
+        MsgBox "Error loading XML file: " & xmlDoc.parseError.reasonText, vbExclamation, "XML Error"
+        Exit Sub
+    End If
+    
+    ' Clear existing line items
+    Range("B29:B38").Value = ""
+    Range("C29:C38").Value = ""
+    Range("E29:E38").Value = ""
+    
+    ' Try to find product nodes (common XML patterns)
+    Set xmlNodes = xmlDoc.getElementsByTagName("product")
+    If xmlNodes.Length = 0 Then
+        Set xmlNodes = xmlDoc.getElementsByTagName("item")
+    End If
+    If xmlNodes.Length = 0 Then
+        Set xmlNodes = xmlDoc.getElementsByTagName("line")
+    End If
+    
+    ' Import products
+    itemCount = 0
+    For i = 0 To xmlNodes.Length - 1
+        If itemCount >= 10 Then Exit For ' Limit to 10 items
+        
+        Set xmlNode = xmlNodes(i)
+        itemCount = itemCount + 1
+        
+        ' Try to get description
+        If Not xmlNode.getElementsByTagName("description")(0) Is Nothing Then
+            Range("B" & (28 + itemCount)).Value = xmlNode.getElementsByTagName("description")(0).Text
+        ElseIf Not xmlNode.getElementsByTagName("name")(0) Is Nothing Then
+            Range("B" & (28 + itemCount)).Value = xmlNode.getElementsByTagName("name")(0).Text
+        End If
+        
+        ' Try to get quantity
+        If Not xmlNode.getElementsByTagName("quantity")(0) Is Nothing Then
+            Range("C" & (28 + itemCount)).Value = xmlNode.getElementsByTagName("quantity")(0).Text
+        Else
+            Range("C" & (28 + itemCount)).Value = "1"
+        End If
+        
+        ' Try to get price
+        If Not xmlNode.getElementsByTagName("price")(0) Is Nothing Then
+            Range("E" & (28 + itemCount)).Value = xmlNode.getElementsByTagName("price")(0).Text
+        ElseIf Not xmlNode.getElementsByTagName("unitprice")(0) Is Nothing Then
+            Range("E" & (28 + itemCount)).Value = xmlNode.getElementsByTagName("unitprice")(0).Text
+        Else
+            Range("E" & (28 + itemCount)).Value = "0.00"
+        End If
+    Next i
+    
+    ' Update status
+    Range("B12").Value = "XML file imported - " & itemCount & " items"
+    Range("B12").Interior.Color = RGB(200, 255, 200) ' Light green
+    
+    MsgBox "XML file imported successfully! " & itemCount & " items loaded.", vbInformation, "Import Complete"
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Error importing XML file: " & Err.Description, vbExclamation, "Import Error"
+    Range("B12").Value = "Import failed - " & Err.Description
+    Range("B12").Interior.Color = RGB(255, 200, 200) ' Light red
+End Sub
+
+Sub GenerateQuote()
+    Dim ws As Worksheet
+    Dim newWs As Worksheet
+    Dim i As Integer
+    Dim lastRow As Integer
+    Dim quoteNum As String
+    Dim quoteDate As String
+    Dim customerCompany As String
+    Dim contactPerson As String
+    Dim phone As String
+    Dim email As String
+    Dim customerRef As String
+    Dim paymentTerms As String
+    Dim deliveryTerms As String
+    Dim subtotal As Double
+    Dim taxAmount As Double
+    Dim freight As Double
+    Dim total As Double
+    
+    ' Get data from form
+    quoteNum = Range("B17").Value
+    quoteDate = Range("B18").Value
+    customerCompany = Range("B19").Value
+    contactPerson = Range("B20").Value
+    phone = Range("B21").Value
+    email = Range("B22").Value
+    customerRef = Range("B23").Value
+    paymentTerms = Range("B24").Value
+    deliveryTerms = Range("B25").Value
+    subtotal = Range("F42").Value
+    taxAmount = Range("F44").Value
+    freight = Range("C45").Value
+    total = Range("F46").Value
+    
+    ' Create new worksheet
+    Set newWs = Worksheets.Add
+    newWs.Name = "Quote_" & Replace(quoteNum, "/", "_")
+    
+    ' Set up the quote layout
+    With newWs
+        ' Header
+        .Range("A1").Value = "QUOTE"
+        .Range("A1").Font.Bold = True
+        .Range("A1").Font.Size = 20
+        .Range("A1").Interior.Color = RGB(54, 96, 146)
+        .Range("A1").Font.Color = RGB(255, 255, 255)
+        .Range("A1").HorizontalAlignment = xlCenter
+        .Range("A1:F1").Merge
+        .RowHeight(1) = 40
+        
+        ' Company info
+        .Range("A2").Value = "KINDER MORGAN"
+        .Range("A2").Font.Bold = True
+        .Range("A2").Font.Size = 12
+        .Range("A3").Value = "1234 Energy Drive"
+        .Range("A4").Value = "Houston, TX 77002"
+        .Range("A5").Value = "Phone: (713) 369-9000"
+        .Range("A6").Value = "Email: quotes@kindermorgan.com"
+        
+        ' Quote details
+        .Range("D2").Value = "Quote No.:"
+        .Range("D2").Font.Bold = True
+        .Range("E2").Value = quoteNum
+        .Range("D3").Value = "Date:"
+        .Range("D3").Font.Bold = True
+        .Range("E3").Value = quoteDate
+        .Range("D4").Value = "Customer Ref:"
+        .Range("D4").Font.Bold = True
+        .Range("E4").Value = customerRef
+        
+        ' Customer info
+        .Range("A8").Value = "CUSTOMER INFORMATION"
+        .Range("A8").Font.Bold = True
+        .Range("A8").Interior.Color = RGB(242, 242, 242)
+        .Range("A8:F8").Merge
+        
+        .Range("A9").Value = "Company:"
+        .Range("A9").Font.Bold = True
+        .Range("B9").Value = customerCompany
+        .Range("A10").Value = "Contact:"
+        .Range("A10").Font.Bold = True
+        .Range("B10").Value = contactPerson
+        .Range("A11").Value = "Phone:"
+        .Range("A11").Font.Bold = True
+        .Range("B11").Value = phone
+        .Range("A12").Value = "Email:"
+        .Range("A12").Font.Bold = True
+        .Range("B12").Value = email
+        
+        ' Line items header
+        .Range("A14").Value = "Item #"
+        .Range("B14").Value = "Qty"
+        .Range("C14").Value = "Unit"
+        .Range("D14").Value = "Description"
+        .Range("E14").Value = "Unit Price"
+        .Range("F14").Value = "Total Price"
+        
+        ' Format header
+        .Range("A14:F14").Font.Bold = True
+        .Range("A14:F14").Interior.Color = RGB(54, 96, 146)
+        .Range("A14:F14").Font.Color = RGB(255, 255, 255)
+        .Range("A14:F14").HorizontalAlignment = xlCenter
+        
+        ' Add line items
+        lastRow = 14
+        For i = 29 To 38
+            If Range("B" & i).Value <> "" Then
+                lastRow = lastRow + 1
+                .Range("A" & lastRow).Value = lastRow - 14
+                .Range("B" & lastRow).Value = Range("C" & i).Value
+                .Range("C" & lastRow).Value = Range("D" & i).Value
+                .Range("D" & lastRow).Value = Range("B" & i).Value
+                .Range("E" & lastRow).Value = Range("E" & i).Value
+                .Range("F" & lastRow).Value = Range("F" & i).Value
+                .Range("E" & lastRow & ":F" & lastRow).NumberFormat = "$#,##0.00"
+                .Range("A" & lastRow & ":F" & lastRow).BorderAround xlThin
+            End If
+        Next i
+        
+        ' Totals
+        .Range("A" & lastRow + 2).Value = "Subtotal:"
+        .Range("A" & lastRow + 2).Font.Bold = True
+        .Range("F" & lastRow + 2).Value = subtotal
+        .Range("F" & lastRow + 2).NumberFormat = "$#,##0.00"
+        
+        .Range("A" & lastRow + 3).Value = "Tax (5%):"
+        .Range("A" & lastRow + 3).Font.Bold = True
+        .Range("F" & lastRow + 3).Value = taxAmount
+        .Range("F" & lastRow + 3).NumberFormat = "$#,##0.00"
+        
+        .Range("A" & lastRow + 4).Value = "Freight:"
+        .Range("A" & lastRow + 4).Font.Bold = True
+        .Range("F" & lastRow + 4).Value = freight
+        .Range("F" & lastRow + 4).NumberFormat = "$#,##0.00"
+        
+        .Range("A" & lastRow + 5).Value = "TOTAL:"
+        .Range("A" & lastRow + 5).Font.Bold = True
+        .Range("A" & lastRow + 5).Font.Size = 14
+        .Range("F" & lastRow + 5).Value = total
+        .Range("F" & lastRow + 5).Font.Bold = True
+        .Range("F" & lastRow + 5).Font.Size = 14
+        .Range("F" & lastRow + 5).NumberFormat = "$#,##0.00"
+        .Range("A" & lastRow + 5 & ":F" & lastRow + 5).Interior.Color = RGB(242, 242, 242)
+        .Range("A" & lastRow + 5 & ":F" & lastRow + 5).BorderAround xlThick
+        
+        ' Terms
+        .Range("A" & lastRow + 7).Value = "TERMS AND CONDITIONS"
+        .Range("A" & lastRow + 7).Font.Bold = True
+        .Range("A" & lastRow + 7).Interior.Color = RGB(242, 242, 242)
+        .Range("A" & lastRow + 7 & ":F" & lastRow + 7).Merge
+        
+        .Range("A" & lastRow + 8).Value = "Payment Terms: " & paymentTerms
+        .Range("A" & lastRow + 9).Value = "Delivery: " & deliveryTerms
+        .Range("A" & lastRow + 10).Value = "Validity: 30 days from quote date"
+        .Range("A" & lastRow + 11).Value = "All prices subject to change without notice"
+        .Range("A" & lastRow + 12).Value = "Freight charges not included unless specified"
+        
+        ' Auto-fit columns
+        .Columns.AutoFit
+        
+        ' Add borders to all data
+        .Range("A1:F" & lastRow + 12).BorderAround xlThin
+    End With
+    
+    MsgBox "Quote generated successfully in worksheet: " & newWs.Name, vbInformation, "Quote Generator"
+End Sub
+
+Sub ClearForm()
+    ' Clear all form fields
+    Range("B10").Value = "Click ""BROWSE"" to select file"
+    Range("B11").Value = "Auto-detected"
+    Range("B12").Value = "Ready to import"
+    Range("B12").Interior.Color = RGB(255, 255, 255)
+    
+    Range("B17").Value = "QUOTE-" & Format(Now, "YYYYMMDD") & "-001"
+    Range("B19").Value = ""
+    Range("B20").Value = ""
+    Range("B21").Value = ""
+    Range("B22").Value = ""
+    Range("B23").Value = ""
+    
+    ' Clear line items
+    Range("B29:B38").Value = ""
+    Range("C29:C38").Value = ""
+    Range("E29:E38").Value = ""
+    
+    ' Reset default values
+    Range("B24").Value = "Net 30 Days"
+    Range("B25").Value = "FOB Origin"
+    Range("C45").Value = "0.00"
+    
+    MsgBox "Form cleared! Ready for new quote.", vbInformation, "Quote Generator"
+End Sub
+
+Sub BrowseFiles_Click()
+    Call BrowseFiles
+End Sub
+
+Sub ImportData_Click()
+    Call ImportData
+End Sub
+
+Sub GenerateQuote_Click()
+    Call GenerateQuote
+End Sub
+
+Sub ClearForm_Click()
+    Call ClearForm
+End Sub
