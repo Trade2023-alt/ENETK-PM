@@ -12,13 +12,19 @@ export default function Header({ userRole }) {
             alignItems: 'center',
             padding: '1rem 1.5rem'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                <h1 style={{ fontSize: '1.25rem', margin: 0 }}>Contractor OS</h1>
-                <nav style={{ display: 'flex', gap: '1rem', fontSize: '0.9375rem' }}>
-                    <Link href="/" style={{ color: 'var(--foreground)' }}>Dashboard</Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
+                    <img
+                        src="/logo.webp"
+                        alt="ENETK Logo"
+                        style={{ height: '40px', width: 'auto' }}
+                    />
+                </Link>
+                <nav style={{ display: 'flex', gap: '1.25rem', fontSize: '0.9375rem', alignItems: 'center' }}>
+                    <Link href="/" style={{ color: 'var(--primary)', fontWeight: 600 }}>Dashboard</Link>
                     <Link href="/customers" style={{ color: 'var(--text-muted)' }}>Customers</Link>
                     <Link href="/schedule" style={{ color: 'var(--text-muted)' }}>Schedule</Link>
-                    <Link href="/inventory" style={{ color: 'var(--primary)', fontWeight: 600 }}>Inventory</Link>
+                    <Link href="/inventory" style={{ color: 'var(--text-muted)' }}>Inventory</Link>
                     <Link href="/reports" style={{ color: 'var(--text-muted)' }}>Reports</Link>
                     {userRole === 'admin' && (
                         <Link href="/team" style={{ color: 'var(--text-muted)' }}>Team</Link>

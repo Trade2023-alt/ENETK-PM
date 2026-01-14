@@ -47,3 +47,6 @@ data/
 *.db-shm
 *.db-wal
 backups/
+
+# ENETK Sensitive Info
+API_INFO.txt

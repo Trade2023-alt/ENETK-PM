@@ -1,21 +1,19 @@
 import inspect
 import json
 import os
+
+import anthropic
+from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-# Optional: Load environment variables if using a .env file
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+# Load environment variables (API keys)
+load_dotenv()
+# Also search for .env.local which is common in Next.js projects
+load_dotenv(".env.local")
 
-# Choose your provider: OpenAI or Anthropic
-# Defaulting to OpenAI as per the final snippet provided
-from openai import OpenAI
-
-openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Configure Anthropic client
+anthropic_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 SYSTEM_PROMPT = """
 You are a coding assistant whose goal it is to help us solve coding tasks. 
@@ -34,7 +32,8 @@ RESET_COLOR = "\u001b[0m"
 
 def resolve_abs_path(path_str: str) -> Path:
     """
-    Resolves a path to an absolute path.
+    Resolves relative paths to absolute paths based on the current working directory.
+    file.py -> /Users/you/project/file.py
     """
     path = Path(path_str).expanduser()
     if not path.is_absolute():
@@ -48,6 +47,7 @@ def read_file_tool(filename: str) -> Dict[str, Any]:
     :return: The full content of the file.
     """
     full_path = resolve_abs_path(filename)
+    print(f"Reading file: {full_path}")
     with open(str(full_path), "r", encoding="utf-8") as f:
         content = f.read()
     return {
@@ -126,6 +126,7 @@ def get_full_system_prompt():
 def extract_tool_invocations(text: str) -> List[Tuple[str, Dict[str, Any]]]:
     """
     Return list of (tool_name, args) requested in 'tool: name({...})' lines.
+    The parser expects single-line, compact JSON in parentheses.
     """
     invocations = []
     for raw_line in text.splitlines():
@@ -146,14 +147,26 @@ def extract_tool_invocations(text: str) -> List[Tuple[str, Dict[str, Any]]]:
     return invocations
 
 def execute_llm_call(conversation: List[Dict[str, str]]):
-    # Note: Model name 'gpt-5' used as per user input, though currently not a public model.
-    # Replace with 'gpt-4o' or similar for actual usage.
-    response = openai_client.chat.completions.create(
-        model="gpt-4o", 
-        messages=conversation,
-        max_tokens=2000
+    system_content = ""
+    messages = []
+    
+    # Extract system content and convert conversation to Anthropic format
+    for msg in conversation:
+        if msg["role"] == "system":
+            system_content = msg["content"]
+        else:
+            # Anthropic roles are 'user' and 'assistant'
+            # (Note: we use 'assistant' for the LLM response in our loop)
+            role = msg["role"]
+            messages.append({"role": role, "content": msg["content"]})
+    
+    response = anthropic_client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2000,
+        system=system_content,
+        messages=messages
     )
-    return response.choices[0].message.content
+    return response.content[0].text
 
 def run_coding_agent_loop():
     print(get_full_system_prompt())
@@ -166,16 +179,13 @@ def run_coding_agent_loop():
             user_input = input(f"{YOU_COLOR}You:{RESET_COLOR}: ")
         except (KeyboardInterrupt, EOFError):
             break
-        
         conversation.append({
             "role": "user",
             "content": user_input.strip()
         })
-        
         while True:
             assistant_response = execute_llm_call(conversation)
             tool_invocations = extract_tool_invocations(assistant_response)
-            
             if not tool_invocations:
                 print(f"{ASSISTANT_COLOR}Assistant:{RESET_COLOR}: {assistant_response}")
                 conversation.append({
@@ -183,25 +193,18 @@ def run_coding_agent_loop():
                     "content": assistant_response
                 })
                 break
-                
             for name, args in tool_invocations:
-                if name not in TOOL_REGISTRY:
-                    resp = {"error": f"Tool {name} not found"}
-                else:
-                    tool = TOOL_REGISTRY[name]
-                    print(f"Calling tool: {name} with args: {args}")
-                    try:
-                        if name == "read_file":
-                            resp = tool(args.get("filename", "."))
-                        elif name == "list_files":
-                            resp = tool(args.get("path", "."))
-                        elif name == "edit_file":
-                            resp = tool(args.get("path", "."), 
-                                        args.get("old_str", ""), 
-                                        args.get("new_str", ""))
-                    except Exception as e:
-                        resp = {"error": str(e)}
-                
+                tool = TOOL_REGISTRY[name]
+                resp = ""
+                print(f"Executing tool: {name} with args: {args}")
+                if name == "read_file":
+                    resp = tool(args.get("filename", "."))
+                elif name == "list_files":
+                    resp = tool(args.get("path", "."))
+                elif name == "edit_file":
+                    resp = tool(args.get("path", "."), 
+                                args.get("old_str", ""), 
+                                args.get("new_str", ""))
                 conversation.append({
                     "role": "user",
                     "content": f"tool_result({json.dumps(resp)})"

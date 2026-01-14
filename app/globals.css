@@ -1,20 +1,21 @@
 :root {
-  /* Maroon & Gray Theme */
-  --background: #4a0e0e;
-  /* Deep Maroon */
-  --foreground: #f3f4f6;
-  /* Light Gray Text */
+  /* ENETK Brand Theme */
+  --background: #1a1a1a;
+  /* Very Dark Gray */
+  --foreground: #f0f0f0;
+  /* Near White Text */
 
-  --card-bg: #1f2937;
-  /* Dark Gray Card */
-  --card-border: #374151;
-  /* Gray Border */
+  --card-bg: #2d2d2d;
+  /* Dark Gray card */
+  --card-border: #404040;
+  /* Mid Gray border */
 
-  --primary: #60a5fa;
-  /* Light Blue for contrast */
-  --primary-hover: #3b82f6;
+  --primary: #8b0000;
+  /* ENETK Deep Maroon */
+  --primary-hover: #b30000;
+  /* Lighter Maroon */
 
-  --text-muted: #9ca3af;
+  --text-muted: #a0a0a0;
   /* Muted Gray */
 
   --success: #10b981;
@@ -118,7 +119,7 @@ button {
 .input:focus {
   outline: none;
   border-color: var(--primary);
-  ring: 2px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 2px rgba(139, 0, 0, 0.2);
 }
 
 .label {
