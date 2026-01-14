@@ -1,12 +1,13 @@
-/* Gantt Chart Custom Styles for ENETK Theme */
+/* ENETK Gantt Chart Professional Styles */
 
-.gantt-wrapper svg {
+.gantt-target svg {
     background-color: transparent !important;
+    display: block;
 }
 
 .gantt .grid-header {
     fill: #151515 !important;
-    stroke: var(--card-border) !important;
+    stroke: #333 !important;
 }
 
 .gantt .grid-row {
@@ -14,65 +15,74 @@
 }
 
 .gantt .grid-row:nth-child(even) {
-    fill: #222;
+    fill: rgba(255, 255, 255, 0.02) !important;
 }
 
 .gantt .row-line {
-    stroke: var(--card-border);
+    stroke: #222 !important;
 }
 
 .gantt .tick {
-    stroke: rgba(255, 255, 255, 0.05) !important;
+    stroke: #222 !important;
 }
 
-.gantt .bar {
+.gantt .tick text {
+    fill: #888 !important;
+}
+
+.gantt .bar-wrapper .bar {
     fill: var(--primary) !important;
     stroke-width: 0;
 }
 
-.gantt .bar-progress {
+.gantt .bar-wrapper .bar-progress {
     fill: #10b981 !important;
 }
 
 .gantt .bar-label {
-    fill: #fff;
+    fill: #fff !important;
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 600 !important;
 }
 
 .gantt .date-range-highlight {
-    fill: rgba(255, 255, 255, 0.05);
+    fill: rgba(139, 0, 0, 0.05) !important;
 }
 
 /* Priority Classes */
 .gantt .bar-wrapper.priority-high .bar {
-    fill: #ef4444;
-}
-
-.gantt .bar-wrapper.priority-normal .bar {
-    fill: var(--primary);
+    fill: #ef4444 !important;
 }
 
 .gantt .bar-wrapper.priority-low .bar {
-    fill: #4a5568;
+    fill: #374151 !important;
 }
 
-/* Popup */
+/* Tooltip/Popup */
 .gantt-popup {
-    background: #111;
-    border: 1px solid var(--card-border);
-    padding: 10px;
-    border-radius: 6px;
-    color: white;
+    background: #18181b !important;
+    border: 1px solid #3f3f46 !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    color: #f4f4f5 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+    z-index: 1000;
 }
 
 .gantt-popup .title {
-    font-weight: 700;
-    margin-bottom: 4px;
-    color: var(--primary);
+    font-weight: 700 !important;
+    margin-bottom: 6px !important;
+    color: #fff !important;
+    border-bottom: 1px solid #3f3f46;
+    padding-bottom: 4px;
 }
 
 .gantt-popup .subtitle {
-    font-size: 11px;
-    color: #888;
+    font-size: 12px !important;
+    color: #a1a1aa !important;
+    margin-top: 4px;
+}
+
+.gantt .handle {
+    fill: #fff !important;
 }

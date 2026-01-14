@@ -67,8 +67,8 @@ export default async function Home() {
         <Link href="/pipeline" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid var(--primary)' }}>
           <div style={{ fontSize: '1.5rem' }}>💰</div>
           <div>
-            <div style={{ fontWeight: 600 }}>Sales Pipeline</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Manage Prospects</div>
+            <div style={{ fontWeight: 600 }}>ENETK Prospects</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Manage Lead Pipeline</div>
           </div>
         </Link>
         <Link href="/reports" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #10b981' }}>
