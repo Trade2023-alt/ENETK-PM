@@ -137,21 +137,22 @@ export async function checkoutMaterial(id) {
 
 export async function importMaterials(materials) {
     const cleanedMaterials = materials.map(item => {
+        // Robust mapping to handle varied CSV headers and typos
         const cleaned = {
             checked_in_date: item.checked_in_date || new Date().toISOString().split('T')[0],
-            mfg: item.mfg || null,
-            pn: item.pn || null,
-            sn: item.sn || null,
-            job_number: item.job_number || null,
-            po_number: item.po_number || null,
+            mfg: item.mfg || item.Manufactuer || item.Manufacturer || null,
+            pn: item.pn || item['Part Number'] || null,
+            sn: item.sn || item['Serial Number'] || null,
+            job_number: item.job_number || item['job number'] || item['job nunmber'] || null,
+            po_number: item.po_number || item['po number'] || null,
             customer: item.customer || null,
             description: item.description || null,
-            check_out_date: item.check_out_date || null,
+            check_out_date: item.check_out_date || item.Check_out_date || null,
             transmittal_form: item.transmittal_form || 'no',
             type: item.type || 'misc',
             return_needed: item.return_needed || 'no',
             location: item.location || null,
-            qty: parseInt(item.qty || '0', 10),
+            qty: parseInt(item.qty || item.QTY || '0', 10),
             vendor: item.vendor || null
         };
         return cleaned;
