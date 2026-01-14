@@ -23,6 +23,7 @@ export async function createContact(formData) {
         if (error) throw error;
 
         revalidatePath(`/customers/${customerId}`);
+        revalidatePath('/customers');
     } catch (error) {
         console.error('Error creating contact:', error);
         return { error: 'Failed to create contact: ' + error.message };
@@ -30,4 +31,3 @@ export async function createContact(formData) {
 
     redirect(`/customers/${customerId}`);
 }
-

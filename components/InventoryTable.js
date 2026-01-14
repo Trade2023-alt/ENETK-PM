@@ -120,8 +120,9 @@ export default function InventoryTable({ initialData }) {
             if (result.success) {
                 setData(prev => prev.filter(item => item.id !== id));
                 setSelectedIds(prev => prev.filter(i => i !== id));
+                router.refresh();
             } else {
-                alert('Error deleting item');
+                alert('Error deleting item: ' + (result.error || 'Unknown error'));
             }
         }
     };
@@ -134,8 +135,9 @@ export default function InventoryTable({ initialData }) {
             if (result.success) {
                 setData(prev => prev.filter(item => !selectedIds.includes(item.id)));
                 setSelectedIds([]);
+                router.refresh();
             } else {
-                alert('Error deleting items');
+                alert('Error deleting items: ' + (result.error || 'Unknown error'));
             }
             setLoading(false);
         }

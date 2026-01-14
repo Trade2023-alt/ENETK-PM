@@ -26,6 +26,7 @@ export default function Header({ userRole }) {
                     <Link href="/schedule" style={{ color: 'var(--text-muted)' }}>Schedule</Link>
                     <Link href="/inventory" style={{ color: 'var(--text-muted)' }}>Inventory</Link>
                     <Link href="/reports" style={{ color: 'var(--text-muted)' }}>Reports</Link>
+                    <Link href="/ai-chat" style={{ color: 'var(--primary)', fontWeight: 600 }}>AI Agent</Link>
                     {userRole === 'admin' && (
                         <Link href="/team" style={{ color: 'var(--text-muted)' }}>Team</Link>
                     )}

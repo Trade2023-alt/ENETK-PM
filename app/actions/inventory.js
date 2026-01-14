@@ -98,8 +98,10 @@ export async function updateMaterial(id, formData) {
     }
 }
 
+
 export async function deleteMaterial(id) {
     try {
+        // Ensure id is passed correctly (Supabase eq handles numbers/strings usually, but let's be safe)
         const { error } = await supabase
             .from('material_inventory')
             .delete()
@@ -111,7 +113,7 @@ export async function deleteMaterial(id) {
         return { success: true };
     } catch (error) {
         console.error('Error deleting material:', error);
-        return { error: 'Failed to delete material' };
+        return { error: 'Failed to delete material: ' + error.message };
     }
 }
 
