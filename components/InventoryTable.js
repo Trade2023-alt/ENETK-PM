@@ -118,8 +118,9 @@ export default function InventoryTable({ initialData }) {
         if (confirm('Are you sure you want to delete this item?')) {
             const result = await deleteMaterial(id);
             if (result.success) {
-                setData(prev => prev.filter(item => item.id !== id));
-                setSelectedIds(prev => prev.filter(i => i !== id));
+                // Use != for loose comparison to handle string/number mismatch
+                setData(prev => prev.filter(item => item.id != id));
+                setSelectedIds(prev => prev.filter(i => i != id));
                 router.refresh();
             } else {
                 alert('Error deleting item: ' + (result.error || 'Unknown error'));
@@ -133,7 +134,9 @@ export default function InventoryTable({ initialData }) {
             setLoading(true);
             const result = await bulkDeleteMaterials(selectedIds);
             if (result.success) {
-                setData(prev => prev.filter(item => !selectedIds.includes(item.id)));
+                // Use string comparison for safety in bulk delete
+                const idsToDelete = selectedIds.map(id => id.toString());
+                setData(prev => prev.filter(item => !idsToDelete.includes(item.id.toString())));
                 setSelectedIds([]);
                 router.refresh();
             } else {
