@@ -221,8 +221,9 @@ export async function chatWithAI(messages, conversationId = null) {
             }).catch(() => { });
         }
 
+        // MODEL UPDATE: 2024-10-22 Stable
         let response = await anthropic.messages.create({
-            model: "claude-3-5-sonnet-20240620",
+            model: "claude-3-5-sonnet-20241022",
             max_tokens: 1024,
             system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. You also manage 'ENETK Prospects' (Sales Leads). ALWAYS use tools to check real data. Keep track of costs and let users know if you are being too expensive if they ask. Current User ID: " + userId,
             tools: tools,
@@ -245,7 +246,7 @@ export async function chatWithAI(messages, conversationId = null) {
             }
 
             const finalResponse = await anthropic.messages.create({
-                model: "claude-3-5-sonnet-20240620",
+                model: "claude-3-5-sonnet-20241022",
                 max_tokens: 1024,
                 system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. ALWAYS use tools to check real data.",
                 tools: tools,
