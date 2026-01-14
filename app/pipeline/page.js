@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import { getProspects, importProspects, updateProspect } from '@/app/actions/prospects';
+import { getProspects, updateProspect } from '@/app/actions/prospects';
 
 export default function PipelinePage() {
     const [prospects, setProspects] = useState([]);
@@ -19,17 +19,6 @@ export default function PipelinePage() {
         setLoading(false);
     };
 
-    const handleImport = async () => {
-        if (!confirm('Import all prospects from prospects.txt?')) return;
-        setLoading(true);
-        const res = await importProspects();
-        if (res.error) {
-            alert('Error: ' + res.error);
-        } else {
-            alert(`Successfully imported ${res.count} prospects!`);
-            loadData();
-        }
-    };
 
     const toggleContacted = async (id, current) => {
         await updateProspect(id, { is_contacted: !current });
@@ -51,9 +40,6 @@ export default function PipelinePage() {
                     <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Sales Pipeline</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Manage potential customers and outreach.</p>
                 </div>
-                <button onClick={handleImport} className="btn" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                    Admin: Bulk Import from File
-                </button>
             </div>
 
             <div className="card" style={{ marginBottom: '2rem' }}>
