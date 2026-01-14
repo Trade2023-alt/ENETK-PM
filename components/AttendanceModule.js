@@ -19,7 +19,8 @@ export default function AttendanceModule({ initialStatus }) {
         if (result.success) {
             window.location.reload(); // Refresh to update server-side state
         } else {
-            alert(result.error);
+            console.error('Check-in error:', result.error);
+            alert('Check-in failed: ' + result.error);
             setLoading(false);
         }
     };
