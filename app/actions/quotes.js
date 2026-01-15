@@ -115,37 +115,66 @@ function parseCSVContent(content) {
 
 export async function saveQuote(quoteData, lineItems) {
     try {
-        // 1. Insert/Update Quote
+        // 1. Prepare clean quote data with correct types
+        const cleanQuoteData = {
+            ...quoteData,
+            total: parseFloat(quoteData.total) || 0,
+            markup_percentage: parseFloat(quoteData.markup_percentage) || 0,
+            tax_percentage: parseFloat(quoteData.tax_percentage) || 0,
+            lead_time_value: parseInt(quoteData.lead_time_value) || 0,
+            updated_at: new Date().toISOString()
+        };
+
+        // Remove ID if it's null/undefined to let Supabase handle insertion
+        if (!cleanQuoteData.id) {
+            delete cleanQuoteData.id;
+        }
+
+        // 2. Insert/Update Quote
         const { data: quote, error: quoteError } = await supabase
             .from('quotes')
-            .upsert(quoteData)
+            .upsert(cleanQuoteData)
             .select()
             .single();
 
-        if (quoteError) throw quoteError;
+        if (quoteError) {
+            console.error("Quote table error:", quoteError);
+            throw new Error(`Quote Save Failed: ${quoteError.message}`);
+        }
 
-        // 2. Insert/Update Line Items
-        // First delete existing if updating
+        // 3. Insert/Update Line Items
+        // First delete existing if we are updating an existing quote
         if (quoteData.id) {
             await supabase.from('quote_items').delete().eq('quote_id', quote.id);
         }
 
-        const itemsToInsert = lineItems.map((item, index) => ({
-            ...item,
-            quote_id: quote.id,
-            item_number: index + 1
-        }));
+        if (lineItems && lineItems.length > 0) {
+            const itemsToInsert = lineItems.map((item, index) => ({
+                quote_id: quote.id,
+                item_number: index + 1,
+                description: item.description || 'Item',
+                model: item.model || '',
+                order_code: item.order_code || '',
+                quantity: parseInt(item.quantity) || 1,
+                unit: item.unit || 'PC',
+                unit_price: parseFloat(item.unit_price) || 0.0,
+                config: item.config || ''
+            }));
 
-        const { error: itemsError } = await supabase
-            .from('quote_items')
-            .insert(itemsToInsert);
+            const { error: itemsError } = await supabase
+                .from('quote_items')
+                .insert(itemsToInsert);
 
-        if (itemsError) throw itemsError;
+            if (itemsError) {
+                console.error("Items table error:", itemsError);
+                throw new Error(`Items Save Failed: ${itemsError.message}`);
+            }
+        }
 
         revalidatePath('/quotes');
         return { success: true, id: quote.id };
     } catch (error) {
-        console.error("Save error:", error);
+        console.error("Critical Save error:", error);
         return { success: false, error: error.message };
     }
 }
