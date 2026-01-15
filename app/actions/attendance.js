@@ -12,15 +12,15 @@ export async function checkIn(notes = '') {
 
     try {
         // Check if already checked in (active session)
-        const { data: existing, error: checkError } = await supabase
+        const { data: existingSessions, error: checkError } = await supabase
             .from('attendance')
             .select('id')
-            .eq('user_id', userId)
+            .eq('user_id', Number(userId))
             .is('check_out', null)
-            .maybeSingle();
+            .order('check_in', { ascending: false });
 
         if (checkError) throw checkError;
-        if (existing) {
+        if (existingSessions && existingSessions.length > 0) {
             return { error: 'You are already checked in.' };
         }
 
@@ -55,30 +55,32 @@ export async function checkOut() {
     if (!userId) return { error: 'Not authenticated' };
 
     try {
-        const today = new Date().toISOString().split('T')[0];
-        const { data: activeLog } = await supabase
+        const { data: activeLog, error: fetchError } = await supabase
             .from('attendance')
-            .select('*')
-            .eq('user_id', userId)
+            .select('id')
+            .eq('user_id', Number(userId))
             .is('check_out', null)
             .order('check_in', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
+        if (fetchError) throw fetchError;
         if (!activeLog) {
             return { error: 'No active session found.' };
         }
 
-        const { error } = await supabase
+        const { error: updateError } = await supabase
             .from('attendance')
             .update({ check_out: new Date().toISOString() })
             .eq('id', activeLog.id);
 
-        if (error) throw error;
+        if (updateError) throw updateError;
+
         revalidatePath('/');
         return { success: true };
     } catch (error) {
-        return { error: error.message };
+        console.error('Check-out failed:', error);
+        return { error: error.message || 'Check-out failed.' };
     }
 }
 
@@ -88,16 +90,16 @@ export async function getAttendanceStatus() {
     if (!userId) return null;
 
     try {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('attendance')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', Number(userId))
             .is('check_out', null)
             .order('check_in', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .limit(1);
 
-        return data;
+        if (error || !data || data.length === 0) return null;
+        return data[0];
     } catch (e) {
         return null;
     }

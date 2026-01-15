@@ -22,7 +22,7 @@ export async function createTeamMember(formData) {
             .from('users')
             .select('id')
             .eq('username', username)
-            .single();
+            .maybeSingle();
 
         if (existingUser) {
             return { error: 'Username already taken' };
@@ -35,12 +35,12 @@ export async function createTeamMember(formData) {
 
         if (error) throw error;
         revalidatePath('/team');
+        redirect('/team');
     } catch (error) {
+        if (error.message === 'NEXT_REDIRECT') throw error;
         console.error('Error creating user:', error);
         return { error: 'Failed to create team member: ' + error.message };
     }
-
-    redirect('/team');
 }
 
 export async function updateTeamMember(formData) {
@@ -62,7 +62,7 @@ export async function updateTeamMember(formData) {
             .select('id')
             .eq('username', username)
             .neq('id', id)
-            .single();
+            .maybeSingle();
 
         if (existingUser) {
             return { error: 'Username already taken' };
@@ -88,12 +88,12 @@ export async function updateTeamMember(formData) {
 
         if (error) throw error;
         revalidatePath('/team');
+        redirect('/team');
     } catch (error) {
+        if (error.message === 'NEXT_REDIRECT') throw error;
         console.error('Error updating user:', error);
         return { error: 'Failed to update team member: ' + error.message };
     }
-
-    redirect('/team');
 }
 
 export async function deleteTeamMember(id) {
