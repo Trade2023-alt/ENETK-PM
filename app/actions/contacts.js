@@ -16,9 +16,17 @@ export async function createContact(formData) {
     }
 
     try {
+        const cleanedData = {
+            customer_id: parseInt(customerId, 10),
+            name: name,
+            email: email || null,
+            phone: phone || null,
+            role: role || null
+        };
+
         const { error } = await supabase
             .from('customer_contacts')
-            .insert([{ customer_id: customerId, name, email, phone, role }]);
+            .insert([cleanedData]);
 
         if (error) throw error;
 

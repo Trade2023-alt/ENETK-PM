@@ -317,6 +317,17 @@ export async function getConversations() {
     return data || [];
 }
 
+export async function getAllConversations() {
+    const { data, error } = await supabase.from('chat_conversations')
+        .select(`
+            *,
+            user:users(username)
+        `)
+        .order('updated_at', { ascending: false });
+    if (error) return [];
+    return data || [];
+}
+
 export async function getChatHistory(conversationId) {
     const { data, error } = await supabase.from('chat_messages')
         .select('*')

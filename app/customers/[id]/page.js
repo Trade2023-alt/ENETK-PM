@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { createContact } from '@/app/actions/contacts';
+import ContactForm from '@/components/ContactForm';
 
 export default async function CustomerDetailPage({ params }) {
     const cookieStore = await cookies();
@@ -83,21 +84,7 @@ export default async function CustomerDetailPage({ params }) {
                             </ul>
                         )}
 
-                        <div style={{ marginTop: '1rem', borderTop: '1px solid var(--card-border)', paddingTop: '1rem' }}>
-                            <h4 style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>Add New Contact</h4>
-                            <form action={createContact}>
-                                <input type="hidden" name="customer_id" value={id} />
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                    <input name="name" placeholder="Name" className="input" style={{ fontSize: '0.875rem', padding: '0.4rem' }} required />
-                                    <input name="role" placeholder="Role (e.g. Site Mgr)" className="input" style={{ fontSize: '0.875rem', padding: '0.4rem' }} />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                    <input name="email" placeholder="Email" className="input" style={{ fontSize: '0.875rem', padding: '0.4rem' }} />
-                                    <input name="phone" placeholder="Phone" className="input" style={{ fontSize: '0.875rem', padding: '0.4rem' }} />
-                                </div>
-                                <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: '0.875rem', padding: '0.4rem' }}>Add Contact</button>
-                            </form>
-                        </div>
+                        <ContactForm customerId={id} />
                     </div>
                 </div>
 

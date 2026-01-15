@@ -33,6 +33,7 @@ export default function Header({ userRole }) {
                         <>
                             <Link href="/team" style={{ color: 'var(--text-muted)' }}>Team</Link>
                             <Link href="/attendance" style={{ color: 'var(--text-muted)' }}>Attendance</Link>
+                            <Link href="/admin/chats" style={{ color: 'var(--text-muted)' }}>Audit Chats</Link>
                         </>
                     )}
                 </nav>
