@@ -20,26 +20,59 @@ export default async function Home() {
 
   const attendanceStatus = await getAttendanceStatus();
 
-  // Fetch current user profile
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('username, company')
-    .eq('id', userId)
-    .maybeSingle();
+  let userProfile = null;
+  let uniqueClockedIn = [];
 
-  // Fetch who else is clocked in
-  const { data: clockedInUsers } = await supabase
-    .from('attendance')
-    .select(`
-        user_id,
-        user:users(username, company)
-    `)
-    .is('check_out', null)
-    .order('check_in', { ascending: false });
+  try {
+    // 1. Fetch current user profile - resilient to missing 'company' column
+    const { data, error } = await supabase
+      .from('users')
+      .select('username, company')
+      .eq('id', userId)
+      .maybeSingle();
 
-  // Filter unique users clocked in
-  const uniqueClockedIn = clockedInUsers ? Array.from(new Set(clockedInUsers.map(u => u.user_id)))
-    .map(id => clockedInUsers.find(u => u.user_id === id)) : [];
+    if (!error) userProfile = data;
+    else {
+      // Fallback if 'company' is missing
+      const { data: fallbackData } = await supabase
+        .from('users')
+        .select('username')
+        .eq('id', userId)
+        .maybeSingle();
+      userProfile = fallbackData;
+    }
+
+    // 2. Fetch who else is clocked in - resilient join
+    const { data: clockedData, error: clockedError } = await supabase
+      .from('attendance')
+      .select(`
+          user_id,
+          user:users(username, company)
+      `)
+      .is('check_out', null)
+      .order('check_in', { ascending: false });
+
+    if (!clockedError && clockedData) {
+      uniqueClockedIn = Array.from(new Set(clockedData.map(u => u.user_id)))
+        .map(id => clockedData.find(u => u.user_id === id));
+    } else if (clockedError) {
+      // Fallback query if the join with 'company' fails
+      const { data: fallbackClocked } = await supabase
+        .from('attendance')
+        .select(`
+            user_id,
+            user:users(username)
+        `)
+        .is('check_out', null);
+
+      if (fallbackClocked) {
+        uniqueClockedIn = Array.from(new Set(fallbackClocked.map(u => u.user_id)))
+          .map(id => fallbackClocked.find(u => u.user_id === id));
+      }
+    }
+  } catch (err) {
+    console.error('Safe dashboard fetch error:', err);
+  }
 
   let jobs = [];
   try {
