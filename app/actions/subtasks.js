@@ -56,24 +56,42 @@ export async function updateSubTask(formData) {
     const title = formData.get('title');
 
     try {
+        // 1. Fetch current task to get current hours
+        const { data: currentTask, error: fetchError } = await supabase
+            .from('sub_tasks')
+            .select('used_hours')
+            .eq('id', id)
+            .single();
+
+        if (fetchError) throw fetchError;
+
         if (title) {
             // Full Update
             const priority = formData.get('priority');
             const dueDate = formData.get('due_date');
             const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
-            const usedHours = parseFloat(formData.get('used_hours') || '0');
+            const rawUsedHours = formData.get('used_hours');
             const assignedUserIds = formData.getAll('assigned_user_ids');
+
+            const updateFields = {
+                title,
+                priority,
+                due_date: dueDate === '' ? null : dueDate,
+                estimated_hours: estimatedHours,
+                updated_at: new Date().toISOString()
+            };
+
+            // ADDITIVE HOURS
+            if (rawUsedHours !== null && rawUsedHours !== '') {
+                const addedHours = parseFloat(rawUsedHours);
+                if (!isNaN(addedHours)) {
+                    updateFields.used_hours = (currentTask.used_hours || 0) + addedHours;
+                }
+            }
 
             const { error: updateError } = await supabase
                 .from('sub_tasks')
-                .update({
-                    title,
-                    priority,
-                    due_date: dueDate === '' ? null : dueDate,
-                    estimated_hours: estimatedHours,
-                    used_hours: usedHours,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateFields)
                 .eq('id', id);
 
             if (updateError) throw updateError;
@@ -92,17 +110,22 @@ export async function updateSubTask(formData) {
 
         } else {
             // Quick Status/Hours Update
-            const status = formData.get('status') === 'on' ? 'Complete' : 'Pending';
+            const statusRaw = formData.get('status');
             const usedHoursRaw = formData.get('used_hours');
 
-            if (usedHoursRaw !== null) {
-                const usedHours = parseFloat(usedHoursRaw || '0');
-                const { error } = await supabase
-                    .from('sub_tasks')
-                    .update({ used_hours: usedHours, updated_at: new Date().toISOString() })
-                    .eq('id', id);
-                if (error) throw error;
+            if (usedHoursRaw !== null && usedHoursRaw !== '') {
+                const addedHours = parseFloat(usedHoursRaw);
+                if (!isNaN(addedHours)) {
+                    await supabase
+                        .from('sub_tasks')
+                        .update({
+                            used_hours: (currentTask.used_hours || 0) + addedHours,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', id);
+                }
             } else {
+                const status = statusRaw === 'on' ? 'Complete' : 'Pending';
                 const { error } = await supabase
                     .from('sub_tasks')
                     .update({ status: status, updated_at: new Date().toISOString() })

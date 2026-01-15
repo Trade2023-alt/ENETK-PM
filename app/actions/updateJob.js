@@ -13,11 +13,35 @@ export async function updateJobStatus(formData) {
     const description = formData.get('description');
 
     try {
+        // 1. Fetch current job to get current hours
+        const { data: currentJob, error: fetchError } = await supabase
+            .from('jobs')
+            .select('actual_hours')
+            .eq('id', jobId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
         const updateData = {};
         if (status) updateData.status = status;
         if (priority) updateData.priority = priority;
-        if (usedHours !== null && usedHours !== undefined) updateData.actual_hours = parseFloat(usedHours || '0');
-        if (estimatedHours !== null && estimatedHours !== undefined) updateData.estimated_hours = parseFloat(estimatedHours || '0');
+
+        // ADDITIVE HOURS: add incoming hours to current hours
+        const rawUsedHours = formData.get('used_hours');
+        if (rawUsedHours !== null && rawUsedHours !== '') {
+            const addedHours = parseFloat(rawUsedHours);
+            if (!isNaN(addedHours)) {
+                updateData.actual_hours = (currentJob.actual_hours || 0) + addedHours;
+            }
+        }
+
+        const rawEstHours = formData.get('estimated_hours');
+        if (rawEstHours !== null && rawEstHours !== '') {
+            const estHours = parseFloat(rawEstHours);
+            if (!isNaN(estHours)) {
+                updateData.estimated_hours = estHours;
+            }
+        }
         if (dueDate !== null) updateData.due_date = dueDate === '' ? null : dueDate;
         if (description !== null) updateData.description = description;
 

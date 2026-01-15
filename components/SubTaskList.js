@@ -109,8 +109,9 @@ export default function SubTaskList({ jobId, subTasks, users }) {
 
                                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                                             <div style={{ flex: 1 }}>
-                                                <label style={{ fontSize: '0.75rem' }}>Used Hrs:</label>
-                                                <input name="used_hours" type="number" step="0.5" className="input" defaultValue={task.used_hours} style={{ width: '80px', display: 'inline-block', marginLeft: '0.5rem' }} />
+                                                <label style={{ fontSize: '0.75rem' }}>Add Hrs:</label>
+                                                <input name="used_hours" type="number" step="0.5" className="input" defaultValue="0" style={{ width: '80px', display: 'inline-block', marginLeft: '0.5rem' }} />
+                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>Current: {task.used_hours}h</span>
                                             </div>
                                             <button type="button" onClick={() => setEditingTaskId(null)} className="btn" style={{ fontSize: '0.75rem', background: 'var(--card-border)' }}>Cancel</button>
                                             <button type="submit" className="btn btn-primary" style={{ fontSize: '0.75rem' }}>Save Changes</button>

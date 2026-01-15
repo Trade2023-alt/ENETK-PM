@@ -2,6 +2,7 @@
 
 import { updateJobStatus } from '@/app/actions/updateJob';
 import { useFormStatus } from 'react-dom';
+import { useState } from 'react';
 
 function UpdateButton() {
     const { pending } = useFormStatus();
@@ -13,8 +14,25 @@ function UpdateButton() {
 }
 
 export default function JobStatusUpdate({ job, allUsers }) {
+    const [result, setResult] = useState(null);
+
+    const handleSubmit = async (formData) => {
+        setResult({ loading: true });
+        const res = await updateJobStatus(formData);
+        if (res && res.error) {
+            setResult({ error: res.error });
+        } else {
+            setResult({ success: true });
+            // Reset the Add Hours input specifically
+            const hoursInput = document.querySelector('input[name="used_hours"]');
+            if (hoursInput) hoursInput.value = '0';
+
+            setTimeout(() => setResult(null), 3000); // Clear success message after 3s
+        }
+    };
+
     return (
-        <form action={updateJobStatus} className="card" style={{ marginTop: '2rem', border: '1px solid var(--primary)', background: 'rgba(59, 130, 246, 0.05)' }}>
+        <form action={handleSubmit} className="card" style={{ marginTop: '2rem', border: '1px solid var(--primary)', background: 'rgba(59, 130, 246, 0.05)' }}>
             <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem' }}>Update Job</h3>
             <input type="hidden" name="job_id" value={job.id} />
 
@@ -37,8 +55,9 @@ export default function JobStatusUpdate({ job, allUsers }) {
                     </select>
                 </div>
                 <div>
-                    <label className="label">Used Hours</label>
-                    <input name="used_hours" type="number" step="0.5" className="input" defaultValue={job.used_hours || 0} />
+                    <label className="label">Add Hours</label>
+                    <input name="used_hours" type="number" step="0.5" className="input" defaultValue="0" />
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Current: {job.used_hours || 0} hrs</div>
                 </div>
                 <div>
                     <label className="label">Estimated Hours</label>
@@ -67,7 +86,7 @@ export default function JobStatusUpdate({ job, allUsers }) {
                     background: 'var(--input-bg)'
                 }}>
                     {allUsers.map(u => {
-                        const assignedIds = job.assigned_user_ids ? job.assigned_user_ids.toString().split(',').map(Number) : [];
+                        const assignedIds = job.assigned_user_ids ? job.assigned_user_ids : [];
                         const isAssigned = assignedIds.includes(u.id);
                         return (
                             <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
@@ -85,7 +104,11 @@ export default function JobStatusUpdate({ job, allUsers }) {
                 </div>
             </div>
 
-            <UpdateButton />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <UpdateButton />
+                {result?.error && <span style={{ color: 'var(--danger)', fontSize: '0.875rem', marginTop: '1rem' }}>Error: {result.error}</span>}
+                {result?.success && <span style={{ color: 'var(--success)', fontSize: '0.875rem', marginTop: '1rem' }}>✓ Updated Successfully</span>}
+            </div>
         </form>
     );
 }

@@ -53,7 +53,7 @@ export default function JobCard({ job }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>👤 {job.customer_name}</span>
-                    <span>⏱️ {job.used_hours || 0} / {job.estimated_hours || 0} hrs</span>
+                    <span>⏱️ {job.actual_hours || 0} / {job.estimated_hours || 0} hrs</span>
                 </div>
             </div>
 

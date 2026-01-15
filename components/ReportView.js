@@ -24,7 +24,7 @@ export default function ReportView({ jobs, subTasks, users }) {
         return j.status === 'Complete' && d >= startOfWeek && d <= endOfWeek;
     });
 
-    const totalUsedHours = jobs.reduce((acc, j) => acc + (j.used_hours || 0), 0);
+    const totalUsedHours = jobs.reduce((acc, j) => acc + (j.actual_hours || 0), 0);
     const totalEstHours = jobs.reduce((acc, j) => acc + (j.estimated_hours || 0), 0);
 
     const generateEmailText = () => {
