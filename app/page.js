@@ -20,6 +20,27 @@ export default async function Home() {
 
   const attendanceStatus = await getAttendanceStatus();
 
+  // Fetch current user profile
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('username, company')
+    .eq('id', userId)
+    .maybeSingle();
+
+  // Fetch who else is clocked in
+  const { data: clockedInUsers } = await supabase
+    .from('attendance')
+    .select(`
+        user_id,
+        user:users(username, company)
+    `)
+    .is('check_out', null)
+    .order('check_in', { ascending: false });
+
+  // Filter unique users clocked in
+  const uniqueClockedIn = clockedInUsers ? Array.from(new Set(clockedInUsers.map(u => u.user_id)))
+    .map(id => clockedInUsers.find(u => u.user_id === id)) : [];
+
   let jobs = [];
   try {
     let query = supabase
@@ -34,10 +55,6 @@ export default async function Home() {
       .order('scheduled_date', { ascending: true });
 
     if (userRole !== 'admin') {
-      // Filter to only jobs assigned to this user
-      // In Supabase we might need to filter by child relation or use a separate join table query
-      // Simplest for now: Fetch assignments first or use a join-like filter
-      // Improved way: 
       const { data: userAssignments } = await supabase
         .from('job_assignments')
         .select('job_id')
@@ -48,17 +65,14 @@ export default async function Home() {
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
-    // Transform data to match existing UI structure
     jobs = data.map(job => ({
       ...job,
       customer_name: job.customer?.name,
       customer_address: job.customer?.address,
       assigned_users: job.assignments?.map(a => a.user?.username).filter(Boolean).join(', ')
     }));
-
   } catch (error) {
     console.error('Error fetching jobs:', error);
   }
@@ -67,8 +81,38 @@ export default async function Home() {
     <div className="container" style={{ paddingBottom: '4rem' }}>
       <Header userRole={userRole} />
 
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Welcome, {userProfile?.username || 'User'}!</h1>
+          <p style={{ color: 'var(--text-muted)' }}>{userProfile?.company || 'ENETK'} Project Management Dashboard</p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Status</div>
+          <div style={{ color: attendanceStatus ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+            {attendanceStatus ? '● On Shift' : '○ Off Clock'}
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
         <AttendanceModule initialStatus={attendanceStatus} />
+
+        <div className="card" style={{ borderLeft: '4px solid #3b82f6' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Live Team Status</h3>
+          {uniqueClockedIn.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {uniqueClockedIn.map((log, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                  <span style={{ height: '8px', width: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+                  <span><strong>{log.user?.username}</strong></span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({log.user?.company || 'ENETK'})</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No one else is currently clocked in.</p>
+          )}
+        </div>
 
         <Link href="/pipeline" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid var(--primary)' }}>
           <div style={{ fontSize: '1.5rem' }}>💰</div>
@@ -77,25 +121,11 @@ export default async function Home() {
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Manage Lead Pipeline</div>
           </div>
         </Link>
-        <Link href="/reports" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #10b981' }}>
-          <div style={{ fontSize: '1.5rem' }}>📊</div>
-          <div>
-            <div style={{ fontWeight: 600 }}>Analytics</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Winning/Losing Bids</div>
-          </div>
-        </Link>
         <Link href="/quotes" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #ef4444' }}>
           <div style={{ fontSize: '1.5rem' }}>📄</div>
           <div>
             <div style={{ fontWeight: 600 }}>Quote Generator</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>EH Import & Proposals</div>
-          </div>
-        </Link>
-        <Link href="/ai-chat" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #8b0000' }}>
-          <div style={{ fontSize: '1.5rem' }}>🤖</div>
-          <div>
-            <div style={{ fontWeight: 600 }}>AI Assistant</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ask Anything</div>
           </div>
         </Link>
       </div>

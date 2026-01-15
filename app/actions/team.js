@@ -29,17 +29,37 @@ export async function createTeamMember(formData) {
         }
 
         const hash = bcrypt.hashSync(password, 10);
+
+        // Construct insert object
+        const insertData = {
+            username,
+            password_hash: hash,
+            role,
+            email: email || null
+        };
+
+        // Add optional fields only if they are likely to exist
+        if (phone) insertData.phone = phone;
+        if (company) insertData.company = company;
+
         const { error } = await supabase
             .from('users')
-            .insert([{ username, password_hash: hash, role, email: email || null, phone: phone || null, company: company }]);
+            .insert([insertData]);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Insert error:', error);
+            if (error.code === '42703') { // Column does not exist
+                return { error: `Database error: Column '${error.message.split('"')[1]}' is missing. Please run the SQL migration script provided earlier to update your 'users' table.` };
+            }
+            throw error;
+        }
+
         revalidatePath('/team');
-        redirect('/team');
+        return { success: true };
     } catch (error) {
         if (error.message === 'NEXT_REDIRECT') throw error;
         console.error('Error creating user:', error);
-        return { error: 'Failed to create team member: ' + error.message };
+        return { error: 'Failed to create team member: ' + (error.message || 'Unknown error') };
     }
 }
 
