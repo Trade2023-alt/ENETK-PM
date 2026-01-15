@@ -24,10 +24,10 @@ export async function createContact(formData) {
 
         revalidatePath(`/customers/${customerId}`);
         revalidatePath('/customers');
+        redirect(`/customers/${customerId}`);
     } catch (error) {
+        if (error.message === 'NEXT_REDIRECT') throw error;
         console.error('Error creating contact:', error);
         return { error: 'Failed to create contact: ' + error.message };
     }
-
-    redirect(`/customers/${customerId}`);
 }

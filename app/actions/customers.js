@@ -20,13 +20,12 @@ export async function createCustomer(formData) {
             .insert([{ name, email, phone, address }]);
 
         if (error) throw error;
-
         revalidatePath('/customers');
+        redirect('/customers');
     } catch (error) {
+        if (error.message === 'NEXT_REDIRECT') throw error;
         console.error('Error creating customer:', error);
         return { error: 'Failed to create customer: ' + error.message };
     }
-
-    redirect('/customers');
 }
 
