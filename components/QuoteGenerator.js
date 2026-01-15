@@ -197,14 +197,49 @@ export default function QuoteGenerator({ initialData = null }) {
                         </div>
 
                         <div style={{ gridColumn: 'span 2' }}>
-                            <div style={{ display: 'flex', gap: '2rem' }}>
+                            <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem' }}>
                                 <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="label">Bill To</label>
-                                    <textarea className="input" rows="3" value={quoteData.bill_to} onChange={e => setQuoteData({ ...quoteData, bill_to: e.target.value })}></textarea>
+                                    <label className="label">Bill To Address</label>
+                                    <textarea className="input" rows="3" value={quoteData.bill_to} onChange={e => setQuoteData({ ...quoteData, bill_to: e.target.value })} placeholder="Company Name&#10;Address Line 1&#10;City, State Zip"></textarea>
                                 </div>
                                 <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="label">Ship To</label>
-                                    <textarea className="input" rows="3" value={quoteData.ship_to} onChange={e => setQuoteData({ ...quoteData, ship_to: e.target.value })}></textarea>
+                                    <label className="label">Ship To Address</label>
+                                    <textarea className="input" rows="3" value={quoteData.ship_to} onChange={e => setQuoteData({ ...quoteData, ship_to: e.target.value })} placeholder="Same as Bill To or specify destination"></textarea>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', borderTop: '1px solid var(--card-border)', paddingTop: '1.5rem' }}>
+                                <div className="form-group">
+                                    <label className="label">Customer Ref / PO</label>
+                                    <input className="input" value={quoteData.customer_ref} onChange={e => setQuoteData({ ...quoteData, customer_ref: e.target.value })} placeholder="RFB-123-ABC" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="label">Payment Terms</label>
+                                    <select className="input" value={quoteData.payment_terms} onChange={e => setQuoteData({ ...quoteData, payment_terms: e.target.value })}>
+                                        <option value="Net 30 Days">Net 30 Days</option>
+                                        <option value="Net 15 Days">Net 15 Days</option>
+                                        <option value="Due on Receipt">Due on Receipt</option>
+                                        <option value="CIA">CIA (Cash in Advance)</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="label">Delivery Terms</label>
+                                    <input className="input" value={quoteData.delivery_terms} onChange={e => setQuoteData({ ...quoteData, delivery_terms: e.target.value })} placeholder="FOB Origin" />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <div className="form-group" style={{ width: '150px' }}>
+                                    <label className="label">Lead Time</label>
+                                    <input type="number" className="input" value={quoteData.lead_time_value} onChange={e => setQuoteData({ ...quoteData, lead_time_value: e.target.value })} />
+                                </div>
+                                <div className="form-group" style={{ width: '150px' }}>
+                                    <label className="label">Unit</label>
+                                    <select className="input" value={quoteData.lead_time_unit} onChange={e => setQuoteData({ ...quoteData, lead_time_unit: e.target.value })}>
+                                        <option value="Weeks">Weeks</option>
+                                        <option value="Days">Days</option>
+                                        <option value="Months">Months</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

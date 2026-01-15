@@ -149,3 +149,15 @@ export async function saveQuote(quoteData, lineItems) {
         return { success: false, error: error.message };
     }
 }
+
+export async function deleteQuote(id) {
+    try {
+        const { error } = await supabase.from('quotes').delete().eq('id', id);
+        if (error) throw error;
+        revalidatePath('/quotes');
+        return { success: true };
+    } catch (error) {
+        console.error("Delete error:", error);
+        return { success: false, error: error.message };
+    }
+}

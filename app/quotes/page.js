@@ -62,7 +62,20 @@ export default async function QuotesPage() {
                                 <td style={{ padding: '1rem', fontWeight: 700 }}>${Number(quote.total).toFixed(2)}</td>
                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                     <Link href={`/quotes/${quote.id}`} style={{ color: 'var(--primary)', textDecoration: 'none', marginRight: '1rem' }}>Edit</Link>
-                                    <button className="btn-text" style={{ color: 'var(--danger)' }}>Delete</button>
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm('Are you sure you want to delete this quote?')) {
+                                                // We'll call a delete action here
+                                                const { deleteQuote } = await import('@/app/actions/quotes');
+                                                await deleteQuote(quote.id);
+                                                window.location.reload();
+                                            }
+                                        }}
+                                        className="btn-text"
+                                        style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}
+                                    >
+                                        Delete
+                                    </button>
                                 </td>
                             </tr>
                         ))}
