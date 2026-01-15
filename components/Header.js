@@ -38,8 +38,17 @@ export default function Header({ userRole }) {
                 </nav>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{userRole}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                <span style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--primary)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontWeight: 700,
+                    background: 'rgba(139, 0, 0, 0.1)',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '4px'
+                }}>{userRole}</span>
                 <button onClick={() => logout()} className="btn" style={{
                     background: 'rgba(239, 68, 68, 0.1)',
                     color: '#ef4444',

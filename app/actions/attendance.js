@@ -105,8 +105,15 @@ export async function getAttendanceStatus() {
     }
 }
 
-export async function getAllAttendanceLogs() {
-    const { data, error } = await supabase
+export async function getAttendanceStats() {
+    const { data: users, error: userError } = await supabase
+        .from('users')
+        .select('id, username, company')
+        .order('username');
+
+    if (userError) return { error: userError.message };
+
+    const { data: logs, error: logError } = await supabase
         .from('attendance')
         .select(`
             *,
@@ -114,6 +121,72 @@ export async function getAllAttendanceLogs() {
         `)
         .order('check_in', { ascending: false });
 
-    if (error) return [];
-    return data;
+    if (logError) return { error: logError.message };
+
+    // Calculate Stats
+    // Partial Day: < 6 hrs
+    // Late: In after 06:15
+    // Absent: No entry for a given workday (M-F)
+
+    const now = new Date();
+    const stats = {
+        totalLate: 0,
+        totalPartial: 0,
+        todayAbsent: 0,
+        logs: logs.map(log => {
+            const checkIn = new Date(log.check_in);
+            const checkOut = log.check_out ? new Date(log.check_out) : null;
+
+            // Late check? 06:15 AM
+            const hour = checkIn.getHours();
+            const minute = checkIn.getMinutes();
+            const isLate = (hour > 6) || (hour === 6 && minute > 15);
+
+            let isPartial = false;
+            let duration = 0;
+            if (checkOut) {
+                duration = (checkOut - checkIn) / (1000 * 60 * 60);
+                isPartial = duration < 6;
+            }
+
+            if (isLate) stats.totalLate++;
+            if (isPartial) stats.totalPartial++;
+
+            return {
+                ...log,
+                isLate,
+                isPartial,
+                duration: duration.toFixed(2)
+            };
+        })
+    };
+
+    // Today's Absences (Simple check: active users who haven't logged anything today)
+    const todayStr = now.toISOString().split('T')[0];
+    const todayLogs = logs.filter(l => l.check_in.startsWith(todayStr));
+    const userIdsWithLogs = new Set(todayLogs.map(l => l.user_id));
+
+    stats.todayAbsent = users.filter(u => !userIdsWithLogs.has(u.id)).length;
+
+    // Chart Data (Last 7 days)
+    const chartData = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        const dayLogs = logs.filter(l => l.check_in.startsWith(dStr));
+
+        chartData.push({
+            name: d.toLocaleDateString([], { weekday: 'short' }),
+            date: dStr,
+            present: new Set(dayLogs.map(l => l.user_id)).size,
+            late: dayLogs.filter(l => {
+                const cin = new Date(l.check_in);
+                return (cin.getHours() > 6) || (cin.getHours() === 6 && cin.getMinutes() > 15);
+            }).length
+        });
+    }
+    stats.chartData = chartData;
+
+    return stats;
 }

@@ -40,12 +40,16 @@ export default function JobGantt({ jobs, users }) {
             };
         });
 
+        // Set dimensions BEFORE init
+        const calculatedHeight = Math.max(tasks.length * 45 + 100, 300);
+        container.style.height = `${calculatedHeight}px`;
+
         try {
             const gantt = new Gantt(container, tasks, {
                 view_modes: ['Day', 'Week', 'Month'],
                 view_mode: viewMode,
-                bar_height: 30,
-                padding: 18,
+                bar_height: 25,
+                padding: 15,
                 header_height: 50,
                 column_width: viewMode === 'Day' ? 30 : (viewMode === 'Week' ? 100 : 300),
                 on_date_change: async (task, start, end) => {
@@ -66,20 +70,17 @@ export default function JobGantt({ jobs, users }) {
                 }
             });
 
-            // Adjust SVG height after render
+            // Ensure SVG fills container
             const svg = container.querySelector('svg');
             if (svg) {
-                // Ensure SVG is visible
                 svg.classList.add('gantt-svg');
-                // Frappe Gantt sometimes sets height too small
-                const calculatedHeight = tasks.length * 50 + 100;
                 svg.setAttribute('height', calculatedHeight);
+                svg.setAttribute('width', '100%');
             }
         } catch (e) {
             console.error("Gantt Chart Error:", e);
             container.innerHTML = `<div style="padding: 2rem; color: #ef4444">Failed to load Gantt view: ${e.message}</div>`;
         }
-
     }, [jobs, viewMode, users]);
 
     return (
