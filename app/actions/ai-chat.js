@@ -95,6 +95,57 @@ const tools = [
                 query: { type: "string", description: "Search term for company name, industry, or state" }
             }
         }
+    },
+    {
+        name: "get_attendance",
+        description: "Fetch attendance logs for a user or the entire team. Use to check who is clocked in or punctuality stats.",
+        input_schema: {
+            type: "object",
+            properties: {
+                user_id: { type: "string", description: "Filter by specific user ID" },
+                limit: { type: "number", description: "Default 20" }
+            }
+        }
+    },
+    {
+        name: "get_team",
+        description: "List all team members (users), their roles, and company affiliations.",
+        input_schema: {
+            type: "object",
+            properties: {}
+        }
+    },
+    {
+        name: "get_subtasks",
+        description: "List subtasks for a specific job.",
+        input_schema: {
+            type: "object",
+            properties: {
+                job_id: { type: "string", description: "The ID of the parent job" }
+            },
+            required: ["job_id"]
+        }
+    },
+    {
+        name: "get_quotes",
+        description: "Fetch all quotes or search by customer name.",
+        input_schema: {
+            type: "object",
+            properties: {
+                query: { type: "string", description: "Customer name or quote title" }
+            }
+        }
+    },
+    {
+        name: "get_contacts",
+        description: "List contacts for a specific customer.",
+        input_schema: {
+            type: "object",
+            properties: {
+                customer_id: { type: "string", description: "The ID of the customer" }
+            },
+            required: ["customer_id"]
+        }
     }
 ];
 
@@ -169,6 +220,45 @@ async function handleToolCall(toolName, input) {
                 if (error) throw error;
                 return data;
             }
+            case "get_attendance": {
+                let query = supabase.from('attendance').select('*, user:users(username)');
+                if (input.user_id) {
+                    query = query.eq('user_id', input.user_id);
+                }
+                const { data, error } = await query.order('check_in', { ascending: false }).limit(input.limit || 50);
+                if (error) throw error;
+                return data;
+            }
+            case "get_team": {
+                const { data, error } = await supabase.from('users').select('id, username, role, company, email, phone');
+                if (error) throw error;
+                return data;
+            }
+            case "get_subtasks": {
+                const { data, error } = await supabase
+                    .from('sub_tasks')
+                    .select('*')
+                    .eq('job_id', input.job_id);
+                if (error) throw error;
+                return data;
+            }
+            case "get_quotes": {
+                let query = supabase.from('quotes').select('*, customers(name)');
+                if (input.query) {
+                    query = query.or(`title.ilike.%${input.query}%,customers.name.ilike.%${input.query}%`);
+                }
+                const { data, error } = await query.limit(20);
+                if (error) throw error;
+                return data;
+            }
+            case "get_contacts": {
+                const { data, error } = await supabase
+                    .from('customer_contacts')
+                    .select('*')
+                    .eq('customer_id', input.customer_id);
+                if (error) throw error;
+                return data;
+            }
             default:
                 return { error: "Unknown tool" };
         }
@@ -225,7 +315,7 @@ export async function chatWithAI(messages, conversationId = null) {
         let response = await anthropic.messages.create({
             model: "claude-sonnet-4-5-20250929",
             max_tokens: 1024,
-            system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, customers, and quotes. You also handle EH quote imports and 'ENETK Prospects' (Sales Leads). ALWAYS use tools to check real data. Current User ID: " + userId,
+            system: "You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, and team members. You can analyze data, update statuses, and provide business insights. ALWAYS use tools to check real data. Current User ID: " + userId,
             tools: tools,
             messages: currentMessages
         });
@@ -248,7 +338,7 @@ export async function chatWithAI(messages, conversationId = null) {
             const finalResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 1024,
-                system: "You are the ENETK Project Management AI Agent. You help users manage inventory, jobs, and customers. ALWAYS use tools to check real data.",
+                system: "You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, and team members. You can analyze data, update statuses, and provide business insights. ALWAYS use tools to check real data.",
                 tools: tools,
                 messages: [
                     ...currentMessages,
