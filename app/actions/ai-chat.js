@@ -304,7 +304,7 @@ async function logAiUsage(userId, response) {
         const cost = (inputTokens * PRICE_INPUT) + (outputTokens * PRICE_OUTPUT);
 
         await supabase.from('ai_usage').insert({
-            user_id: userId,
+            user_id: Number(userId),
             model: response.model,
             input_tokens: inputTokens,
             output_tokens: outputTokens,
@@ -336,7 +336,7 @@ export async function chatWithAI(messages, conversationId = null) {
         // If no conversation ID, auto-create one for the user so it's not lost
         if (!internalConvId && userId && currentMessages[currentMessages.length - 1].role === 'user') {
             const { data: newConv } = await supabase.from('chat_conversations')
-                .insert({ user_id: userId, title: currentMessages[currentMessages.length - 1].content.substring(0, 30) + '...' })
+                .insert({ user_id: Number(userId), title: currentMessages[currentMessages.length - 1].content.substring(0, 30) + '...' })
                 .select().single();
             if (newConv) internalConvId = newConv.id;
         }
