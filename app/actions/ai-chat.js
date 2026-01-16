@@ -98,14 +98,18 @@ const tools = [
     },
     {
         name: "get_attendance",
-        description: "Fetch attendance logs for a user or the entire team. Use to check who is clocked in or punctuality stats.",
+        description: "List attendance logs for all users or search by date.",
         input_schema: {
             type: "object",
             properties: {
-                user_id: { type: "string", description: "Filter by specific user ID" },
-                limit: { type: "number", description: "Default 20" }
+                query: { type: "string", description: "Date or username search" }
             }
         }
+    },
+    {
+        name: "debug_db_schema",
+        description: "Fetch a list of tables and columns to debug database issues.",
+        input_schema: { type: "object", properties: {} }
     },
     {
         name: "get_team",
@@ -133,6 +137,16 @@ const tools = [
             type: "object",
             properties: {
                 query: { type: "string", description: "Customer name or quote title" }
+            }
+        }
+    },
+    {
+        name: "get_quotes",
+        description: "Fetch all quotes or search by customer name.",
+        input_schema: {
+            type: "object",
+            properties: {
+                query: { type: "string", description: "Search by quote title or customer name" }
             }
         }
     },
@@ -288,6 +302,14 @@ async function handleToolCall(toolName, input) {
                 const { bulkCreateSubTasks } = await import('./subtasks');
                 return await bulkCreateSubTasks(input.tasks);
             }
+            case "debug_db_schema": {
+                // Return some known info about tables for debugging
+                return {
+                    chat_conversations: ["id", "user_id", "title", "created_at", "updated_at"],
+                    chat_messages: ["id", "conversation_id", "role", "content", "created_at"],
+                    users: ["id", "username", "role", "company"]
+                };
+            }
             default:
                 return { error: "Unknown tool" };
         }
@@ -427,11 +449,18 @@ export async function chatWithAI(messages, conversationId = null) {
 export async function createConversation(title) {
     const cookieStore = await cookies();
     const userId = cookieStore.get('user_id')?.value;
+    console.log('Creating conversation for user:', userId, 'title:', title);
+
     const { data, error } = await supabase.from('chat_conversations')
         .insert({ user_id: Number(userId), title: title || 'New Chat' })
         .select()
         .single();
-    if (error) return { error: error.message };
+
+    if (error) {
+        console.error('createConversation error:', error);
+        return { error: error.message };
+    }
+    console.log('Conversation created:', data?.id);
     return data;
 }
 
