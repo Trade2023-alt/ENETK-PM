@@ -2,12 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import { getAttendanceStats } from '@/app/actions/attendance';
-import dynamic from 'next/dynamic';
-
-const AttendanceCharts = dynamic(() => import('@/components/AttendanceCharts'), {
-    ssr: false,
-    loading: () => <div style={{ height: 300, background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }} />
-});
+import AttendanceCharts from '@/components/AttendanceCharts';
 
 export const dynamic = 'force-dynamic';
 
