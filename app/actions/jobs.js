@@ -32,7 +32,8 @@ export async function createJob(formData) {
                 estimated_hours: estimatedHours,
                 due_date: dueDate === '' ? null : dueDate,
                 status: 'Scheduled',
-                priority
+                priority,
+                visibility_role: formData.get('visibility_role') || 'System Integrator'
             }])
             .select()
             .single();

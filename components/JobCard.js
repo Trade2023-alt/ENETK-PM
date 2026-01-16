@@ -28,18 +28,33 @@ export default function JobCard({ job }) {
 
     return (
         <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', color: 'var(--foreground)' }}>{job.title || 'Untitled Job'}</h3>
-                <span style={{
-                    fontSize: '0.75rem',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '1rem',
-                    background: `rgba(0,0,0,0.2)`,
-                    color: statusColors[job.status] || 'var(--text-muted)',
-                    border: `1px solid ${statusColors[job.status] || 'var(--card-border)'}`
-                }}>
-                    {job.status}
-                </span>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    {job.visibility_role && (
+                        <span style={{
+                            fontSize: '0.65rem',
+                            padding: '0.2rem 0.4rem',
+                            borderRadius: '4px',
+                            background: job.visibility_role === 'Manager' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                            color: job.visibility_role === 'Manager' ? 'var(--danger)' : 'var(--primary)',
+                            fontWeight: 700,
+                            textTransform: 'uppercase'
+                        }}>
+                            {job.visibility_role}
+                        </span>
+                    )}
+                    <span style={{
+                        fontSize: '0.75rem',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '1rem',
+                        background: `rgba(0,0,0,0.2)`,
+                        color: statusColors[job.status] || 'var(--text-muted)',
+                        border: `1px solid ${statusColors[job.status] || 'var(--card-border)'}`
+                    }}>
+                        {job.status}
+                    </span>
+                </div>
             </div>
 
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>

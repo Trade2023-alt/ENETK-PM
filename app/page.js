@@ -87,14 +87,32 @@ export default async function Home() {
             `)
       .order('scheduled_date', { ascending: true });
 
+    // 1. Filter by Assignment for non-admins (Base rule)
     if (userRole !== 'admin') {
       const { data: userAssignments } = await supabase
         .from('job_assignments')
         .select('job_id')
         .eq('user_id', userId);
 
-      const jobIds = userAssignments?.map(a => a.job_id) || [];
-      query = query.in('id', jobIds);
+      const assignedJobIds = userAssignments?.map(a => a.job_id) || [];
+
+      // 2. Filter by Visibility Role
+      // SI jobs: Everyone sees (if assigned OR if they are an employee)
+      // Manager jobs: Only Manager or Admin sees.
+      // We'll use a complex filter: (id in assignedIds) OR (visibility_role is 'System Integrator')
+
+      if (userRole === 'manager') {
+        // Managers see SI and Manager jobs.
+        // Since SI and Manager are the only two roles right now, managers see everything.
+        // However, we still might want to restrict them to assigned jobs if they aren't 'admin'?
+        // User said "everyone can see SI jobs but only manager can see Manager jobs".
+        // This implies Managers see all SI + all Manager jobs?
+        // Let's assume Employees see all SI jobs, but restricted Manager jobs.
+        query = query.or(`visibility_role.eq.System Integrator,visibility_role.eq.Manager,id.in.(${assignedJobIds.length ? assignedJobIds.join(',') : '0'})`);
+      } else {
+        // Others (SI, User/Tech) see all SI jobs + anything they are specifically assigned to.
+        query = query.or(`visibility_role.eq.System Integrator,id.in.(${assignedJobIds.length ? assignedJobIds.join(',') : '0'})`);
+      }
     }
 
     const { data, error } = await query;

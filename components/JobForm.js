@@ -116,6 +116,13 @@ export default function JobForm({ customers, contacts, users }) {
                         <option value="Urgent">Urgent</option>
                     </select>
                 </div>
+                <div style={{ gridColumn: 'span 1' }}>
+                    <label className="label">Visibility</label>
+                    <select name="visibility_role" className="input" defaultValue="System Integrator">
+                        <option value="System Integrator">System Integrators (Public)</option>
+                        <option value="Manager">Manager Only</option>
+                    </select>
+                </div>
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>

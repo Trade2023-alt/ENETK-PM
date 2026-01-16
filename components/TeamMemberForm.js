@@ -73,8 +73,10 @@ export default function TeamMemberForm() {
 
             <div style={{ marginBottom: '1.5rem' }}>
                 <label className="label">Role</label>
-                <select name="role" className="input" disabled={loading}>
+                <select name="role" className="input" disabled={loading} defaultValue="system_integrator">
                     <option value="user">Tech / User</option>
+                    <option value="system_integrator">System Integrator</option>
+                    <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
                 </select>
             </div>
