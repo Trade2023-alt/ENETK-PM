@@ -452,17 +452,33 @@ export async function getConversations() {
 }
 
 export async function getAllConversations() {
-    const { data, error } = await supabase.from('chat_conversations')
-        .select(`
+    try {
+        // Try with join first
+        const { data, error } = await supabase.from('chat_conversations')
+            .select(`
             *,
             user:users(username)
         `)
-        .order('created_at', { ascending: false });
-    if (error) {
-        console.error('getAllConversations error:', error);
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('getAllConversations join error, trying fallback:', error);
+            // Fallback: fetch without join
+            const { data: fallbackData, error: fallbackError } = await supabase.from('chat_conversations')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (fallbackError) throw fallbackError;
+
+            // Optional: try to decorate with usernames if table exists
+            return fallbackData || [];
+        }
+
+        return data || [];
+    } catch (error) {
+        console.error('Critical getAllConversations error:', error);
         return [];
     }
-    return data || [];
 }
 
 export async function getChatHistory(conversationId) {
