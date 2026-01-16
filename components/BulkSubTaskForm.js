@@ -7,13 +7,13 @@ import { useRouter } from 'next/navigation';
 export default function BulkSubTaskForm({ jobs, users }) {
     const router = useRouter();
     const [rows, setRows] = useState([
-        { title: '', job_id: '', priority: 'Normal', assigned_user_ids: [], due_date: '' }
+        { title: '', description: '', job_id: '', priority: 'Normal', assigned_user_ids: [], due_date: '' }
     ]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
     const addRow = () => {
-        setRows([...rows, { title: '', job_id: '', priority: 'Normal', assigned_user_ids: [], due_date: '' }]);
+        setRows([...rows, { title: '', description: '', job_id: '', priority: 'Normal', assigned_user_ids: [], due_date: '' }]);
     };
 
     const updateRow = (index, field, value) => {
@@ -54,7 +54,7 @@ export default function BulkSubTaskForm({ jobs, users }) {
                     <thead>
                         <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--card-border)' }}>
                             <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>PROJECT / JOB</th>
-                            <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>TASK TITLE</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>TASK TITLE & DESCRIPTION</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>PRIORITY</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>DUE DATE</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>ASSIGNED TO</th>
@@ -79,11 +79,18 @@ export default function BulkSubTaskForm({ jobs, users }) {
                                     <input
                                         type="text"
                                         className="input"
-                                        style={{ fontSize: '0.875rem' }}
+                                        style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}
                                         placeholder="Enter task name..."
                                         required
                                         value={row.title}
                                         onChange={(e) => updateRow(idx, 'title', e.target.value)}
+                                    />
+                                    <textarea
+                                        className="input"
+                                        style={{ fontSize: '0.75rem', minHeight: '40px', resize: 'vertical' }}
+                                        placeholder="Add description (optional)..."
+                                        value={row.description}
+                                        onChange={(e) => updateRow(idx, 'description', e.target.value)}
                                     />
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>

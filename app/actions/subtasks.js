@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 export async function createSubTask(formData) {
     const jobId = formData.get('job_id');
     const title = formData.get('title');
+    const description = formData.get('description');
     const assignedUserIds = formData.getAll('assigned_user_ids');
     const dueDate = formData.get('due_date');
     const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
@@ -19,6 +20,7 @@ export async function createSubTask(formData) {
         const taskToInsert = {
             job_id: jobId,
             title,
+            description,
             due_date: dueDate === '' ? null : dueDate,
             estimated_hours: estimatedHours,
             priority
@@ -79,6 +81,7 @@ export async function updateSubTask(formData) {
 
         if (title) {
             // Full Update
+            const description = formData.get('description');
             const priority = formData.get('priority');
             const dueDate = formData.get('due_date');
             const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
@@ -87,6 +90,7 @@ export async function updateSubTask(formData) {
 
             const updateFields = {
                 title,
+                description,
                 priority,
                 due_date: dueDate === '' ? null : dueDate,
                 estimated_hours: estimatedHours,
@@ -165,6 +169,7 @@ export async function bulkCreateSubTasks(tasks) {
                 .insert([{
                     job_id: task.job_id,
                     title: task.title,
+                    description: task.description || null,
                     priority: task.priority || 'Normal',
                     due_date: task.due_date === '' ? null : task.due_date,
                     status: 'Pending'
