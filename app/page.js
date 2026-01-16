@@ -161,6 +161,13 @@ export default async function Home() {
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>EH Import & Proposals</div>
           </div>
         </Link>
+        <Link href="/todo" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #f59e0b' }}>
+          <div style={{ fontSize: '1.5rem' }}>✅</div>
+          <div>
+            <div style={{ fontWeight: 600 }}>My To-Do List</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>View & manage your tasks</div>
+          </div>
+        </Link>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

@@ -22,6 +22,7 @@ export default function Header({ userRole }) {
                 </Link>
                 <nav style={{ display: 'flex', gap: '1.25rem', fontSize: '0.9375rem', alignItems: 'center' }}>
                     <Link href="/" style={{ color: 'var(--primary)', fontWeight: 600 }}>Dashboard</Link>
+                    <Link href="/todo" style={{ color: 'var(--primary)', fontWeight: 600 }}>My To-Do</Link>
                     <Link href="/pipeline" style={{ color: 'var(--text-muted)' }}>ENETK Prospects</Link>
                     <Link href="/customers" style={{ color: 'var(--text-muted)' }}>Customers</Link>
                     <Link href="/schedule" style={{ color: 'var(--text-muted)' }}>Schedule</Link>
