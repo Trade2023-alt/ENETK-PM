@@ -134,8 +134,49 @@ export async function updateSubTask(formData) {
             }
         }
         revalidatePath(`/jobs/${jobId}`);
+        revalidatePath('/todo');
+        return { success: true };
     } catch (error) {
         console.error('Error updating subtask:', error);
+        return { error: error.message };
+    }
+}
+
+export async function bulkCreateSubTasks(tasks) {
+    // tasks = [{ title, job_id, priority, due_date, assigned_user_ids: [] }]
+    try {
+        for (const task of tasks) {
+            if (!task.title || !task.job_id) continue;
+
+            const { data: taskData, error: taskError } = await supabase
+                .from('sub_tasks')
+                .insert([{
+                    job_id: task.job_id,
+                    title: task.title,
+                    priority: task.priority || 'Normal',
+                    due_date: task.due_date === '' ? null : task.due_date,
+                    status: 'Pending'
+                }])
+                .select()
+                .single();
+
+            if (taskError) throw taskError;
+
+            if (task.assigned_user_ids && task.assigned_user_ids.length > 0) {
+                const assignments = task.assigned_user_ids.map(uid => ({
+                    sub_task_id: taskData.id,
+                    user_id: uid
+                }));
+                await supabase.from('sub_task_assignments').insert(assignments);
+            }
+        }
+
+        revalidatePath('/todo');
+        revalidatePath('/');
+        return { success: true };
+    } catch (error) {
+        console.error('Bulk creation error:', error);
+        return { error: error.message };
     }
 }
 

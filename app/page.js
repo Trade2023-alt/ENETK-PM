@@ -190,9 +190,14 @@ export default async function Home() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.5rem' }}>Upcoming Jobs</h2>
-        <Link href="/jobs/new" className="btn btn-primary">
-          + New Job
-        </Link>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <Link href="/todo/bulk" className="btn" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            📋 Bulk Add Tasks
+          </Link>
+          <Link href="/jobs/new" className="btn btn-primary">
+            + New Job
+          </Link>
+        </div>
       </div>
 
       {jobs.length === 0 ? (

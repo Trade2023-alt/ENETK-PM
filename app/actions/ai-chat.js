@@ -146,6 +146,30 @@ const tools = [
             },
             required: ["customer_id"]
         }
+    },
+    {
+        name: "bulk_create_tasks",
+        description: "Create multiple sub-tasks at once across one or more jobs.",
+        input_schema: {
+            type: "object",
+            properties: {
+                tasks: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            job_id: { type: "string" },
+                            title: { type: "string" },
+                            priority: { type: "string", enum: ["Low", "Normal", "High", "Urgent"] },
+                            due_date: { type: "string", description: "YYYY-MM-DD" },
+                            assigned_user_ids: { type: "array", items: { type: "string" } }
+                        },
+                        required: ["job_id", "title"]
+                    }
+                }
+            },
+            required: ["tasks"]
+        }
     }
 ];
 
@@ -258,6 +282,11 @@ async function handleToolCall(toolName, input) {
                     .eq('customer_id', input.customer_id);
                 if (error) throw error;
                 return data;
+            }
+            case "bulk_create_tasks": {
+                // Reuse the new bulk action logic
+                const { bulkCreateSubTasks } = await import('./subtasks');
+                return await bulkCreateSubTasks(input.tasks);
             }
             default:
                 return { error: "Unknown tool" };

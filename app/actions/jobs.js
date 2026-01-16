@@ -63,3 +63,12 @@ export async function createJob(formData) {
     redirect('/');
 }
 
+export async function getAllJobs() {
+    const { data, error } = await supabase
+        .from('jobs')
+        .select('id, title')
+        .order('title');
+    if (error) return [];
+    return data;
+}
+
