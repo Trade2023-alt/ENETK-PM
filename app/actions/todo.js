@@ -106,3 +106,13 @@ export async function getAllUsersForSelect() {
     if (error) return [];
     return data;
 }
+
+export async function getAllUsersForSelect() {
+    const { data, error } = await supabase
+        .from('users')
+        .select('id, username')
+        .order('username');
+
+    if (error) return [];
+    return data;
+}
