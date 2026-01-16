@@ -21,22 +21,35 @@ export async function createJob(formData) {
 
     try {
         // Insert job
-        const { data: jobData, error: jobError } = await supabase
+        // Insert job with sequence mismatch recovery
+        const jobToInsert = {
+            title,
+            description,
+            customer_id: customerId,
+            customer_contact_id: customerContactId === '' ? null : customerContactId,
+            scheduled_date: scheduledDate,
+            estimated_hours: estimatedHours,
+            due_date: dueDate === '' ? null : dueDate,
+            status: 'Scheduled',
+            priority,
+            visibility_role: formData.get('visibility_role') || 'System Integrator'
+        };
+
+        let { data: jobData, error: jobError } = await supabase
             .from('jobs')
-            .insert([{
-                title,
-                description,
-                customer_id: customerId,
-                customer_contact_id: customerContactId === '' ? null : customerContactId,
-                scheduled_date: scheduledDate,
-                estimated_hours: estimatedHours,
-                due_date: dueDate === '' ? null : dueDate,
-                status: 'Scheduled',
-                priority,
-                visibility_role: formData.get('visibility_role') || 'System Integrator'
-            }])
+            .insert([jobToInsert])
             .select()
             .single();
+
+        if (jobError && jobError.message.includes('jobs_pkey')) {
+            const { data: lastItem } = await supabase.from('jobs').select('id').order('id', { ascending: false }).limit(1);
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            jobToInsert.id = nextId;
+
+            const retry = await supabase.from('jobs').insert([jobToInsert]).select().single();
+            jobData = retry.data;
+            jobError = retry.error;
+        }
 
         if (jobError) throw jobError;
 

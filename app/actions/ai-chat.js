@@ -438,11 +438,16 @@ export async function createConversation(title) {
 export async function getConversations() {
     const cookieStore = await cookies();
     const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return [];
+
     const { data, error } = await supabase.from('chat_conversations')
         .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false });
-    if (error) return [];
+        .eq('user_id', Number(userId))
+        .order('created_at', { ascending: false });
+    if (error) {
+        console.error('getConversations error:', error);
+        return [];
+    }
     return data || [];
 }
 
@@ -452,8 +457,11 @@ export async function getAllConversations() {
             *,
             user:users(username)
         `)
-        .order('updated_at', { ascending: false });
-    if (error) return [];
+        .order('created_at', { ascending: false });
+    if (error) {
+        console.error('getAllConversations error:', error);
+        return [];
+    }
     return data || [];
 }
 

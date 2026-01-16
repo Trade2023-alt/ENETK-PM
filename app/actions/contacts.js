@@ -24,9 +24,28 @@ export async function createContact(formData) {
             role: role || null
         };
 
-        const { error } = await supabase
+        // Initial insert attempt
+        let { error } = await supabase
             .from('customer_contacts')
             .insert([cleanedData]);
+
+        // If sequence mismatch (common after imports), try manual ID allocation
+        if (error && error.message.includes('customer_contacts_pkey')) {
+            console.warn('Sequence mismatch detected on customer_contacts. Attempting manual ID allocation.');
+            const { data: lastItem } = await supabase
+                .from('customer_contacts')
+                .select('id')
+                .order('id', { ascending: false })
+                .limit(1);
+
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            cleanedData.id = nextId;
+
+            const { error: retryError } = await supabase
+                .from('customer_contacts')
+                .insert([cleanedData]);
+            error = retryError;
+        }
 
         if (error) throw error;
 

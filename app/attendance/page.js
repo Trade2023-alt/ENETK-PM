@@ -2,7 +2,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import { getAttendanceStats } from '@/app/actions/attendance';
-import AttendanceCharts from '@/components/AttendanceCharts';
+import dynamic_next from 'next/dynamic';
+
+const AttendanceCharts = dynamic_next(() => import('@/components/AttendanceCharts'), { ssr: false });
 
 export const dynamic = 'force-dynamic';
 

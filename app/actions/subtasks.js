@@ -16,17 +16,29 @@ export async function createSubTask(formData) {
     }
 
     try {
-        const { data: taskData, error: taskError } = await supabase
+        const taskToInsert = {
+            job_id: jobId,
+            title,
+            due_date: dueDate === '' ? null : dueDate,
+            estimated_hours: estimatedHours,
+            priority
+        };
+
+        let { data: taskData, error: taskError } = await supabase
             .from('sub_tasks')
-            .insert([{
-                job_id: jobId,
-                title,
-                due_date: dueDate === '' ? null : dueDate,
-                estimated_hours: estimatedHours,
-                priority
-            }])
+            .insert([taskToInsert])
             .select()
             .single();
+
+        if (taskError && taskError.message.includes('sub_tasks_pkey')) {
+            const { data: lastItem } = await supabase.from('sub_tasks').select('id').order('id', { ascending: false }).limit(1);
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            taskToInsert.id = nextId;
+
+            const retry = await supabase.from('sub_tasks').insert([taskToInsert]).select().single();
+            taskData = retry.data;
+            taskError = retry.error;
+        }
 
         if (taskError) throw taskError;
 

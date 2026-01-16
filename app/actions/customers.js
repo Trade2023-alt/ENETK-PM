@@ -15,9 +15,29 @@ export async function createCustomer(formData) {
     }
 
     try {
-        const { error } = await supabase
+        const dataToInsert = { name, email, phone, address };
+
+        // Initial attempt
+        let { error } = await supabase
             .from('customers')
-            .insert([{ name, email, phone, address }]);
+            .insert([dataToInsert]);
+
+        // Sequence mismatch repair
+        if (error && error.message.includes('customers_pkey')) {
+            const { data: lastItem } = await supabase
+                .from('customers')
+                .select('id')
+                .order('id', { ascending: false })
+                .limit(1);
+
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            dataToInsert.id = nextId;
+
+            const { error: retryError } = await supabase
+                .from('customers')
+                .insert([dataToInsert]);
+            error = retryError;
+        }
 
         if (error) throw error;
         revalidatePath('/customers');

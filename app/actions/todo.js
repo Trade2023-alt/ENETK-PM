@@ -15,6 +15,7 @@ export async function getTodoItems(specificUserId = null) {
         const { data: jobAssignments, error: jobErr } = await supabase
             .from('job_assignments')
             .select(`
+                job_id,
                 job:jobs (
                     id,
                     title,
@@ -34,6 +35,7 @@ export async function getTodoItems(specificUserId = null) {
         const { data: subTaskAssignments, error: subErr } = await supabase
             .from('sub_task_assignments')
             .select(`
+                sub_task_id,
                 sub_task:sub_tasks (
                     id,
                     job_id,
@@ -48,52 +50,63 @@ export async function getTodoItems(specificUserId = null) {
 
         if (subErr) console.error('Todo Sub-task Fetch Error:', subErr);
 
-        const safeObj = (val) => Array.isArray(val) ? val[0] : val;
+        // Recursive safe helper to handle array/object ambiguity in Supabase returns
+        const getSafe = (obj, path) => {
+            let current = Array.isArray(obj) ? obj[0] : obj;
+            if (!current) return null;
+
+            const keys = path.split('.');
+            for (const key of keys) {
+                current = Array.isArray(current[key]) ? current[key][0] : current[key];
+                if (!current) return null;
+            }
+            return current;
+        };
 
         const tasks = [
             ...(jobAssignments || [])
-                .filter(a => a && a.job)
+                .filter(a => a && getSafe(a, 'job'))
                 .map(a => {
-                    const j = safeObj(a.job);
-                    const c = safeObj(j?.customer);
+                    const j = getSafe(a, 'job');
+                    const cName = getSafe(j, 'customer.name') || 'N/A';
                     return {
-                        id: `job-${j?.id}`,
-                        originalId: j?.id,
+                        id: `job-${j.id}`,
+                        originalId: j.id,
                         type: 'Job',
-                        title: j?.title || 'Untitled Job',
-                        description: j?.description,
-                        status: j?.status || 'Pending',
-                        priority: j?.priority || 'Normal',
-                        date: j?.due_date || j?.scheduled_date,
-                        customer: c?.name || 'N/A',
+                        title: j.title || 'Untitled Job',
+                        description: j.description,
+                        status: j.status || 'Pending',
+                        priority: j.priority || 'Normal',
+                        date: j.due_date || j.scheduled_date,
+                        customer: cName,
                         parentTitle: null
                     };
                 }),
             ...(subTaskAssignments || [])
-                .filter(a => a && a.sub_task)
+                .filter(a => a && getSafe(a, 'sub_task'))
                 .map(a => {
-                    const st = safeObj(a.sub_task);
-                    const j = safeObj(st?.job);
-                    const c = safeObj(j?.customer);
+                    const st = getSafe(a, 'sub_task');
+                    const j = getSafe(st, 'job');
+                    const cName = getSafe(j, 'customer.name') || 'N/A';
                     return {
-                        id: `sub-${st?.id}`,
-                        originalId: st?.id,
+                        id: `sub-${st.id}`,
+                        originalId: st.id,
                         type: 'Sub-task',
-                        title: st?.title || 'Untitled Task',
+                        title: st.title || 'Untitled Task',
                         description: null,
-                        status: st?.status || 'Pending',
-                        priority: st?.priority || 'Normal',
-                        date: st?.due_date,
-                        customer: c?.name || 'N/A',
+                        status: st.status || 'Pending',
+                        priority: st.priority || 'Normal',
+                        date: st.due_date,
+                        customer: cName,
                         parentTitle: j?.title || 'N/A'
                     };
                 })
         ];
 
-        return { tasks };
+        return { tasks: tasks || [] };
     } catch (error) {
         console.error('getTodoItems critical:', error);
-        return { error: 'Service temporarily unavailable. Please contact support.', tasks: [] };
+        return { error: 'Temporary data issue. Please refresh.', tasks: [] };
     }
 }
 
