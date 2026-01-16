@@ -6,14 +6,12 @@ import { cookies } from 'next/headers';
 export async function getTodoItems(specificUserId = null) {
     const cookieStore = await cookies();
     const loggedInUserId = cookieStore.get('user_id')?.value;
-
-    // Default to currently logged in user if no ID provided
     const targetUserId = specificUserId || loggedInUserId;
 
-    if (!targetUserId) return { error: 'No user identified' };
+    if (!targetUserId) return { tasks: [] };
 
     try {
-        // 1. Fetch Job Assignments for this user
+        // 1. Fetch Job Assignments
         const { data: jobAssignments, error: jobErr } = await supabase
             .from('job_assignments')
             .select(`
@@ -25,17 +23,14 @@ export async function getTodoItems(specificUserId = null) {
                     priority,
                     scheduled_date,
                     due_date,
-                    customer:customers (name)
+                    customer:customers(name)
                 )
             `)
             .eq('user_id', targetUserId);
 
-        if (jobErr) {
-            console.error('Job fetching error:', jobErr);
-            // Don't throw, just allow empty
-        }
+        if (jobErr) console.error('Todo Job Fetch Error:', jobErr);
 
-        // 2. Fetch Sub-task Assignments for this user
+        // 2. Fetch Sub-task Assignments
         const { data: subTaskAssignments, error: subErr } = await supabase
             .from('sub_task_assignments')
             .select(`
@@ -46,51 +41,59 @@ export async function getTodoItems(specificUserId = null) {
                     status,
                     priority,
                     due_date,
-                    job:jobs (title, customer:customers(name))
+                    job:jobs(title, customer:customers(name))
                 )
             `)
             .eq('user_id', targetUserId);
 
-        if (subErr) {
-            console.error('Sub-task fetching error:', subErr);
-        }
+        if (subErr) console.error('Todo Sub-task Fetch Error:', subErr);
 
-        // 3. Format and Consolidate with extreme safety
+        const safeObj = (val) => Array.isArray(val) ? val[0] : val;
+
         const tasks = [
             ...(jobAssignments || [])
                 .filter(a => a && a.job)
-                .map(a => ({
-                    id: `job-${a.job.id}`,
-                    originalId: a.job.id,
-                    type: 'Job',
-                    title: a.job.title || 'Untitled Job',
-                    description: a.job.description,
-                    status: a.job.status || 'Pending',
-                    priority: a.job.priority || 'Normal',
-                    date: a.job.due_date || a.job.scheduled_date,
-                    customer: a.job.customer?.name || 'N/A',
-                    parentTitle: null
-                })),
+                .map(a => {
+                    const j = safeObj(a.job);
+                    const c = safeObj(j?.customer);
+                    return {
+                        id: `job-${j?.id}`,
+                        originalId: j?.id,
+                        type: 'Job',
+                        title: j?.title || 'Untitled Job',
+                        description: j?.description,
+                        status: j?.status || 'Pending',
+                        priority: j?.priority || 'Normal',
+                        date: j?.due_date || j?.scheduled_date,
+                        customer: c?.name || 'N/A',
+                        parentTitle: null
+                    };
+                }),
             ...(subTaskAssignments || [])
                 .filter(a => a && a.sub_task)
-                .map(a => ({
-                    id: `sub-${a.sub_task.id}`,
-                    originalId: a.sub_task.id,
-                    type: 'Sub-task',
-                    title: a.sub_task.title || 'Untitled Task',
-                    description: null,
-                    status: a.sub_task.status || 'Pending',
-                    priority: a.sub_task.priority || 'Normal',
-                    date: a.sub_task.due_date,
-                    customer: a.sub_task.job?.customer?.name || 'N/A',
-                    parentTitle: a.sub_task.job?.title || 'N/A'
-                }))
+                .map(a => {
+                    const st = safeObj(a.sub_task);
+                    const j = safeObj(st?.job);
+                    const c = safeObj(j?.customer);
+                    return {
+                        id: `sub-${st?.id}`,
+                        originalId: st?.id,
+                        type: 'Sub-task',
+                        title: st?.title || 'Untitled Task',
+                        description: null,
+                        status: st?.status || 'Pending',
+                        priority: st?.priority || 'Normal',
+                        date: st?.due_date,
+                        customer: c?.name || 'N/A',
+                        parentTitle: j?.title || 'N/A'
+                    };
+                })
         ];
 
         return { tasks };
     } catch (error) {
-        console.error('getTodoItems critical error:', error);
-        return { error: 'Failed to load To-Do items. This is likely a data configuration issue.' };
+        console.error('getTodoItems critical:', error);
+        return { error: 'Service temporarily unavailable. Please contact support.', tasks: [] };
     }
 }
 
