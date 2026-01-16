@@ -1,7 +1,15 @@
 'use client'
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function AttendanceCharts({ data }) {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) return <div style={{ width: '100%', height: 300, marginTop: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}></div>;
+
     return (
         <div style={{ width: '100%', height: 300, marginTop: '1rem' }}>
             <ResponsiveContainer width="100%" height="100%">
