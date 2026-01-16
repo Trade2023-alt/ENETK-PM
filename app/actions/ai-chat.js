@@ -428,7 +428,7 @@ export async function createConversation(title) {
     const cookieStore = await cookies();
     const userId = cookieStore.get('user_id')?.value;
     const { data, error } = await supabase.from('chat_conversations')
-        .insert({ user_id: userId, title: title || 'New Chat' })
+        .insert({ user_id: Number(userId), title: title || 'New Chat' })
         .select()
         .single();
     if (error) return { error: error.message };
