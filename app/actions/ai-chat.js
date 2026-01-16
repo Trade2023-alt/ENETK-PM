@@ -302,10 +302,20 @@ export async function chatWithAI(messages, conversationId = null) {
             content: m.content
         }));
 
-        // If conversationId is provided, save the last user message
-        if (conversationId && currentMessages[currentMessages.length - 1].role === 'user') {
+        let internalConvId = conversationId;
+
+        // If no conversation ID, auto-create one for the user so it's not lost
+        if (!internalConvId && userId && currentMessages[currentMessages.length - 1].role === 'user') {
+            const { data: newConv } = await supabase.from('chat_conversations')
+                .insert({ user_id: userId, title: currentMessages[currentMessages.length - 1].content.substring(0, 30) + '...' })
+                .select().single();
+            if (newConv) internalConvId = newConv.id;
+        }
+
+        // If conversationId is provided or auto-created, save the last user message
+        if (internalConvId && currentMessages[currentMessages.length - 1].role === 'user') {
             await supabase.from('chat_messages').insert({
-                conversation_id: conversationId,
+                conversation_id: internalConvId,
                 role: 'user',
                 content: currentMessages[currentMessages.length - 1].content
             }).catch(() => { });
@@ -350,9 +360,9 @@ export async function chatWithAI(messages, conversationId = null) {
             await logAiUsage(userId, finalResponse);
 
             const assistantOutput = finalResponse.content[0].text;
-            if (conversationId) {
+            if (internalConvId) {
                 await supabase.from('chat_messages').insert({
-                    conversation_id: conversationId,
+                    conversation_id: internalConvId,
                     role: 'assistant',
                     content: assistantOutput
                 }).catch(() => { });
@@ -366,9 +376,9 @@ export async function chatWithAI(messages, conversationId = null) {
         }
 
         const assistantOutput = response.content[0].text;
-        if (conversationId) {
+        if (internalConvId) {
             await supabase.from('chat_messages').insert({
-                conversation_id: conversationId,
+                conversation_id: internalConvId,
                 role: 'assistant',
                 content: assistantOutput
             }).catch(() => { });

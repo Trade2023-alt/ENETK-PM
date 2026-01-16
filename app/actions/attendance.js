@@ -147,27 +147,29 @@ export async function getAttendanceStats() {
 
         if (!logs) logs = [];
 
-        // 3. Process Stats
-        const now = new Date();
+        // 3. Process Stats (FORCED MST OFFSET for punctuality check)
         const stats = {
             totalLate: 0,
             totalPartial: 0,
             todayAbsent: 0,
             logs: logs
-                .filter(log => log.check_in) // Ensure check_in exists
+                .filter(log => log.check_in)
                 .map(log => {
-                    const checkIn = new Date(log.check_in);
-                    const checkOut = log.check_out ? new Date(log.check_out) : null;
+                    const checkInUTC = new Date(log.check_in);
+                    const checkOutUTC = log.check_out ? new Date(log.check_out) : null;
 
-                    // Late check? 06:15 AM
-                    const hour = checkIn.getHours();
-                    const minute = checkIn.getMinutes();
+                    // Convert to MST (UTC-7) for logic checks
+                    const checkInMST = new Date(checkInUTC.getTime() - (7 * 60 * 60 * 1000));
+
+                    // Late check? 06:15 AM MST
+                    const hour = checkInMST.getUTCHours();
+                    const minute = checkInMST.getUTCMinutes();
                     const isLate = (hour > 6) || (hour === 6 && minute > 15);
 
                     let isPartial = false;
                     let duration = 0;
-                    if (checkOut) {
-                        duration = (checkOut - checkIn) / (1000 * 60 * 60);
+                    if (checkOutUTC) {
+                        duration = (checkOutUTC - checkInUTC) / (1000 * 60 * 60);
                         isPartial = duration < 6;
                     }
 
@@ -184,7 +186,8 @@ export async function getAttendanceStats() {
         };
 
         // Today's Absences
-        const todayStr = now.toISOString().split('T')[0];
+        const mstNow = new Date(Date.now() - (7 * 60 * 60 * 1000));
+        const todayStr = mstNow.toISOString().split('T')[0];
         const todayLogs = logs.filter(l => l.check_in && l.check_in.startsWith(todayStr));
         const userIdsWithLogs = new Set(todayLogs.map(l => l.user_id));
 
@@ -193,7 +196,7 @@ export async function getAttendanceStats() {
         // Chart Data (Last 7 days)
         const chartData = [];
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
+            const d = new Date(Date.now() - (7 * 60 * 60 * 1000));
             d.setDate(d.getDate() - i);
             const dStr = d.toISOString().split('T')[0];
             const dayLogs = logs.filter(l => l.check_in && l.check_in.startsWith(dStr));
@@ -203,8 +206,10 @@ export async function getAttendanceStats() {
                 date: dStr,
                 present: new Set(dayLogs.map(l => l.user_id)).size,
                 late: dayLogs.filter(l => {
-                    const cin = new Date(l.check_in);
-                    return (cin.getHours() > 6) || (cin.getHours() === 6 && cin.getMinutes() > 15);
+                    const cin = new Date(new Date(l.check_in).getTime() - (7 * 60 * 60 * 1000));
+                    const h = cin.getUTCHours();
+                    const m = cin.getUTCMinutes();
+                    return (h > 6) || (h === 6 && m > 15);
                 }).length
             });
         }

@@ -80,8 +80,38 @@ function parseRTFContent(content) {
 }
 
 function parseXMLContent(content) {
-    // Placeholder for XML parsing using a DOM parser or regex
-    return [];
+    const items = [];
+
+    // EH XML often uses <OrderItem> or <Product> tags
+    const itemRegex = /<(OrderItem|Product|LineItem)[\s\S]*?<\/\1>/g;
+    const matches = content.match(itemRegex);
+
+    if (matches) {
+        for (const match of matches) {
+            const getTag = (tag) => {
+                const r = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i');
+                const m = match.match(r);
+                return m ? m[1].trim().replace(/<!\[CDATA\[|\]\]>/g, '') : '';
+            };
+
+            const item = {
+                description: getTag('Description') || getTag('Name') || getTag('Text'),
+                model: getTag('Model') || getTag('PartNumber') || getTag('ProductCode'),
+                quantity: parseInt(getTag('Quantity')) || 1,
+                unit: getTag('Unit') || 'PC',
+                unit_price: parseFloat(getTag('UnitPrice').replace(/[$,]/g, '')) ||
+                    parseFloat(getTag('Price').replace(/[$,]/g, '')) || 0.0,
+                order_code: getTag('OrderCode') || getTag('ArticleNumber'),
+                config: getTag('Configuration') || getTag('Config')
+            };
+
+            if (item.description || item.model) {
+                items.push(item);
+            }
+        }
+    }
+
+    return items;
 }
 
 function parseCSVContent(content) {
