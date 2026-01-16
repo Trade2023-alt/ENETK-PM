@@ -151,9 +151,12 @@ export async function saveQuote(quoteData, lineItems) {
             total: parseFloat(quoteData.total) || 0,
             markup_percentage: parseFloat(quoteData.markup_percentage) || 0,
             tax_percentage: parseFloat(quoteData.tax_percentage) || 0,
-            lead_time_value: parseInt(quoteData.lead_time_value) || 0,
-            updated_at: new Date().toISOString()
+            lead_time_value: parseInt(quoteData.lead_time_value) || 0
         };
+
+        // Add updated_at only if it doesn't cause a crash (resilience)
+        // We'll try to insert it, and if it fails due to column missing, we retry without it
+        cleanQuoteData.updated_at = new Date().toISOString();
 
         // Remove ID if it's null/undefined to let Supabase handle insertion
         if (!cleanQuoteData.id) {
@@ -161,11 +164,24 @@ export async function saveQuote(quoteData, lineItems) {
         }
 
         // 2. Insert/Update Quote
-        const { data: quote, error: quoteError } = await supabase
+        let { data: quote, error: quoteError } = await supabase
             .from('quotes')
             .upsert(cleanQuoteData)
             .select()
             .single();
+
+        // Resilience: If updated_at is missing from schema, retry without it
+        if (quoteError && quoteError.message.includes('updated_at')) {
+            console.warn("Retrying quote save without updated_at column...");
+            delete cleanQuoteData.updated_at;
+            const retry = await supabase
+                .from('quotes')
+                .upsert(cleanQuoteData)
+                .select()
+                .single();
+            quote = retry.data;
+            quoteError = retry.error;
+        }
 
         if (quoteError) {
             console.error("Quote table error:", quoteError);

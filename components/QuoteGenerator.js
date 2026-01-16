@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { parseEHQuote, saveQuote } from '@/app/actions/quotes';
 import { useRouter } from 'next/navigation';
+import Papa from 'papaparse';
 
 export default function QuoteGenerator({ initialData = null }) {
     const router = useRouter();
@@ -113,6 +114,126 @@ export default function QuoteGenerator({ initialData = null }) {
 
     const removeItem = (index) => {
         setLineItems(lineItems.filter((_, i) => i !== index));
+    };
+    const exportToExcel = () => {
+        const data = lineItems.map((item, idx) => ({
+            'Item #': idx + 1,
+            'Description': item.description,
+            'Model': item.model,
+            'Order Code': item.order_code,
+            'Quantity': item.quantity,
+            'Unit': item.unit,
+            'Unit Price (Net)': item.unit_price,
+            'Total (Marked Up)': (parseFloat(item.unit_price) * (1 + (quoteData.markup_percentage / 100)) * (1 + (quoteData.tax_percentage / 100)) * parseInt(item.quantity)).toFixed(2)
+        }));
+
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${quoteData.quote_number}_Export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportToPDF = () => {
+        // Simple printable version in a new window
+        const printWindow = window.open('', '_blank');
+        const itemsHtml = lineItems.map((item, idx) => `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${idx + 1}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">
+                    <strong>${item.description}</strong><br/>
+                    <small>${item.model}</small>
+                </td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.quantity}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">$${(parseFloat(item.unit_price) * (1 + (quoteData.markup_percentage / 100)) * (1 + (quoteData.tax_percentage / 100))).toFixed(2)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">$${(parseFloat(item.unit_price) * (1 + (quoteData.markup_percentage / 100)) * (1 + (quoteData.tax_percentage / 100)) * parseInt(item.quantity)).toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Quote ${quoteData.quote_number}</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 40px; color: #333; }
+                        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #ef4444; padding-bottom: 20px; margin-bottom: 30px; }
+                        .logo { font-size: 24px; font-weight: bold; color: #ef4444; }
+                        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+                        th { background: #f9f9f9; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; }
+                        .totals { float: right; width: 300px; }
+                        .total-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+                        @media print { .no-print { display: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="logo">ENETK PM APP</div>
+                        <div style="text-align: right;">
+                            <h1 style="margin: 0; color: #333;">QUOTE</h1>
+                            <div># ${quoteData.quote_number}</div>
+                            <div>Date: ${quoteData.quote_date}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div>
+                            <h4 style="margin: 0 0 10px 0; color: #666;">BILL TO:</h4>
+                            <div>${quoteData.customer_company}</div>
+                            <div>${quoteData.contact_person}</div>
+                            <div style="white-space: pre-wrap;">${quoteData.bill_to}</div>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0 0 10px 0; color: #666;">SHIP TO / PROJECT:</h4>
+                            <div>${quoteData.project_name}</div>
+                            <div style="white-space: pre-wrap;">${quoteData.ship_to}</div>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Description</th>
+                                <th>Qty</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemsHtml}</tbody>
+                    </table>
+
+                    <div class="totals">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span>$${quoteData.total.toFixed(2)}</span>
+                        </div>
+                        <div class="total-row" style="font-weight: bold; font-size: 1.25rem; border-top: 2px solid #333; margin-top: 10px;">
+                            <span>TOTAL:</span>
+                            <span>$${quoteData.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 100px; color: #666; font-size: 0.8rem;">
+                        <p>Terms: ${quoteData.payment_terms}</p>
+                        <p>Delivery: ${quoteData.delivery_terms} | Est. Lead Time: ${quoteData.lead_time_value} ${quoteData.lead_time_unit}</p>
+                    </div>
+
+                    <script>
+                        setTimeout(() => {
+                            window.print();
+                            // window.close();
+                        }, 500);
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     return (
@@ -360,10 +481,10 @@ export default function QuoteGenerator({ initialData = null }) {
                                     <button onClick={handleSave} className="btn btn-primary" style={{ width: '100%', padding: '1rem' }}>
                                         {loading ? 'Saving...' : '💾 Save Quote to Database'}
                                     </button>
-                                    <button className="btn" style={{ width: '100%', padding: '1rem', background: '#10b981', color: 'white' }}>
+                                    <button onClick={exportToPDF} className="btn" style={{ width: '100%', padding: '1rem', background: '#10b981', color: 'white' }}>
                                         🖨️ Export to ENETK PDF
                                     </button>
-                                    <button className="btn" style={{ width: '100%', padding: '1rem', background: '#2563eb', color: 'white' }}>
+                                    <button onClick={exportToExcel} className="btn" style={{ width: '100%', padding: '1rem', background: '#2563eb', color: 'white' }}>
                                         📊 Export to Excel (.xlsx)
                                     </button>
                                 </div>
