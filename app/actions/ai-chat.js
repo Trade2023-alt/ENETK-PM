@@ -174,6 +174,50 @@ const tools = [
             },
             required: ["tasks"]
         }
+    },
+    {
+        name: "create_customer",
+        description: "Add a new customer to the database.",
+        input_schema: {
+            type: "object",
+            properties: {
+                name: { type: "string" },
+                email: { type: "string" },
+                phone: { type: "string" },
+                address: { type: "string" }
+            },
+            required: ["name"]
+        }
+    },
+    {
+        name: "create_job",
+        description: "Create a new project/job for a customer.",
+        input_schema: {
+            type: "object",
+            properties: {
+                title: { type: "string" },
+                customer_id: { type: "string", description: "The ID of the customer record" },
+                description: { type: "string" },
+                priority: { type: "string", enum: ["Low", "Normal", "High", "Critical"] },
+                scheduled_date: { type: "string", description: "YYYY-MM-DD" }
+            },
+            required: ["title", "customer_id"]
+        }
+    },
+    {
+        name: "create_inventory_item",
+        description: "Add a new material/part to the inventory.",
+        input_schema: {
+            type: "object",
+            properties: {
+                description: { type: "string" },
+                mfg: { type: "string", description: "Manufacturer" },
+                pn: { type: "string", description: "Part Number" },
+                qty: { type: "number" },
+                location: { type: "string" }
+            },
+            required: ["description", "qty"]
+        }
     }
 ];
 
@@ -292,6 +336,42 @@ async function handleToolCall(toolName, input) {
                 const { bulkCreateSubTasks } = await import('./subtasks');
                 return await bulkCreateSubTasks(input.tasks);
             }
+            case "create_customer": {
+                const { data, error } = await supabase
+                    .from('customers')
+                    .insert(input)
+                    .select()
+                    .single();
+                if (error) throw error;
+                return { success: true, customer: data };
+            }
+            case "create_job": {
+                const { data, error } = await supabase
+                    .from('jobs')
+                    .insert({
+                        ...input,
+                        status: 'Scheduled',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                if (error) throw error;
+                return { success: true, job: data };
+            }
+            case "create_inventory_item": {
+                const { data, error } = await supabase
+                    .from('material_inventory')
+                    .insert({
+                        ...input,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                if (error) throw error;
+                return { success: true, item: data };
+            }
             case "debug_db_schema": {
                 // Return some known info about tables for debugging
                 return {
@@ -365,11 +445,19 @@ export async function chatWithAI(messages, conversationId = null) {
             }).catch(() => { });
         }
 
+        const systemPrompt = `You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, and team members. 
+You can analyze data, update statuses, and provide business insights. 
+ALWAYS use tools to check real data before answering questions about records.
+When the user asks to CREATE a new customer, job, or inventory item:
+1. Check if you have all required fields (e.g., name for customers, title/customer_id for jobs, description/qty for inventory).
+2. If any required information is missing, ASK the user to provide it before calling the creation tool.
+Current User ID: ${userId}`;
+
         // MODEL UPDATE: 2026 Recommended Version (Sonnet 4.5)
         let response = await anthropic.messages.create({
             model: "claude-sonnet-4-5-20250929",
             max_tokens: 1024,
-            system: "You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, and team members. You can analyze data, update statuses, and provide business insights. ALWAYS use tools to check real data. Current User ID: " + userId,
+            system: systemPrompt,
             tools: tools,
             messages: currentMessages
         });
@@ -392,7 +480,7 @@ export async function chatWithAI(messages, conversationId = null) {
             const finalResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 1024,
-                system: "You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, and team members. You can analyze data, update statuses, and provide business insights. ALWAYS use tools to check real data.",
+                system: systemPrompt.split('Current User ID:')[0], // Reuse prompt without User ID suffix
                 tools: tools,
                 messages: [
                     ...currentMessages,
