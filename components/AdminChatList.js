@@ -29,25 +29,26 @@ export default function AdminChatList({ initialConversations }) {
                             No conversations found in database.<br />
                             <small>(Verify 'chat_conversations' table)</small>
                         </div>
+                    )}
                     {initialConversations.map(conv => (
-                            <div
-                                key={conv.id}
-                                onClick={() => handleSelect(conv)}
-                                style={{
-                                    padding: '1rem',
-                                    borderBottom: '1px solid var(--card-border)',
-                                    cursor: 'pointer',
-                                    background: selectedConv?.id === conv.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                    borderLeft: selectedConv?.id === conv.id ? '4px solid var(--primary)' : '4px solid transparent'
-                                }}
-                            >
-                                <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{conv.title}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>@{conv.user?.username}</span>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(conv.updated_at).toLocaleDateString()}</span>
-                                </div>
+                        <div
+                            key={conv.id}
+                            onClick={() => handleSelect(conv)}
+                            style={{
+                                padding: '1rem',
+                                borderBottom: '1px solid var(--card-border)',
+                                cursor: 'pointer',
+                                background: selectedConv?.id === conv.id ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                borderLeft: selectedConv?.id === conv.id ? '4px solid var(--primary)' : '4px solid transparent'
+                            }}
+                        >
+                            <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{conv.title}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>@{conv.user?.username}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(conv.updated_at).toLocaleDateString()}</span>
                             </div>
-                        ))}
+                        </div>
+                    ))}
                 </div>
             </div>
 

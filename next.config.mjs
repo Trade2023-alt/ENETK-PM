@@ -5,6 +5,7 @@ const nextConfig = {
     '@azure/msal-common',
     '@microsoft/microsoft-graph-client'
   ],
+  transpilePackages: ['recharts'],
   turbopack: {
     // Options here
   },
