@@ -36,23 +36,36 @@ export default function AIChatPage() {
     const handleSelectConversation = async (conv) => {
         setActiveConversation(conv);
         setLoading(true);
-        const history = await getChatHistory(conv.id);
-        if (history.length > 0) {
-            setMessages(history.map(h => ({ role: h.role, content: h.content })));
-        } else {
-            setMessages([{ role: 'assistant', content: 'Hello! This is a new conversation. How can I help?' }]);
+        try {
+            const history = await getChatHistory(conv.id);
+            if (history && history.length > 0) {
+                setMessages(history.map(h => ({ role: h.role, content: h.content })));
+            } else {
+                setMessages([{ role: 'assistant', content: 'Hello! I am ready to help.' }]);
+            }
+        } catch (e) {
+            console.error("Error loading chat history:", e);
+            setMessages([{ role: 'assistant', content: 'Could not load chat history.' }]);
         }
         setLoading(false);
     };
 
     const handleNewChat = async () => {
         const title = prompt('Enter chat title:') || 'New Chat';
-        const data = await createConversation(title);
-        if (data && !data.error) {
-            setConversations([data, ...conversations]);
-            setActiveConversation(data);
-            setMessages([{ role: 'assistant', content: 'New chat started. I am ready to help!' }]);
+        setLoading(true);
+        try {
+            const data = await createConversation(title);
+            if (data && !data.error) {
+                setConversations(prev => [data, ...prev]);
+                setActiveConversation(data);
+                setMessages([{ role: 'assistant', content: `Started new chat: ${title}. How can I help?` }]);
+            } else {
+                alert("Failed to create chat: " + (data?.error || "Unknown error"));
+            }
+        } catch (e) {
+            console.error("New chat error:", e);
         }
+        setLoading(false);
     };
 
     const handleSubmit = async (e) => {
@@ -65,13 +78,24 @@ export default function AIChatPage() {
         setLoading(true);
         setLastCost(null);
 
-        const result = await chatWithAI([...messages, userMsg], activeConversation?.id);
+        try {
+            const result = await chatWithAI([...messages, userMsg], activeConversation?.id);
 
-        if (result.error) {
-            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${result.error}` }]);
-        } else {
-            setMessages(prev => [...prev, { role: 'assistant', content: result.content }]);
-            if (result.cost) setLastCost(result.cost);
+            if (result.error) {
+                setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${result.error}` }]);
+            } else {
+                setMessages(prev => [...prev, { role: 'assistant', content: result.content }]);
+                if (result.cost) setLastCost(result.cost);
+
+                // If a new conversation was created in background, refresh list
+                if (result.conversationId && !activeConversation) {
+                    await loadConversations();
+                    // Optional: find it and set as active
+                }
+            }
+        } catch (err) {
+            console.error("Chat error:", err);
+            setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error.' }]);
         }
         setLoading(false);
     };

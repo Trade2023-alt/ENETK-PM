@@ -136,16 +136,6 @@ const tools = [
         input_schema: {
             type: "object",
             properties: {
-                query: { type: "string", description: "Customer name or quote title" }
-            }
-        }
-    },
-    {
-        name: "get_quotes",
-        description: "Fetch all quotes or search by customer name.",
-        input_schema: {
-            type: "object",
-            properties: {
                 query: { type: "string", description: "Search by quote title or customer name" }
             }
         }
@@ -325,8 +315,10 @@ async function logAiUsage(userId, response) {
         const outputTokens = response.usage.output_tokens;
         const cost = (inputTokens * PRICE_INPUT) + (outputTokens * PRICE_OUTPUT);
 
+        const safeUserId = userId ? (isNaN(userId) ? userId : Number(userId)) : null;
+
         await supabase.from('ai_usage').insert({
-            user_id: Number(userId),
+            user_id: safeUserId,
             model: response.model,
             input_tokens: inputTokens,
             output_tokens: outputTokens,
@@ -357,8 +349,9 @@ export async function chatWithAI(messages, conversationId = null) {
 
         // If no conversation ID, auto-create one for the user so it's not lost
         if (!internalConvId && userId && currentMessages[currentMessages.length - 1].role === 'user') {
+            const safeUserId = userId ? (isNaN(userId) ? userId : Number(userId)) : null;
             const { data: newConv } = await supabase.from('chat_conversations')
-                .insert({ user_id: Number(userId), title: currentMessages[currentMessages.length - 1].content.substring(0, 30) + '...' })
+                .insert({ user_id: safeUserId, title: currentMessages[currentMessages.length - 1].content.substring(0, 30) + '...' })
                 .select().single();
             if (newConv) internalConvId = newConv.id;
         }
@@ -422,7 +415,8 @@ export async function chatWithAI(messages, conversationId = null) {
             return {
                 role: 'assistant',
                 content: assistantOutput,
-                cost: usageCost.toFixed(5)
+                cost: usageCost.toFixed(5),
+                conversationId: internalConvId
             };
         }
 
@@ -438,7 +432,8 @@ export async function chatWithAI(messages, conversationId = null) {
         return {
             role: 'assistant',
             content: assistantOutput,
-            cost: usageCost.toFixed(5)
+            cost: usageCost.toFixed(5),
+            conversationId: internalConvId
         };
     } catch (error) {
         console.error('Claude API Error:', error);
@@ -451,8 +446,9 @@ export async function createConversation(title) {
     const userId = cookieStore.get('user_id')?.value;
     console.log('Creating conversation for user:', userId, 'title:', title);
 
+    const safeUserId = userId ? (isNaN(userId) ? userId : Number(userId)) : null;
     const { data, error } = await supabase.from('chat_conversations')
-        .insert({ user_id: Number(userId), title: title || 'New Chat' })
+        .insert({ user_id: safeUserId, title: title || 'New Chat' })
         .select()
         .single();
 
@@ -469,9 +465,10 @@ export async function getConversations() {
     const userId = cookieStore.get('user_id')?.value;
     if (!userId) return [];
 
+    const safeUserId = userId ? (isNaN(userId) ? userId : Number(userId)) : null;
     const { data, error } = await supabase.from('chat_conversations')
         .select('*')
-        .eq('user_id', Number(userId))
+        .eq('user_id', safeUserId)
         .order('created_at', { ascending: false });
     if (error) {
         console.error('getConversations error:', error);
