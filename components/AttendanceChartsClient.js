@@ -8,7 +8,7 @@ export default function AttendanceCharts({ data }) {
         setMounted(true);
     }, []);
 
-    if (!mounted) return <div style={{ width: '100%', height: 300, marginTop: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}></div>;
+    if (!mounted || typeof window === 'undefined') return <div style={{ width: '100%', height: 300, marginTop: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}></div>;
 
     return (
         <div style={{ width: '100%', height: 300, marginTop: '1rem' }} suppressHydrationWarning>
