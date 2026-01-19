@@ -1,3 +1,4 @@
+// Trigger fresh build - SSR Fix Version 4.0
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
