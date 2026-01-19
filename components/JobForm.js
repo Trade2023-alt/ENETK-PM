@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createJob } from '@/app/actions/jobs';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -15,6 +16,7 @@ function SubmitButton() {
 }
 
 export default function JobForm({ customers, contacts, users }) {
+    const [state, formAction] = useActionState(createJob, null);
     const [selectedCustomerId, setSelectedCustomerId] = useState('');
 
     const filteredContacts = selectedCustomerId
@@ -22,7 +24,12 @@ export default function JobForm({ customers, contacts, users }) {
         : [];
 
     return (
-        <form action={createJob}>
+        <form action={formAction}>
+            {state?.error && (
+                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', marginBottom: '1.5rem', color: '#ef4444', fontSize: '0.875rem' }}>
+                    {state.error}
+                </div>
+            )}
             <div style={{ marginBottom: '1rem' }}>
                 <label className="label">Job Title</label>
                 <input name="title" type="text" className="input" placeholder="e.g. Kitchen Wiring" required />

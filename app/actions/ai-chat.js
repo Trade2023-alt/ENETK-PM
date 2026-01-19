@@ -199,9 +199,10 @@ const tools = [
                 customer_id: { type: "string", description: "The ID of the customer record" },
                 description: { type: "string" },
                 priority: { type: "string", enum: ["Low", "Normal", "High", "Critical"] },
-                scheduled_date: { type: "string", description: "YYYY-MM-DD" }
+                scheduled_date: { type: "string", description: "YYYY-MM-DD HH:mm" },
+                assigned_user_ids: { type: "array", items: { type: "string" }, description: "Array of user IDs to assign to this job" }
             },
-            required: ["title", "customer_id"]
+            required: ["title", "customer_id", "scheduled_date"]
         }
     },
     {
@@ -346,18 +347,29 @@ async function handleToolCall(toolName, input) {
                 return { success: true, customer: data };
             }
             case "create_job": {
-                const { data, error } = await supabase
+                const { assigned_user_ids, ...jobDataInput } = input;
+                const { data: jobData, error: jobError } = await supabase
                     .from('jobs')
                     .insert({
-                        ...input,
+                        ...jobDataInput,
                         status: 'Scheduled',
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     })
                     .select()
                     .single();
-                if (error) throw error;
-                return { success: true, job: data };
+                if (jobError) throw jobError;
+
+                // Handle assignments if provided
+                if (assigned_user_ids && assigned_user_ids.length > 0) {
+                    const assignments = assigned_user_ids.map(uid => ({
+                        job_id: jobData.id,
+                        user_id: uid
+                    }));
+                    await supabase.from('job_assignments').insert(assignments);
+                }
+
+                return { success: true, job: jobData };
             }
             case "create_inventory_item": {
                 const { data, error } = await supabase
@@ -449,8 +461,9 @@ export async function chatWithAI(messages, conversationId = null) {
 You can analyze data, update statuses, and provide business insights. 
 ALWAYS use tools to check real data before answering questions about records.
 When the user asks to CREATE a new customer, job, or inventory item:
-1. Check if you have all required fields (e.g., name for customers, title/customer_id for jobs, description/qty for inventory).
-2. If any required information is missing, ASK the user to provide it before calling the creation tool.
+1. Check if you have all required fields (e.g., name for customers, title/customer_id/scheduled_date for jobs, description/qty for inventory).
+2. For jobs, you MUST also assign at least one team member. Use 'get_team' to find the correct user IDs if you don't have them.
+3. If any required information is missing, ASK the user to provide it before calling the creation tool.
 Current User ID: ${userId}`;
 
         // MODEL UPDATE: 2026 Recommended Version (Sonnet 4.5)

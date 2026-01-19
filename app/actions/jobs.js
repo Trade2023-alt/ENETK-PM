@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 
-export async function createJob(formData) {
+export async function createJob(prevState, formData) {
     const title = formData.get('title');
     const description = formData.get('description');
     const customerId = formData.get('customer_id');
@@ -16,7 +16,7 @@ export async function createJob(formData) {
     const priority = formData.get('priority') || 'Normal';
 
     if (!title || !customerId || assignedUserIds.length === 0 || !scheduledDate) {
-        return { error: 'Missing required fields' };
+        return { error: 'Missing required fields. Please ensure Title, Customer, Team, and Schedule are set.' };
     }
 
     try {
