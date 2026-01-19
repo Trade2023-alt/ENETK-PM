@@ -31,8 +31,7 @@ export async function createJob(prevState, formData) {
             estimated_hours: estimatedHours,
             due_date: dueDate === '' ? null : dueDate,
             status: 'Scheduled',
-            priority,
-            visibility_role: formData.get('visibility_role') || 'System Integrator'
+            priority
         };
 
         let { data: jobData, error: jobError } = await supabase
