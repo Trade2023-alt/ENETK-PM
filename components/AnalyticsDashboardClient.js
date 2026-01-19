@@ -1,45 +1,20 @@
 'use client'
+import React, { useState, useEffect } from 'react';
 
-import React from 'react';
-import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    PieChart, Pie, Cell, AreaChart, Area
-} from 'recharts';
+export default function AnalyticsDashboardMock({ jobs, aiUsage }) {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
-const COLORS = ['#8b0000', '#4a5568', '#10b981', '#f59e0b', '#3b82f6'];
-
-export default function AnalyticsDashboardClient({ jobs, aiUsage }) {
-    // Prepare data for Hours Comparison (Winning/Losing)
-    const hoursData = jobs.map(j => ({
-        name: j.title.length > 15 ? j.title.substring(0, 15) + '...' : j.title,
-        budgeted: j.estimated_hours || 0,
-        actual: j.actual_hours || 0
-    })).sort((a, b) => b.budgeted - a.budgeted).slice(0, 10);
-
-    // AI Cost Tracking
-    const aiCostData = aiUsage ? aiUsage.map(u => ({
-        date: new Date(u.created_at).toLocaleDateString(),
-        cost: parseFloat(u.cost_usd || 0)
-    })).reduce((acc, curr) => {
-        const last = acc[acc.length - 1];
-        if (last && last.date === curr.date) {
-            last.cost += curr.cost;
-        } else {
-            acc.push(curr);
-        }
-        return acc;
-    }, []) : [];
-
-    const totalAiCost = aiUsage ? aiUsage.reduce((acc, u) => acc + parseFloat(u.cost_usd || 0), 0) : 0;
-
-    // Filter "Losing" projects (actual > budgeted)
     const losingProjects = jobs.filter(j => (j.actual_hours || 0) > (j.estimated_hours || 0));
     const winningProjects = jobs.filter(j => (j.actual_hours || 0) <= (j.estimated_hours || 0) && (j.status === 'Completed' || j.status === 'Complete'));
+    const totalAiCost = aiUsage ? aiUsage.reduce((acc, u) => acc + parseFloat(u.cost_usd || 0), 0) : 0;
+
+    if (!mounted) return <div style={{ height: 500, background: 'rgba(255,255,255,0.02)' }} />;
 
     return (
         <div style={{ display: 'grid', gap: '2rem', marginTop: '1rem' }}>
-
-            {/* Top Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
                 <div className="card" style={{ textAlign: 'center', borderTop: '4px solid #10b981' }}>
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>"Winning" Bids</div>
@@ -55,45 +30,35 @@ export default function AnalyticsDashboardClient({ jobs, aiUsage }) {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(45%, 1fr))', gap: '1.5rem' }}>
-
-                {/* Hours Comparison Chart */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
                 <div className="card">
-                    <h3 style={{ marginBottom: '1.5rem' }}>Winning/Losing: Budget vs. Actual</h3>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={hoursData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#888' }} />
-                                <YAxis tick={{ fill: '#888' }} />
-                                <Tooltip contentStyle={{ background: '#111', border: '1px solid #333' }} />
-                                <Legend />
-                                <Bar dataKey="budgeted" name="Budgeted" fill="#4a5568" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="actual" name="Actual" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <h3>Project Performance</h3>
+                    <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {jobs.slice(0, 5).map((job, i) => {
+                            const pct = Math.min((job.actual_hours / job.estimated_hours) * 100, 100) || 0;
+                            return (
+                                <div key={i}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
+                                        <span>{job.title}</span>
+                                        <span>{job.actual_hours} / {job.estimated_hours} hrs</span>
+                                    </div>
+                                    <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${pct}%`, height: '100%', background: pct > 100 ? '#ef4444' : 'var(--primary)' }} />
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
-
-                {/* AI Cost Area Chart */}
                 <div className="card">
-                    <h3 style={{ marginBottom: '1.5rem' }}>AI Spending Trend</h3>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={aiCostData}>
-                                <defs>
-                                    <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b0000" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#8b0000" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#888' }} />
-                                <YAxis tick={{ fill: '#888' }} />
-                                <Tooltip contentStyle={{ background: '#111', border: '1px solid #333' }} />
-                                <Area type="monotone" dataKey="cost" name="USD Cost" stroke="var(--primary)" fillOpacity={1} fill="url(#colorCost)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                    <h3>AI Usage Log</h3>
+                    <div style={{ marginTop: '1rem', maxHeight: '200px', overflowY: 'auto' }}>
+                        {aiUsage.slice(-5).map((u, i) => (
+                            <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>{new Date(u.created_at).toLocaleDateString()}</span>
+                                <span style={{ color: 'var(--primary)' }}>${parseFloat(u.cost_usd).toFixed(4)}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

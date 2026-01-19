@@ -1,47 +1,55 @@
 'use client'
-import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import React, { useState, useEffect } from 'react';
 
-export default function AttendanceCharts({ data }) {
+export default function AttendanceChartsMock({ data }) {
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    if (!mounted || typeof window === 'undefined') return <div style={{ width: '100%', height: 300, marginTop: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}></div>;
+    if (!mounted) return <div style={{ height: 300, background: 'rgba(255,255,255,0.02)' }} />;
+
+    const maxVal = Math.max(...data.map(d => d.present + d.late), 1);
 
     return (
-        <div style={{ width: '100%', height: 300, marginTop: '1rem' }} suppressHydrationWarning>
-            <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    <XAxis
-                        dataKey="name"
-                        stroke="#888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                    />
-                    <YAxis
-                        stroke="#888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `${value}`}
-                    />
-                    <Tooltip
-                        contentStyle={{
-                            backgroundColor: '#18181b',
-                            border: '1px solid #3f3f46',
-                            borderRadius: '8px',
-                            color: '#fff'
-                        }}
-                    />
-                    <Legend verticalAlign="top" height={36} />
-                    <Bar name="Clocked In" dataKey="present" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                    <Bar name="Lates (> 6:15)" dataKey="late" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-            </ResponsiveContainer>
+        <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', marginTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', height: '200px', paddingBottom: '20px', borderBottom: '1px solid #333' }}>
+                {data.map((d, i) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column-reverse', width: '100%', height: '100%' }}>
+                            <div style={{
+                                height: `${(d.present / maxVal) * 100}%`,
+                                width: '100%',
+                                background: 'var(--primary)',
+                                borderRadius: '4px 4px 0 0',
+                                position: 'relative'
+                            }}>
+                                {d.late > 0 && (
+                                    <div style={{
+                                        height: `${(d.late / d.present) * 100}%`,
+                                        width: '100%',
+                                        background: '#ef4444',
+                                        borderRadius: '4px 4px 0 0',
+                                        position: 'absolute',
+                                        bottom: 0
+                                    }} />
+                                )}
+                            </div>
+                        </div>
+                        <span style={{ fontSize: '10px', color: '#888' }}>{d.name}</span>
+                    </div>
+                ))}
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ width: '12px', height: '12px', background: 'var(--primary)', borderRadius: '2px' }} />
+                    <span>Present</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '2px' }} />
+                    <span>Late</span>
+                </div>
+            </div>
         </div>
     );
 }
