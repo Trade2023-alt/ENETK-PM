@@ -442,7 +442,7 @@ export async function chatWithAI(messages, conversationId = null) {
                 conversation_id: internalConvId,
                 role: 'user',
                 content: currentMessages[currentMessages.length - 1].content
-            }).catch(() => { });
+            });
         }
 
         const systemPrompt = `You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, and team members. 
@@ -497,7 +497,7 @@ Current User ID: ${userId}`;
                     conversation_id: internalConvId,
                     role: 'assistant',
                     content: assistantOutput
-                }).catch(() => { });
+                });
             }
 
             return {
@@ -514,7 +514,7 @@ Current User ID: ${userId}`;
                 conversation_id: internalConvId,
                 role: 'assistant',
                 content: assistantOutput
-            }).catch(() => { });
+            });
         }
 
         return {
