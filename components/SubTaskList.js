@@ -47,9 +47,6 @@ export default function SubTaskList({ jobId, subTasks, users }) {
                             <option value="Urgent">Urgent</option>
                         </select>
                     </div>
-                    <div style={{ marginBottom: '1rem' }}>
-                        <textarea name="description" placeholder="Task Description..." className="input" style={{ width: '100%', minHeight: '60px', resize: 'vertical' }}></textarea>
-                    </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ width: '150px' }}>
                             <input name="estimated_hours" type="number" step="0.5" placeholder="Est. Hours" className="input" />
@@ -87,10 +84,6 @@ export default function SubTaskList({ jobId, subTasks, users }) {
                                                 <option value="Urgent">Urgent</option>
                                             </select>
                                         </div>
-                                        <div style={{ marginBottom: '0.5rem' }}>
-                                            <textarea name="description" defaultValue={task.description} className="input" placeholder="Task Description..." style={{ width: '100%', minHeight: '60px', resize: 'vertical' }}></textarea>
-                                        </div>
-
                                         <div style={{
                                             display: 'grid',
                                             gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
@@ -163,11 +156,6 @@ export default function SubTaskList({ jobId, subTasks, users }) {
                                             {task.priority || 'Normal'}
                                         </span>
                                     </div>
-                                    {task.description && (
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontStyle: 'italic', lineHeight: '1.4' }}>
-                                            {task.description}
-                                        </div>
-                                    )}
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '1rem' }}>
                                         <span>Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Date'}</span>
                                         <span>Assigned: {task.assigned_ids ?

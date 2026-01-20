@@ -179,11 +179,6 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                             {task.parentTitle && <span>📂 Part of: {task.parentTitle}</span>}
                                             {task.date && <span>📅 {new Date(task.date).toLocaleDateString()}</span>}
                                         </div>
-                                        {task.description && !isComplete && (
-                                            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                                                {task.description.length > 100 ? task.description.substring(0, 100) + '...' : task.description}
-                                            </p>
-                                        )}
                                     </div>
 
                                     {task.type === 'Job' && (
