@@ -7,7 +7,7 @@ export default function LoginPage() {
             minHeight: '100vh',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%)'
+            background: '#e8e8e8'
         }}>
             <LoginForm />
         </div>
