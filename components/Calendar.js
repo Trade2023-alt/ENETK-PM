@@ -9,9 +9,7 @@ const DEFAULT_ROSTER = [
     'Loren McCray',
     'Rami Douri',
     'Seth Peterson',
-    'Cole Kadrmas',
-    'Jack Morris',
-    'Kyle Merrill'
+    'Cole Kadrmas'
 ];
 const ROTATION_START_DATE = new Date('2026-01-20');
 

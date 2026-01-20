@@ -9,9 +9,7 @@ const DEFAULT_ROSTER = [
     'Loren McCray',
     'Rami Douri',
     'Seth Peterson',
-    'Cole Kadrmas',
-    'Jack Morris',
-    'Kyle Merrill'
+    'Cole Kadrmas'
 ];
 
 // Start date for the default rotation (Monday of the first week)

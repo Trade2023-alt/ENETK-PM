@@ -9,9 +9,7 @@ const ON_CALL_ROSTER = [
     'Loren McCray',
     'Rami Douri',
     'Seth Peterson',
-    'Cole Kadrmas',
-    'Jack Morris',
-    'Kyle Merrill'
+    'Cole Kadrmas'
 ];
 
 export default function OnCallEditor({ initialSchedule = [], userRole }) {
