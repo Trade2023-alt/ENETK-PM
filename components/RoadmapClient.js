@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useMemo } from 'react';
-import { deleteMilestone, updateMilestone } from '@/app/actions/roadmap';
+import { createMilestone, deleteMilestone, updateMilestone } from '@/app/actions/roadmap';
 import RoadmapGantt from './RoadmapGantt';
 
-export default function RoadmapClient({ initialMilestones, initialSubTasks = [], manloading = {}, users = [], userRole }) {
+export default function RoadmapClient({ initialMilestones, initialSubTasks = [], manloading = {}, users = [], userRole, jobs = [] }) {
     const [milestones, setMilestones] = useState(initialMilestones);
     const [subTasks] = useState(initialSubTasks);
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     // Filters
     const [filterJob, setFilterJob] = useState('all');
@@ -85,13 +87,83 @@ export default function RoadmapClient({ initialMilestones, initialSubTasks = [],
         }
     };
 
+    const handleAdd = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        const formData = new FormData(e.target);
+        const result = await createMilestone(formData);
+        if (result.success) {
+            setMilestones([result.milestone, ...milestones]);
+            setIsAdding(false);
+            e.target.reset();
+        } else {
+            alert(result.error || 'Failed to add milestone');
+        }
+        setLoading(false);
+    };
+
     return (
         <div>
             {/* Header */}
-            <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 700 }}>Master Road Map</h1>
-                <p style={{ color: 'var(--text-muted)' }}>All milestones and sub-tasks across all projects.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1a1a1a' }}>Master Road Map</h1>
+                    <p style={{ color: '#1a1a1a' }}>All milestones and sub-tasks across all projects.</p>
+                </div>
+                <button
+                    onClick={() => setIsAdding(!isAdding)}
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.9rem' }}
+                >
+                    {isAdding ? 'Cancel' : '+ Milestone'}
+                </button>
             </div>
+
+            {/* Add Milestone Form */}
+            {isAdding && (
+                <div className="card" style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ marginBottom: '1rem' }}>Add New Milestone</h3>
+                    <form onSubmit={handleAdd}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                                <label className="label">Job / Project *</label>
+                                <select name="job_id" className="input" required>
+                                    <option value="">Select a job...</option>
+                                    {jobs.map(job => (
+                                        <option key={job.id} value={job.id}>{job.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="label">Title *</label>
+                                <input name="title" className="input" placeholder="Milestone title" required />
+                            </div>
+                            <div>
+                                <label className="label">Status</label>
+                                <select name="status" className="input">
+                                    <option value="Planned">Planned</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Delayed">Delayed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                                <label className="label">Start Date *</label>
+                                <input name="start_date" type="date" className="input" required />
+                            </div>
+                            <div>
+                                <label className="label">End Date *</label>
+                                <input name="end_date" type="date" className="input" required />
+                            </div>
+                        </div>
+                        <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
+                            {loading ? 'Adding...' : 'Add Milestone'}
+                        </button>
+                    </form>
+                </div>
+            )}
 
             {/* Filters */}
             <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>

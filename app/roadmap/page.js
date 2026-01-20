@@ -17,14 +17,16 @@ export default async function RoadmapPage() {
     }
 
     // Fetch all data in parallel
-    const [milestones, subTasks, manloading, usersResult] = await Promise.all([
+    const [milestones, subTasks, manloading, usersResult, jobsResult] = await Promise.all([
         getMilestones(),
         getSubTasksForRoadmap(),
         getManloadingData(),
-        supabase.from('users').select('id, username').order('username')
+        supabase.from('users').select('id, username').order('username'),
+        supabase.from('jobs').select('id, title').order('title')
     ]);
 
     const users = usersResult.data || [];
+    const jobs = jobsResult.data || [];
 
     return (
         <div className="container" style={{ paddingBottom: '4rem' }}>
@@ -35,6 +37,7 @@ export default async function RoadmapPage() {
                 manloading={manloading}
                 users={users}
                 userRole={userRole}
+                jobs={jobs}
             />
         </div>
     );

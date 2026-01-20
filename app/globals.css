@@ -91,11 +91,15 @@ button {
   padding: 0 1.5rem;
 }
 
-/* Page titles outside cards */
+/* Page titles and subtitles outside cards - MUST be dark for visibility on grey background */
 .container>h2,
 .container>h3,
-.container>p {
-  color: #1a1a1a;
+.container>p,
+.container>div>h2,
+.container>div>h3,
+.container>div>p,
+.container>div>div>p {
+  color: #1a1a1a !important;
 }
 
 .card {

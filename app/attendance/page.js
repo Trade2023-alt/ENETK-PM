@@ -2,8 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import { getHoursWorkedTrend, getAttendanceMetrics } from '@/app/actions/attendance';
-import AttendanceTrendChart from '@/components/AttendanceTrendChart';
-import AttendancePieCharts from '@/components/AttendancePieCharts';
+import AttendanceClient from '@/components/AttendanceClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +14,10 @@ export default async function AttendancePage() {
         redirect('/');
     }
 
-    // Fetch data in parallel
+    // Fetch data for 90 days to allow filtering
     const [trendData, metricsData] = await Promise.all([
-        getHoursWorkedTrend(30),
-        getAttendanceMetrics(30)
+        getHoursWorkedTrend(90),
+        getAttendanceMetrics(90)
     ]);
 
     return (
@@ -26,16 +25,13 @@ export default async function AttendancePage() {
             <Header userRole={userRole} />
 
             <div style={{ marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.5rem' }}>Attendance Analytics</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Track hours, punctuality, and attendance patterns over the last 30 days.</p>
+                <h2 style={{ fontSize: '1.5rem', color: '#1a1a1a' }}>Attendance Analytics</h2>
+                <p style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Track hours, punctuality, and attendance patterns.</p>
             </div>
 
-            {/* Pie Charts Section */}
-            <AttendancePieCharts metrics={metricsData} />
-
-            {/* Hours Trend Chart */}
-            <AttendanceTrendChart
-                chartData={trendData.chartData}
+            <AttendanceClient
+                initialTrendData={trendData}
+                initialMetricsData={metricsData}
                 users={trendData.users}
             />
         </div>
