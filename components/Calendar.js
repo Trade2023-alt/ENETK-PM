@@ -1,11 +1,40 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+
+// On-call rotation roster (in order)
+const ON_CALL_ROSTER = [
+    'Matt Huber',
+    'Loren McCray',
+    'Rami Douri',
+    'Seth Peterson',
+    'Cole Kadrmas',
+    'Jack Morris',
+    'Kyle Merrill'
+];
+
+// Start date for the rotation (Monday of the first week)
+const ROTATION_START_DATE = new Date('2026-01-20');
+
+// Calculate who is on call for a specific date
+function getOnCallForDate(date) {
+    const startDate = new Date(ROTATION_START_DATE);
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    const weeksSinceStart = Math.floor((date - startDate) / msPerWeek);
+
+    const adjustedWeeks = weeksSinceStart < 0
+        ? ON_CALL_ROSTER.length - (Math.abs(weeksSinceStart) % ON_CALL_ROSTER.length)
+        : weeksSinceStart;
+
+    const rosterIndex = adjustedWeeks % ON_CALL_ROSTER.length;
+    return ON_CALL_ROSTER[rosterIndex];
+}
 
 export default function Calendar({ jobs, subTasks = [], users = [] }) {
     const [monthOffset, setMonthOffset] = useState(0);
     const [showSubTasks, setShowSubTasks] = useState(true);
+    const [showOnCall, setShowOnCall] = useState(true);
     const [filterUser, setFilterUser] = useState('');
 
     const today = new Date();
@@ -23,6 +52,20 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
     for (let i = 1; i <= daysInMonth; i++) {
         days.push(new Date(year, month, i));
     }
+
+    // Calculate on-call for each day (only show on Mondays for week start)
+    const onCallByDate = useMemo(() => {
+        const result = {};
+        days.forEach(day => {
+            if (day) {
+                result[day.toISOString().split('T')[0]] = getOnCallForDate(day);
+            }
+        });
+        return result;
+    }, [days]);
+
+    // Get the on-call person for today
+    const currentOnCall = getOnCallForDate(today);
 
     // Filter Items
     const filteredJobs = filterUser
@@ -60,11 +103,27 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
 
     return (
         <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-            <div style={{ padding: '1rem', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Current On-Call Banner */}
+            {showOnCall && (
+                <div style={{
+                    padding: '0.75rem 1rem',
+                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.15))',
+                    borderBottom: '1px solid rgba(239, 68, 68, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                }}>
+                    <span style={{ fontSize: '1.25rem' }}>📞</span>
+                    <span style={{ fontWeight: 600, color: '#ef4444' }}>On-Call This Week:</span>
+                    <span style={{ fontWeight: 700, color: 'var(--foreground)' }}>{currentOnCall}</span>
+                </div>
+            )}
+
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <h3 style={{ textTransform: 'capitalize', margin: 0 }}>
                     {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
                 </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <select
                         value={filterUser}
                         onChange={(e) => setFilterUser(e.target.value)}
@@ -74,9 +133,13 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
                         <option value="">All Users</option>
                         {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
                     </select>
-                    <label style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
                         <input type="checkbox" checked={showSubTasks} onChange={(e) => setShowSubTasks(e.target.checked)} />
-                        Show Sub-tasks
+                        Sub-tasks
+                    </label>
+                    <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ef4444' }}>
+                        <input type="checkbox" checked={showOnCall} onChange={(e) => setShowOnCall(e.target.checked)} />
+                        📞 On-Call
                     </label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button onClick={prevMonth} className="btn" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', padding: '0.25rem 0.75rem' }}>←</button>
@@ -93,50 +156,76 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
                     </div>
                 ))}
 
-                {days.map((day, idx) => (
-                    <div key={idx} style={{
-                        minHeight: '120px',
-                        background: 'var(--card-bg)',
-                        padding: '0.5rem',
-                        opacity: day ? 1 : 0.5
-                    }}>
-                        {day && (
-                            <>
-                                <div style={{
-                                    textAlign: 'right',
-                                    fontSize: '0.75rem',
-                                    color: day.toDateString() === new Date().toDateString() ? 'var(--primary)' : 'var(--text-muted)',
-                                    fontWeight: day.toDateString() === new Date().toDateString() ? 'bold' : 'normal'
-                                }}>
-                                    {day.getDate()}
-                                </div>
+                {days.map((day, idx) => {
+                    const isMonday = day && day.getDay() === 1;
+                    const dateKey = day ? day.toISOString().split('T')[0] : null;
+                    const onCallPerson = dateKey ? onCallByDate[dateKey] : null;
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem' }}>
-                                    {itemsByDate[day.toISOString().split('T')[0]]?.map((item, i) => (
-                                        <Link key={`${item.type}-${item.id}`} href={item.type === 'job' ? `/jobs/${item.id}` : `/jobs/${item.job_id}`} style={{
-                                            display: 'block',
+                    return (
+                        <div key={idx} style={{
+                            minHeight: '120px',
+                            background: 'var(--card-bg)',
+                            padding: '0.5rem',
+                            opacity: day ? 1 : 0.5
+                        }}>
+                            {day && (
+                                <>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '0.25rem'
+                                    }}>
+                                        <span style={{
                                             fontSize: '0.75rem',
-                                            background: item.status === 'Complete'
-                                                ? 'rgba(16, 185, 129, 0.2)'
-                                                : item.type === 'job' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                                            color: item.status === 'Complete'
-                                                ? 'var(--success)'
-                                                : item.type === 'job' ? 'var(--primary)' : 'var(--warning)',
-                                            padding: '0.125rem 0.25rem',
-                                            borderRadius: '0.25rem',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            borderLeft: item.type === 'subtask' ? '2px solid var(--warning)' : 'none'
+                                            color: day.toDateString() === new Date().toDateString() ? 'var(--primary)' : 'var(--text-muted)',
+                                            fontWeight: day.toDateString() === new Date().toDateString() ? 'bold' : 'normal'
                                         }}>
-                                            {item.title}
-                                        </Link>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                ))}
+                                            {day.getDate()}
+                                        </span>
+                                        {/* Show on-call indicator on Mondays */}
+                                        {showOnCall && isMonday && (
+                                            <span style={{
+                                                fontSize: '0.55rem',
+                                                background: 'rgba(239, 68, 68, 0.15)',
+                                                color: '#ef4444',
+                                                padding: '0.1rem 0.3rem',
+                                                borderRadius: '4px',
+                                                fontWeight: 600,
+                                                whiteSpace: 'nowrap'
+                                            }} title={`On-Call: ${onCallPerson}`}>
+                                                📞 {onCallPerson?.split(' ')[0]}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        {itemsByDate[dateKey]?.map((item, i) => (
+                                            <Link key={`${item.type}-${item.id}`} href={item.type === 'job' ? `/jobs/${item.id}` : `/jobs/${item.job_id}`} style={{
+                                                display: 'block',
+                                                fontSize: '0.7rem',
+                                                background: item.status === 'Complete'
+                                                    ? 'rgba(16, 185, 129, 0.2)'
+                                                    : item.type === 'job' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                                color: item.status === 'Complete'
+                                                    ? 'var(--success)'
+                                                    : item.type === 'job' ? 'var(--primary)' : 'var(--warning)',
+                                                padding: '0.125rem 0.25rem',
+                                                borderRadius: '0.25rem',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                borderLeft: item.type === 'subtask' ? '2px solid var(--warning)' : 'none'
+                                            }}>
+                                                {item.title}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
