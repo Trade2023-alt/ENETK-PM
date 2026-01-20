@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 
-export default function ManloadingChart({ manloading, users = [] }) {
-    const [expanded, setExpanded] = useState(false);
+export default function ManloadingChart({ manloading, users = [], alwaysExpanded = false }) {
+    const [expanded, setExpanded] = useState(alwaysExpanded);
 
     if (!manloading || manloading.error) {
         return null;
@@ -27,11 +27,13 @@ export default function ManloadingChart({ manloading, users = [] }) {
 
     const maxHours = Math.max(...userLoad.map(u => u.total_hours), 1);
 
+    const showDetails = alwaysExpanded || expanded;
+
     return (
         <div className="card" style={{ marginBottom: '2rem' }}>
             <div
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                onClick={() => setExpanded(!expanded)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: alwaysExpanded ? 'default' : 'pointer' }}
+                onClick={() => !alwaysExpanded && setExpanded(!expanded)}
             >
                 <h3 style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     👥 Team Manloading
@@ -46,7 +48,9 @@ export default function ManloadingChart({ manloading, users = [] }) {
                         {tasksPerPerson} tasks/person
                     </span>
                 </h3>
-                <span style={{ color: 'var(--text-muted)', fontSize: '1.25rem' }}>{expanded ? '−' : '+'}</span>
+                {!alwaysExpanded && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '1.25rem' }}>{expanded ? '−' : '+'}</span>
+                )}
             </div>
 
             {/* Summary Row - Always Visible */}
@@ -72,7 +76,7 @@ export default function ManloadingChart({ manloading, users = [] }) {
             </div>
 
             {/* Expanded Details */}
-            {expanded && (
+            {showDetails && (
                 <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--card-border)', paddingTop: '1.5rem' }}>
                     {/* Per-User Load */}
                     <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>Load by Team Member</h4>

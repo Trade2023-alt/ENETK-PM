@@ -63,11 +63,7 @@ export default async function SchedulePage() {
             </div>
 
             {/* Manloading Overview */}
-            <ManloadingChart manloading={manloading} users={users || []} />
-
-            <div style={{ marginBottom: '3rem' }}>
-                <JobGantt jobs={jobs} users={users || []} />
-            </div>
+            <ManloadingChart manloading={manloading} users={users || []} alwaysExpanded={true} />
 
             <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Monthly Calendar</h3>
             <Calendar jobs={jobs} subTasks={subTasks} users={users || []} />
