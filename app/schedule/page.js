@@ -3,10 +3,13 @@ import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Calendar from '@/components/Calendar';
-import JobGantt from '@/components/JobGantt';
 import ManloadingChart from '@/components/ManloadingChart';
+import OnCallEditor from '@/components/OnCallEditor';
 import Link from 'next/link';
 import { getManloadingData } from '@/app/actions/roadmap';
+import { getOnCallScheduleForMonth } from '@/app/actions/oncall';
+
+export const dynamic = 'force-dynamic';
 
 export default async function SchedulePage() {
     const cookieStore = await cookies();
@@ -40,6 +43,10 @@ export default async function SchedulePage() {
     // Fetch manloading data
     const manloading = await getManloadingData();
 
+    // Fetch on-call schedule for current and next 2 months
+    const today = new Date();
+    const onCallSchedule = await getOnCallScheduleForMonth(today.getFullYear(), today.getMonth());
+
     // Transform for UI (GROUP_CONCAT equivalent)
     const jobs = (jobsRaw || []).map(job => ({
         ...job,
@@ -65,8 +72,11 @@ export default async function SchedulePage() {
             {/* Manloading Overview */}
             <ManloadingChart manloading={manloading} users={users || []} alwaysExpanded={true} />
 
+            {/* On-Call Editor (Admin Only) */}
+            <OnCallEditor initialSchedule={onCallSchedule} userRole={userRole} />
+
             <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem' }}>Monthly Calendar</h3>
-            <Calendar jobs={jobs} subTasks={subTasks} users={users || []} />
+            <Calendar jobs={jobs} subTasks={subTasks} users={users || []} onCallSchedule={onCallSchedule} />
         </div>
     );
 }

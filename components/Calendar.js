@@ -3,8 +3,8 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 
-// On-call rotation roster (in order)
-const ON_CALL_ROSTER = [
+// Default on-call rotation roster (fallback if no schedule passed)
+const DEFAULT_ROSTER = [
     'Matt Huber',
     'Loren McCray',
     'Rami Douri',
@@ -13,25 +13,19 @@ const ON_CALL_ROSTER = [
     'Jack Morris',
     'Kyle Merrill'
 ];
-
-// Start date for the rotation (Monday of the first week)
 const ROTATION_START_DATE = new Date('2026-01-20');
 
-// Calculate who is on call for a specific date
-function getOnCallForDate(date) {
+function getDefaultOnCallForDate(date) {
     const startDate = new Date(ROTATION_START_DATE);
     const msPerWeek = 7 * 24 * 60 * 60 * 1000;
     const weeksSinceStart = Math.floor((date - startDate) / msPerWeek);
-
     const adjustedWeeks = weeksSinceStart < 0
-        ? ON_CALL_ROSTER.length - (Math.abs(weeksSinceStart) % ON_CALL_ROSTER.length)
+        ? DEFAULT_ROSTER.length - (Math.abs(weeksSinceStart) % DEFAULT_ROSTER.length)
         : weeksSinceStart;
-
-    const rosterIndex = adjustedWeeks % ON_CALL_ROSTER.length;
-    return ON_CALL_ROSTER[rosterIndex];
+    return DEFAULT_ROSTER[adjustedWeeks % DEFAULT_ROSTER.length];
 }
 
-export default function Calendar({ jobs, subTasks = [], users = [] }) {
+export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedule = [] }) {
     const [monthOffset, setMonthOffset] = useState(0);
     const [showSubTasks, setShowSubTasks] = useState(true);
     const [showOnCall, setShowOnCall] = useState(true);
@@ -43,7 +37,7 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
     const month = currentMonth.getMonth();
 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDay = new Date(year, month, 1).getDay(); // 0 is Sunday
+    const firstDay = new Date(year, month, 1).getDay();
 
     const days = [];
     for (let i = 0; i < firstDay; i++) {
@@ -53,18 +47,33 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
         days.push(new Date(year, month, i));
     }
 
-    // Calculate on-call for each day (only show on Mondays for week start)
-    const onCallByDate = useMemo(() => {
-        const result = {};
-        days.forEach(day => {
-            if (day) {
-                result[day.toISOString().split('T')[0]] = getOnCallForDate(day);
-            }
-        });
-        return result;
-    }, [days]);
+    // Build on-call lookup from schedule or use fallback
+    const onCallByWeek = useMemo(() => {
+        const lookup = {};
+        if (onCallSchedule.length > 0) {
+            onCallSchedule.forEach(s => {
+                lookup[s.weekStart] = { person: s.person, isOverride: s.isOverride };
+            });
+        }
+        return lookup;
+    }, [onCallSchedule]);
 
-    // Get the on-call person for today
+    // Get on-call person for a date
+    const getOnCallForDate = (date) => {
+        // Find the Monday of this week
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        d.setDate(diff);
+        const weekStart = d.toISOString().split('T')[0];
+
+        if (onCallByWeek[weekStart]) {
+            return onCallByWeek[weekStart];
+        }
+        return { person: getDefaultOnCallForDate(date), isOverride: false };
+    };
+
+    // Get current on-call person
     const currentOnCall = getOnCallForDate(today);
 
     // Filter Items
@@ -79,14 +88,12 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
     // Group jobs and subtasks by date
     const itemsByDate = {};
 
-    // Add Jobs
     filteredJobs.forEach(job => {
         const dateKey = new Date(job.scheduled_date).toISOString().split('T')[0];
         if (!itemsByDate[dateKey]) itemsByDate[dateKey] = [];
         itemsByDate[dateKey].push({ ...job, type: 'job' });
     });
 
-    // Add SubTasks
     if (showSubTasks) {
         filteredSubTasks.forEach(task => {
             if (task.due_date) {
@@ -107,7 +114,9 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
             {showOnCall && (
                 <div style={{
                     padding: '0.75rem 1rem',
-                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.15))',
+                    background: currentOnCall.isOverride
+                        ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(239, 68, 68, 0.15))'
+                        : 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.15))',
                     borderBottom: '1px solid rgba(239, 68, 68, 0.2)',
                     display: 'flex',
                     alignItems: 'center',
@@ -115,7 +124,18 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
                 }}>
                     <span style={{ fontSize: '1.25rem' }}>📞</span>
                     <span style={{ fontWeight: 600, color: '#ef4444' }}>On-Call This Week:</span>
-                    <span style={{ fontWeight: 700, color: 'var(--foreground)' }}>{currentOnCall}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--foreground)' }}>{currentOnCall.person}</span>
+                    {currentOnCall.isOverride && (
+                        <span style={{
+                            fontSize: '0.6rem',
+                            background: 'rgba(139, 92, 246, 0.2)',
+                            color: '#8b5cf6',
+                            padding: '0.1rem 0.3rem',
+                            borderRadius: '4px'
+                        }}>
+                            OVERRIDE
+                        </span>
+                    )}
                 </div>
             )}
 
@@ -159,7 +179,7 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
                 {days.map((day, idx) => {
                     const isMonday = day && day.getDay() === 1;
                     const dateKey = day ? day.toISOString().split('T')[0] : null;
-                    const onCallPerson = dateKey ? onCallByDate[dateKey] : null;
+                    const onCall = day ? getOnCallForDate(day) : null;
 
                     return (
                         <div key={idx} style={{
@@ -183,18 +203,17 @@ export default function Calendar({ jobs, subTasks = [], users = [] }) {
                                         }}>
                                             {day.getDate()}
                                         </span>
-                                        {/* Show on-call indicator on Mondays */}
                                         {showOnCall && isMonday && (
                                             <span style={{
                                                 fontSize: '0.55rem',
-                                                background: 'rgba(239, 68, 68, 0.15)',
-                                                color: '#ef4444',
+                                                background: onCall.isOverride ? 'rgba(139, 92, 246, 0.2)' : 'rgba(239, 68, 68, 0.15)',
+                                                color: onCall.isOverride ? '#8b5cf6' : '#ef4444',
                                                 padding: '0.1rem 0.3rem',
                                                 borderRadius: '4px',
                                                 fontWeight: 600,
                                                 whiteSpace: 'nowrap'
-                                            }} title={`On-Call: ${onCallPerson}`}>
-                                                📞 {onCallPerson?.split(' ')[0]}
+                                            }} title={`On-Call: ${onCall.person}${onCall.isOverride ? ' (Override)' : ''}`}>
+                                                📞 {onCall.person?.split(' ')[0]}
                                             </span>
                                         )}
                                     </div>
