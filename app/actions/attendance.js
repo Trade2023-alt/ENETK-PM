@@ -11,7 +11,6 @@ export async function checkIn(notes = '') {
     if (!userId) return { error: 'Not authenticated' };
 
     try {
-        // Check if already checked in (active session)
         const { data: existingSessions, error: checkError } = await supabase
             .from('attendance')
             .select('id')
@@ -24,7 +23,6 @@ export async function checkIn(notes = '') {
             return { error: 'You are already checked in.' };
         }
 
-        // Attempt insert - using a clean object without notes if it might be missing
         const insertData = { user_id: userId };
         if (notes) insertData.notes = notes;
 
@@ -34,9 +32,6 @@ export async function checkIn(notes = '') {
 
         if (error) {
             console.error('Attendance insertion error:', error);
-            if (error.code === '42703') { // Column does not exist
-                return { error: 'Database schema mismatch. Please run the SQL migration to add the "notes" column.' };
-            }
             throw error;
         }
 
@@ -105,119 +100,80 @@ export async function getAttendanceStatus() {
     }
 }
 
-export async function getAttendanceStats() {
+/**
+ * Get hours worked per day per user for the last N days
+ */
+export async function getHoursWorkedTrend(days = 30) {
     try {
-        // 1. Fetch Users - resilient to company missing
-        let { data: users, error: userError } = await supabase
+        // Fetch all users
+        const { data: users, error: userError } = await supabase
             .from('users')
-            .select('id, username, company')
+            .select('id, username')
             .order('username');
 
-        if (userError) {
-            // Fallback if 'company' is missing
-            const { data: fallbackUsers, error: fbErr } = await supabase
-                .from('users')
-                .select('id, username')
-                .order('username');
-            if (fbErr) throw fbErr;
-            users = fallbackUsers;
-        }
+        if (userError) throw userError;
 
-        // 2. Fetch Logs - resilient to company missing
-        let { data: logs, error: logError } = await supabase
+        // Fetch attendance logs for the date range
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        const { data: logs, error: logError } = await supabase
             .from('attendance')
-            .select(`
-                *,
-                user:users(username, company)
-            `)
-            .order('check_in', { ascending: false });
+            .select('*')
+            .gte('check_in', startDate.toISOString())
+            .order('check_in', { ascending: true });
 
-        if (logError) {
-            // Fallback join
-            const { data: fallbackLogs, error: fbLogErr } = await supabase
-                .from('attendance')
-                .select(`
-                    *,
-                    user:users(username)
-                `)
-                .order('check_in', { ascending: false });
-            if (fbLogErr) throw fbLogErr;
-            logs = fallbackLogs;
-        }
+        if (logError) throw logError;
 
-        if (!logs) logs = [];
+        // Build hours by date and user
+        const hoursByDateUser = {};
+        const dates = [];
 
-        // 3. Process Stats (FORCED MST OFFSET for punctuality check)
-        const stats = {
-            totalLate: 0,
-            totalPartial: 0,
-            todayAbsent: 0,
-            logs: logs
-                .filter(log => log.check_in)
-                .map(log => {
-                    const checkInUTC = new Date(log.check_in);
-                    const checkOutUTC = log.check_out ? new Date(log.check_out) : null;
-
-                    // Convert to MST (UTC-7) for logic checks
-                    const checkInMST = new Date(checkInUTC.getTime() - (7 * 60 * 60 * 1000));
-
-                    // Late check? 06:15 AM MST
-                    const hour = checkInMST.getUTCHours();
-                    const minute = checkInMST.getUTCMinutes();
-                    const isLate = (hour > 6) || (hour === 6 && minute > 15);
-
-                    let isPartial = false;
-                    let duration = 0;
-                    if (checkOutUTC) {
-                        duration = (checkOutUTC - checkInUTC) / (1000 * 60 * 60);
-                        isPartial = duration < 6;
-                    }
-
-                    if (isLate) stats.totalLate++;
-                    if (isPartial) stats.totalPartial++;
-
-                    return {
-                        ...log,
-                        isLate,
-                        isPartial,
-                        duration: duration.toFixed(2)
-                    };
-                })
-        };
-
-        // Today's Absences
-        const mstNow = new Date(Date.now() - (7 * 60 * 60 * 1000));
-        const todayStr = mstNow.toISOString().split('T')[0];
-        const todayLogs = logs.filter(l => l.check_in && l.check_in.startsWith(todayStr));
-        const userIdsWithLogs = new Set(todayLogs.map(l => l.user_id));
-
-        stats.todayAbsent = users.filter(u => !userIdsWithLogs.has(u.id)).length;
-
-        // Chart Data (Last 7 days)
-        const chartData = [];
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(Date.now() - (7 * 60 * 60 * 1000));
+        // Generate date array
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date();
             d.setDate(d.getDate() - i);
-            const dStr = d.toISOString().split('T')[0];
-            const dayLogs = logs.filter(l => l.check_in && l.check_in.startsWith(dStr));
-
-            chartData.push({
-                name: d.toLocaleDateString([], { weekday: 'short' }),
-                date: dStr,
-                present: new Set(dayLogs.map(l => l.user_id)).size,
-                late: dayLogs.filter(l => {
-                    const cin = new Date(new Date(l.check_in).getTime() - (7 * 60 * 60 * 1000));
-                    const h = cin.getUTCHours();
-                    const m = cin.getUTCMinutes();
-                    return (h > 6) || (h === 6 && m > 15);
-                }).length
+            const dateStr = d.toISOString().split('T')[0];
+            dates.push(dateStr);
+            hoursByDateUser[dateStr] = {};
+            users.forEach(u => {
+                hoursByDateUser[dateStr][u.id] = 0;
             });
         }
-        stats.chartData = chartData;
 
-        return stats;
+        // Calculate hours for each log
+        (logs || []).forEach(log => {
+            if (!log.check_in || !log.check_out) return;
+
+            const checkIn = new Date(log.check_in);
+            const checkOut = new Date(log.check_out);
+            const dateStr = checkIn.toISOString().split('T')[0];
+            const hours = (checkOut - checkIn) / (1000 * 60 * 60);
+
+            if (hoursByDateUser[dateStr] && hoursByDateUser[dateStr][log.user_id] !== undefined) {
+                hoursByDateUser[dateStr][log.user_id] += hours;
+            }
+        });
+
+        // Format for chart display
+        const chartData = dates.map(date => {
+            const entry = {
+                date,
+                label: new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+            };
+            users.forEach(u => {
+                entry[u.username] = parseFloat(hoursByDateUser[date][u.id].toFixed(2));
+            });
+            return entry;
+        });
+
+        return {
+            users: users || [],
+            chartData,
+            dates
+        };
     } catch (error) {
-        console.error('getAttendanceStats error:', error);
-        return { error: error.message };
+        console.error('getHoursWorkedTrend error:', error);
+        return { error: error.message, users: [], chartData: [], dates: [] };
     }
 }
