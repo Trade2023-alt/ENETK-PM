@@ -39,6 +39,7 @@ export default function Header({ userRole }) {
                         <Link href="/schedule" style={{ color: 'var(--text-muted)' }}>Schedule</Link>
                         <Link href="/inventory" style={{ color: 'var(--text-muted)' }}>Stock</Link>
                         <Link href="/quotes" style={{ color: 'var(--text-muted)' }}>Quotes</Link>
+                        <Link href="/roadmap" style={{ color: 'var(--text-muted)' }}>Road Map</Link>
                         <Link href="/ai-chat" style={{ color: 'var(--primary)', fontWeight: 800 }}>AI Agent</Link>
                     </div>
 
