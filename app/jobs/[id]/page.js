@@ -7,7 +7,9 @@ import JobStatusUpdate from '@/components/JobStatusUpdate';
 import SubTaskList from '@/components/SubTaskList';
 import EmailReminderButton from '@/components/EmailReminderButton';
 import JobMilestones from '@/components/JobMilestones';
+import LessonsLearned from '@/components/LessonsLearned';
 import { getJobMilestones } from '@/app/actions/roadmap';
+import { getLessonsLearned } from '@/app/actions/lessons';
 
 export default async function JobDetailPage({ params }) {
     const cookieStore = await cookies();
@@ -140,6 +142,8 @@ export default async function JobDetailPage({ params }) {
                     <JobMilestones jobId={job.id} initialMilestones={await getJobMilestones(job.id)} subTasks={subTasks} />
 
                     <SubTaskList jobId={job.id} subTasks={subTasks} users={users} />
+
+                    <LessonsLearned jobId={job.id} initialLessons={await getLessonsLearned(job.id)} />
                 </div>
             </div>
         );

@@ -6,7 +6,7 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
     // Support both new 'items' prop and legacy 'milestones' prop
     const data = items.length > 0 ? items : milestones;
 
-    const { minDate, maxDate, totalDays, months } = useMemo(() => {
+    const { minDate, maxDate, totalDays, months, days } = useMemo(() => {
         if (!data.length) return {};
 
         let start = new Date(Math.min(...data.map(m => new Date(m.start_date))));
@@ -30,7 +30,23 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
             curr.setMonth(curr.getMonth() + 1);
         }
 
-        return { minDate: start, maxDate: end, totalDays: diff, months: monthMarkers };
+        // Generate day markers (for vertical lines)
+        const dayMarkers = [];
+        let dayCurr = new Date(start);
+        while (dayCurr <= end) {
+            const dayOfWeek = dayCurr.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isMonday = dayOfWeek === 1;
+            dayMarkers.push({
+                date: new Date(dayCurr),
+                left: ((dayCurr - start) / (1000 * 60 * 60 * 24) / diff) * 100,
+                isWeekend,
+                isMonday
+            });
+            dayCurr.setDate(dayCurr.getDate() + 1);
+        }
+
+        return { minDate: start, maxDate: end, totalDays: diff, months: monthMarkers, days: dayMarkers };
     }, [data]);
 
     if (!data.length) return null;
@@ -64,17 +80,22 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
         }
     };
 
+    // Today marker position
+    const today = new Date();
+    const todayPosition = ((today - minDate) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+    const showToday = todayPosition >= 0 && todayPosition <= 100;
+
     return (
         <div style={{ minWidth: '800px', position: 'relative', paddingBottom: '1rem' }}>
             {/* Timeline Header */}
-            <div style={{ height: '30px', position: 'relative', borderBottom: '1px solid #333', marginBottom: '1rem' }}>
+            <div style={{ height: '30px', position: 'relative', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '1rem' }}>
                 {months.map((m, i) => (
                     <div key={i} style={{
                         position: 'absolute',
                         left: `${m.left}%`,
                         fontSize: '10px',
-                        color: '#888',
-                        borderLeft: '1px solid rgba(255,255,255,0.05)',
+                        color: 'rgba(255,255,255,0.6)',
+                        borderLeft: '1px solid rgba(255,255,255,0.15)',
                         height: `${Math.min(data.length * 32 + 50, 400)}px`,
                         zIndex: 0,
                         paddingLeft: '4px',
@@ -83,6 +104,54 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
                         {m.name}
                     </div>
                 ))}
+            </div>
+
+            {/* Day vertical dashed lines */}
+            <div style={{ position: 'absolute', top: '30px', left: 0, right: 0, bottom: '80px', pointerEvents: 'none', zIndex: 0 }}>
+                {days?.map((day, i) => (
+                    <div
+                        key={i}
+                        style={{
+                            position: 'absolute',
+                            left: `${day.left}%`,
+                            top: 0,
+                            bottom: 0,
+                            width: '1px',
+                            borderLeft: day.isMonday
+                                ? '1px dashed rgba(255,255,255,0.2)'
+                                : day.isWeekend
+                                    ? '1px dotted rgba(255,255,255,0.05)'
+                                    : '1px dashed rgba(255,255,255,0.08)',
+                            pointerEvents: 'none'
+                        }}
+                    />
+                ))}
+
+                {/* Today marker */}
+                {showToday && (
+                    <div style={{
+                        position: 'absolute',
+                        left: `${todayPosition}%`,
+                        top: '-30px',
+                        bottom: 0,
+                        width: '2px',
+                        background: 'linear-gradient(to bottom, #ef4444, transparent)',
+                        zIndex: 5
+                    }}>
+                        <span style={{
+                            position: 'absolute',
+                            top: '-18px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            fontSize: '8px',
+                            color: '#ef4444',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap'
+                        }}>
+                            TODAY
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Rows */}
@@ -94,7 +163,7 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
                             flexShrink: 0,
                             fontSize: '0.7rem',
                             fontWeight: 600,
-                            color: 'var(--text-muted)',
+                            color: 'rgba(255,255,255,0.7)',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -106,18 +175,18 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
                                 fontSize: '0.6rem',
                                 padding: '1px 4px',
                                 borderRadius: '3px',
-                                background: item.type === 'subtask' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                                color: item.type === 'subtask' ? '#a78bfa' : 'var(--primary)'
+                                background: item.type === 'subtask' ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 0, 0, 0.3)',
+                                color: item.type === 'subtask' ? '#c4b5fd' : '#fca5a5'
                             }}>
                                 {item.type === 'subtask' ? 'T' : 'M'}
                             </span>
                             {showJobLabels && item.job ? (
                                 <span title={`${item.job.title}: ${item.title}`}>
-                                    <span style={{ color: 'var(--primary)', fontSize: '0.6rem' }}>{item.job.title.substring(0, 10)}:</span> {item.title}
+                                    <span style={{ color: '#fca5a5', fontSize: '0.6rem' }}>{item.job.title.substring(0, 10)}:</span> {item.title}
                                 </span>
                             ) : item.title}
                         </div>
-                        <div style={{ flex: 1, height: '22px', position: 'relative', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
+                        <div style={{ flex: 1, height: '22px', position: 'relative', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
                             <div
                                 style={{
                                     position: 'absolute',
@@ -147,7 +216,7 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
 
             {/* Legend */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '2rem', fontSize: '0.7rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderRight: '1px solid #333', paddingRight: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderRight: '1px solid rgba(255,255,255,0.2)', paddingRight: '1rem' }}>
                     <span style={{ fontWeight: 600 }}>Milestones:</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -166,7 +235,7 @@ export default function RoadmapGantt({ items = [], milestones = [], showJobLabel
                     <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '2px' }} />
                     <span>Delayed</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderLeft: '1px solid #333', paddingLeft: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '1rem' }}>
                     <span style={{ fontWeight: 600 }}>Sub-Tasks:</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
