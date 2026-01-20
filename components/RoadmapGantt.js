@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 
-export default function RoadmapGantt({ milestones }) {
+export default function RoadmapGantt({ milestones, showJobLabels = false }) {
     const { minDate, maxDate, totalDays, months } = useMemo(() => {
         if (!milestones.length) return {};
 
@@ -77,8 +77,10 @@ export default function RoadmapGantt({ milestones }) {
             <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {milestones.map((m, i) => (
                     <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '150px', flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {m.title}
+                        <div style={{ width: showJobLabels ? '200px' : '150px', flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {showJobLabels && m.job ? (
+                                <><span style={{ color: 'var(--primary)', fontSize: '0.65rem' }}>{m.job.title}:</span> {m.title}</>
+                            ) : m.title}
                         </div>
                         <div style={{ flex: 1, height: '24px', position: 'relative', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
                             <div
