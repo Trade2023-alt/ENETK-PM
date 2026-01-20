@@ -177,3 +177,156 @@ export async function getHoursWorkedTrend(days = 30) {
         return { error: error.message, users: [], chartData: [], dates: [] };
     }
 }
+
+/**
+ * Get attendance metrics: late arrivals, partial days, missed days
+ * Late = clock in after 6:10 AM (MST)
+ * Partial = less than 8 hours (Mon-Fri only)
+ * Missed = no attendance on weekday (Mon-Fri only)
+ */
+export async function getAttendanceMetrics(days = 30) {
+    try {
+        // Fetch all users
+        const { data: users, error: userError } = await supabase
+            .from('users')
+            .select('id, username')
+            .order('username');
+
+        if (userError) throw userError;
+
+        // Fetch attendance logs
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        const { data: logs, error: logError } = await supabase
+            .from('attendance')
+            .select('*')
+            .gte('check_in', startDate.toISOString())
+            .order('check_in', { ascending: true });
+
+        if (logError) throw logError;
+
+        // Initialize per-user metrics
+        const userMetrics = {};
+        users.forEach(u => {
+            userMetrics[u.id] = {
+                username: u.username,
+                lateDays: 0,
+                onTimeDays: 0,
+                partialDays: 0,
+                fullDays: 0,
+                missedDays: 0,
+                workedDays: 0
+            };
+        });
+
+        // Generate weekday dates (Mon-Fri only)
+        const weekdayDates = [];
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dayOfWeek = d.getDay();
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday=1, Friday=5
+                weekdayDates.push(d.toISOString().split('T')[0]);
+            }
+        }
+
+        // Track attendance per user per date
+        const userDateAttendance = {};
+        users.forEach(u => {
+            userDateAttendance[u.id] = {};
+            weekdayDates.forEach(date => {
+                userDateAttendance[u.id][date] = { attended: false, hours: 0, isLate: false };
+            });
+        });
+
+        // Process logs
+        (logs || []).forEach(log => {
+            if (!log.check_in) return;
+
+            const checkIn = new Date(log.check_in);
+            const dateStr = checkIn.toISOString().split('T')[0];
+            const dayOfWeek = checkIn.getDay();
+
+            // Skip weekends
+            if (dayOfWeek === 0 || dayOfWeek === 6) return;
+
+            // Check if late (after 6:10 AM MST)
+            // Convert to MST (UTC-7)
+            const checkInMST = new Date(checkIn.getTime() - (7 * 60 * 60 * 1000));
+            const hour = checkInMST.getUTCHours();
+            const minute = checkInMST.getUTCMinutes();
+            const isLate = (hour > 6) || (hour === 6 && minute > 10);
+
+            // Calculate hours worked
+            let hours = 0;
+            if (log.check_out) {
+                const checkOut = new Date(log.check_out);
+                hours = (checkOut - checkIn) / (1000 * 60 * 60);
+            }
+
+            if (userDateAttendance[log.user_id] && userDateAttendance[log.user_id][dateStr]) {
+                userDateAttendance[log.user_id][dateStr].attended = true;
+                userDateAttendance[log.user_id][dateStr].hours += hours;
+                if (isLate) userDateAttendance[log.user_id][dateStr].isLate = true;
+            }
+        });
+
+        // Calculate final metrics
+        users.forEach(u => {
+            weekdayDates.forEach(date => {
+                const dayData = userDateAttendance[u.id][date];
+                if (dayData.attended) {
+                    userMetrics[u.id].workedDays++;
+                    if (dayData.isLate) {
+                        userMetrics[u.id].lateDays++;
+                    } else {
+                        userMetrics[u.id].onTimeDays++;
+                    }
+                    if (dayData.hours < 8) {
+                        userMetrics[u.id].partialDays++;
+                    } else {
+                        userMetrics[u.id].fullDays++;
+                    }
+                } else {
+                    userMetrics[u.id].missedDays++;
+                }
+            });
+        });
+
+        // Calculate totals for pie charts
+        let totalLate = 0, totalOnTime = 0;
+        let totalPartial = 0, totalFull = 0;
+        let totalMissed = 0, totalWorked = 0;
+
+        Object.values(userMetrics).forEach(m => {
+            totalLate += m.lateDays;
+            totalOnTime += m.onTimeDays;
+            totalPartial += m.partialDays;
+            totalFull += m.fullDays;
+            totalMissed += m.missedDays;
+            totalWorked += m.workedDays;
+        });
+
+        return {
+            users: users || [],
+            userMetrics,
+            weekdayCount: weekdayDates.length,
+            totals: {
+                late: totalLate,
+                onTime: totalOnTime,
+                partial: totalPartial,
+                full: totalFull,
+                missed: totalMissed,
+                worked: totalWorked
+            },
+            // Per-user data for pie charts
+            lateByUser: users.map(u => ({ name: u.username, value: userMetrics[u.id].lateDays })).filter(d => d.value > 0),
+            partialByUser: users.map(u => ({ name: u.username, value: userMetrics[u.id].partialDays })).filter(d => d.value > 0),
+            missedByUser: users.map(u => ({ name: u.username, value: userMetrics[u.id].missedDays })).filter(d => d.value > 0)
+        };
+    } catch (error) {
+        console.error('getAttendanceMetrics error:', error);
+        return { error: error.message };
+    }
+}
