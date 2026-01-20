@@ -1,13 +1,43 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createMilestone, deleteMilestone, updateMilestone } from '@/app/actions/roadmap';
 import RoadmapGantt from './RoadmapGantt';
 
-export default function JobMilestones({ jobId, initialMilestones }) {
+export default function JobMilestones({ jobId, initialMilestones, subTasks = [] }) {
     const [milestones, setMilestones] = useState(initialMilestones);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showMilestones, setShowMilestones] = useState(true);
+    const [showSubTasks, setShowSubTasks] = useState(true);
+
+    // Transform subtasks to roadmap format
+    const formattedSubTasks = useMemo(() => {
+        return subTasks
+            .filter(st => st.due_date)
+            .map(st => ({
+                id: `subtask-${st.id}`,
+                originalId: st.id,
+                title: st.title,
+                type: 'subtask',
+                start_date: st.due_date,
+                end_date: st.due_date,
+                status: st.status === 'Complete' ? 'Achieved' : st.status === 'In Progress' ? 'In Progress' : 'Planned',
+                priority: st.priority || 'Normal'
+            }));
+    }, [subTasks]);
+
+    // Combine items based on filters
+    const displayItems = useMemo(() => {
+        let items = [];
+        if (showMilestones) {
+            items = [...items, ...milestones.map(m => ({ ...m, type: 'milestone' }))];
+        }
+        if (showSubTasks) {
+            items = [...items, ...formattedSubTasks];
+        }
+        return items.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+    }, [milestones, formattedSubTasks, showMilestones, showSubTasks]);
 
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -42,17 +72,27 @@ export default function JobMilestones({ jobId, initialMilestones }) {
 
     return (
         <div className="card" style={{ marginTop: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <h3 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     🗺️ Project Roadmap
                 </h3>
-                <button
-                    onClick={() => setIsAdding(!isAdding)}
-                    className="btn"
-                    style={{ fontSize: '0.875rem', background: 'var(--card-border)' }}
-                >
-                    {isAdding ? 'Cancel' : '+ Add Milestone'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={showMilestones} onChange={(e) => setShowMilestones(e.target.checked)} />
+                        Milestones
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={showSubTasks} onChange={(e) => setShowSubTasks(e.target.checked)} />
+                        Sub-Tasks
+                    </label>
+                    <button
+                        onClick={() => setIsAdding(!isAdding)}
+                        className="btn"
+                        style={{ fontSize: '0.75rem', background: 'var(--card-border)', padding: '0.4rem 0.75rem' }}
+                    >
+                        {isAdding ? 'Cancel' : '+ Milestone'}
+                    </button>
+                </div>
             </div>
 
             {isAdding && (
@@ -92,13 +132,13 @@ export default function JobMilestones({ jobId, initialMilestones }) {
                 </form>
             )}
 
-            {milestones.length > 0 ? (
+            {displayItems.length > 0 ? (
                 <>
                     <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-                        <RoadmapGantt milestones={milestones} />
+                        <RoadmapGantt items={displayItems} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {milestones.map(m => (
+                        {displayItems.filter(item => item.type === 'milestone').map(m => (
                             <div key={m.id} style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
@@ -139,7 +179,7 @@ export default function JobMilestones({ jobId, initialMilestones }) {
                 </>
             ) : (
                 <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    No milestones yet. Add one to track project phases.
+                    No items to display. Add milestones or ensure sub-tasks have due dates.
                 </div>
             )}
         </div>

@@ -137,7 +137,7 @@ export default async function JobDetailPage({ params }) {
 
                     <JobStatusUpdate job={{ ...job, used_hours: job.actual_hours }} allUsers={users} />
 
-                    <JobMilestones jobId={job.id} initialMilestones={await getJobMilestones(job.id)} />
+                    <JobMilestones jobId={job.id} initialMilestones={await getJobMilestones(job.id)} subTasks={subTasks} />
 
                     <SubTaskList jobId={job.id} subTasks={subTasks} users={users} />
                 </div>

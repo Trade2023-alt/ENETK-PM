@@ -4,7 +4,9 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Calendar from '@/components/Calendar';
 import JobGantt from '@/components/JobGantt';
+import ManloadingChart from '@/components/ManloadingChart';
 import Link from 'next/link';
+import { getManloadingData } from '@/app/actions/roadmap';
 
 export default async function SchedulePage() {
     const cookieStore = await cookies();
@@ -35,6 +37,9 @@ export default async function SchedulePage() {
         .select('id, username')
         .order('username');
 
+    // Fetch manloading data
+    const manloading = await getManloadingData();
+
     // Transform for UI (GROUP_CONCAT equivalent)
     const jobs = (jobsRaw || []).map(job => ({
         ...job,
@@ -57,6 +62,9 @@ export default async function SchedulePage() {
                 </Link>
             </div>
 
+            {/* Manloading Overview */}
+            <ManloadingChart manloading={manloading} users={users || []} />
+
             <div style={{ marginBottom: '3rem' }}>
                 <JobGantt jobs={jobs} users={users || []} />
             </div>
@@ -66,4 +74,3 @@ export default async function SchedulePage() {
         </div>
     );
 }
-

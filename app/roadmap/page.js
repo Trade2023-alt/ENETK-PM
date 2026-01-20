@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
-import { getMilestones } from '@/app/actions/roadmap';
+import { getMilestones, getSubTasksForRoadmap, getManloadingData } from '@/app/actions/roadmap';
+import { supabase } from '@/lib/supabase';
 import RoadmapClient from '@/components/RoadmapClient';
 
 export const dynamic = 'force-dynamic';
@@ -15,12 +16,26 @@ export default async function RoadmapPage() {
         redirect('/login');
     }
 
-    const milestones = await getMilestones();
+    // Fetch all data in parallel
+    const [milestones, subTasks, manloading, usersResult] = await Promise.all([
+        getMilestones(),
+        getSubTasksForRoadmap(),
+        getManloadingData(),
+        supabase.from('users').select('id, username').order('username')
+    ]);
+
+    const users = usersResult.data || [];
 
     return (
         <div className="container" style={{ paddingBottom: '4rem' }}>
             <Header userRole={userRole} />
-            <RoadmapClient initialMilestones={milestones} userRole={userRole} />
+            <RoadmapClient
+                initialMilestones={milestones}
+                initialSubTasks={subTasks}
+                manloading={manloading}
+                users={users}
+                userRole={userRole}
+            />
         </div>
     );
 }
