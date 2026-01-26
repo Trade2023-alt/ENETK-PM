@@ -17,6 +17,9 @@ export const metadata = {
   description: "ENETK Project Management Dashboard",
   icons: {
     icon: "/logo.webp",
+  },
+  other: {
+    "google-adsense-account": "ca-pub-1998029080796042"
   }
 };
 
