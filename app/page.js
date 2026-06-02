@@ -4,8 +4,6 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import DashboardClient from '@/components/DashboardClient';
-import AttendanceModule from '@/components/AttendanceModule';
-import { getAttendanceStatus } from './actions/attendance';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,13 +16,10 @@ export default async function Home() {
     redirect('/login');
   }
 
-  const attendanceStatus = await getAttendanceStatus();
-
   let userProfile = null;
-  let uniqueClockedIn = [];
 
   try {
-    // 1. Fetch current user profile - resilient to missing 'company' column
+    // Fetch current user profile
     const { data, error } = await supabase
       .from('users')
       .select('username, company')
@@ -40,35 +35,6 @@ export default async function Home() {
         .eq('id', userId)
         .maybeSingle();
       userProfile = fallbackData;
-    }
-
-    // 2. Fetch who else is clocked in - resilient join
-    const { data: clockedData, error: clockedError } = await supabase
-      .from('attendance')
-      .select(`
-          user_id,
-          user:users(username, company)
-      `)
-      .is('check_out', null)
-      .order('check_in', { ascending: false });
-
-    if (!clockedError && clockedData) {
-      uniqueClockedIn = Array.from(new Set(clockedData.map(u => u.user_id)))
-        .map(id => clockedData.find(u => u.user_id === id));
-    } else if (clockedError) {
-      // Fallback query if the join with 'company' fails
-      const { data: fallbackClocked } = await supabase
-        .from('attendance')
-        .select(`
-            user_id,
-            user:users(username)
-        `)
-        .is('check_out', null);
-
-      if (fallbackClocked) {
-        uniqueClockedIn = Array.from(new Set(fallbackClocked.map(u => u.user_id)))
-          .map(id => fallbackClocked.find(u => u.user_id === id));
-      }
     }
   } catch (err) {
     console.error('Safe dashboard fetch error:', err);
@@ -87,7 +53,7 @@ export default async function Home() {
             `)
       .order('scheduled_date', { ascending: true });
 
-    // 1. Filter by Assignment for non-admins
+    // Filter by Assignment for non-admins
     if (userRole !== 'admin') {
       const { data: userAssignments } = await supabase
         .from('job_assignments')
@@ -117,39 +83,15 @@ export default async function Home() {
     <div className="container" style={{ paddingBottom: '4rem' }}>
       <Header userRole={userRole} />
 
-      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Welcome, {userProfile?.username || 'User'}!</h1>
           <p style={{ color: 'var(--text-muted)' }}>{userProfile?.company || 'ENETK'} Project Management Dashboard</p>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Status</div>
-          <div style={{ color: attendanceStatus ? '#10b981' : '#ef4444', fontWeight: 600 }}>
-            {attendanceStatus ? '● On Shift' : '○ Off Clock'}
-          </div>
-        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '3rem' }}>
-        <AttendanceModule initialStatus={attendanceStatus} />
-
-        <div className="card" style={{ borderLeft: '4px solid #3b82f6' }}>
-          <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Live Team Status</h3>
-          {uniqueClockedIn.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {uniqueClockedIn.map((log, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
-                  <span style={{ height: '8px', width: '8px', borderRadius: '50%', background: '#10b981' }}></span>
-                  <span><strong>{log.user?.username}</strong></span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({log.user?.company || 'ENETK'})</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No one else is currently clocked in.</p>
-          )}
-        </div>
-
+      {/* Main Actions Panel Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '3rem' }}>
         <Link href="/pipeline" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid var(--primary)' }}>
           <div style={{ fontSize: '1.5rem' }}>💰</div>
           <div>

@@ -6,6 +6,7 @@ import Calendar from '@/components/Calendar';
 import ManloadingChart from '@/components/ManloadingChart';
 import OnCallEditor from '@/components/OnCallEditor';
 import Link from 'next/link';
+import MSProjectImportButton from '@/components/MSProjectImportButton';
 import { getManloadingData } from '@/app/actions/roadmap';
 import { getOnCallScheduleForMonth } from '@/app/actions/oncall';
 
@@ -64,9 +65,12 @@ export default async function SchedulePage() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1.5rem' }}>Master Schedule & Man-Loading</h2>
-                <Link href="/jobs/new" className="btn btn-primary">
-                    + Add Job
-                </Link>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <MSProjectImportButton />
+                    <Link href="/jobs/new" className="btn btn-primary">
+                        + Add Job
+                    </Link>
+                </div>
             </div>
 
             {/* Manloading Overview */}
