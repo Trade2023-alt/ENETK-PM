@@ -1,28 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  /* ENETK Brand Theme - Refined Light-Grey Glassmorphism */
-  --background: #f1f5f9; /* Slate-100 / Light grey */
-  --foreground: #0f172a; /* Slate-900 / Dark text for contrast */
+  /* ENETK Brand Theme - WWDC2025 Liquid Glassmorphism */
+  --background: #f8fafc; /* Slate-50 base */
+  --foreground: #0f172a; /* Slate-900 text */
 
-  /* Glassmorphism Variables */
-  --glass-bg: rgba(255, 255, 255, 0.45); /* Frosty translucent white */
-  --glass-border: rgba(255, 255, 255, 0.6); /* Translucent white border */
-  --glass-highlight: rgba(255, 255, 255, 0.85); /* Highlighted white border on hover */
-  --card-border: rgba(0, 0, 0, 0.07); /* For internal borders */
+  /* Liquid Glassmorphism Variables */
+  --glass-bg: rgba(255, 255, 255, 0.14); /* Super clear transparent white */
+  --glass-border: rgba(255, 255, 255, 0.45); /* Sharp specular highlight border */
+  --glass-highlight: rgba(255, 255, 255, 0.7); /* Brighter highlights on hover */
+  --card-border: rgba(255, 255, 255, 0.3);
 
   --primary: #9f1239; /* ENETK Deep Maroon */
-  --primary-hover: #be123c; /* Lighter Maroon */
+  --primary-hover: #be123c;
 
-  --text-muted: rgba(15, 23, 42, 0.6); /* Muted slate text */
+  --text-muted: rgba(15, 23, 42, 0.6);
 
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --radius: 1rem;
-  --shadow-glass: 0 8px 32px 0 rgba(15, 23, 42, 0.06); /* Lighter shadow for light theme */
+  --radius: 1.25rem; /* Smoother, larger corners like iOS/visionOS */
+  
+  /* Specular reflections: top edge highlight + internal gloss */
+  --shadow-glass: inset 0 1px 1px rgba(255, 255, 255, 0.5), 
+                  inset 0 12px 24px -12px rgba(255, 255, 255, 0.3),
+                  0 8px 32px 0 rgba(15, 23, 42, 0.05);
 }
 
 * {
@@ -33,11 +37,12 @@
 
 body {
   background-color: var(--background);
-  /* Elegant light mesh gradient with subtle rose/maroon glow */
+  /* Liquid-like multi-color soft mesh gradient for clear glass backdrop */
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(159, 18, 57, 0.04), transparent 40%),
-    radial-gradient(circle at 85% 30%, rgba(159, 18, 57, 0.06), transparent 45%),
-    radial-gradient(circle at 50% 80%, rgba(159, 18, 57, 0.03), transparent 40%);
+    radial-gradient(circle at 10% 20%, rgba(244, 63, 94, 0.09), transparent 35%),
+    radial-gradient(circle at 90% 40%, rgba(59, 130, 246, 0.07), transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.06), transparent 35%),
+    radial-gradient(circle at 30% 60%, rgba(159, 18, 57, 0.04), transparent 30%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
@@ -77,23 +82,30 @@ button { cursor: pointer; }
   color: inherit !important;
 }
 
-/* Core Glassmorphism Card */
+/* WWDC Specular Liquid Glass Card */
 .card {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--glass-border);
   border-left: 5px solid var(--primary); /* Left border default maroon */
   border-radius: var(--radius);
   padding: 1.5rem;
   box-shadow: var(--shadow-glass);
-  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, border-left-color 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-left-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.01);
+  background-color: rgba(255, 255, 255, 0.22);
   border-color: var(--glass-highlight);
-  box-shadow: 0 10px 40px 0 rgba(15, 23, 42, 0.12);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6),
+              inset 0 16px 32px -12px rgba(255, 255, 255, 0.45),
+              0 20px 48px -12px rgba(15, 23, 42, 0.12);
 }
 
 /* Job Status Borders for Job Cards */
@@ -113,42 +125,46 @@ button { cursor: pointer; }
   align-items: center;
   justify-content: center;
   padding: 0.625rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid var(--glass-border);
   font-size: 0.9375rem;
   color: var(--foreground);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 
+              0 2px 8px 0 rgba(0, 0, 0, 0.03);
 }
 
 .btn:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.45);
   border-color: var(--glass-highlight);
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 
+              0 4px 16px 0 rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
 }
 
 .btn-primary {
-  background: rgba(159, 18, 57, 0.8); /* Sleek glass maroon */
-  border-color: rgba(159, 18, 57, 0.9);
+  background: rgba(159, 18, 57, 0.85); /* Sleek glass maroon */
+  border-color: rgba(255, 255, 255, 0.2);
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(159, 18, 57, 0.15);
 }
 
 .btn-primary:hover {
-  background: rgba(159, 18, 57, 0.95);
-  border-color: var(--primary-hover);
+  background: rgba(159, 18, 57, 0.98);
+  border-color: rgba(255, 255, 255, 0.3);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(159, 18, 57, 0.2);
+  box-shadow: 0 6px 20px rgba(159, 18, 57, 0.25);
 }
 
 .input {
   display: block;
   width: 100%;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.35);
   border: 1px solid var(--glass-border);
   border-radius: 0.5rem;
   color: var(--foreground);
@@ -165,7 +181,7 @@ button { cursor: pointer; }
   outline: none;
   border-color: rgba(159, 18, 57, 0.5);
   box-shadow: 0 0 0 2px rgba(159, 18, 57, 0.2);
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .input option {
@@ -186,10 +202,11 @@ button { cursor: pointer; }
 .card td { color: var(--foreground); }
 
 header {
-  background: rgba(255, 255, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
   border-bottom: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 header a, header span, header button {
@@ -206,16 +223,17 @@ input[type="checkbox"] {
   -webkit-appearance: none;
   width: 1.25rem;
   height: 1.25rem;
-  border: 1.5px solid rgba(159, 18, 57, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
   border-radius: 0.375rem;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: inline-grid;
   place-content: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 
+              0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 input[type="checkbox"]::before {
@@ -223,7 +241,7 @@ input[type="checkbox"]::before {
   width: 0.625rem;
   height: 0.625rem;
   transform: scale(0);
-  transition: 120ms transform ease-in-out;
+  transition: 120ms transform cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: inset 1em 1em var(--primary);
   transform-origin: center;
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
@@ -235,7 +253,7 @@ input[type="checkbox"]:checked::before {
 
 input[type="checkbox"]:checked {
   border-color: var(--primary);
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.7);
   box-shadow: 0 0 8px rgba(159, 18, 57, 0.2);
 }
 
@@ -244,42 +262,45 @@ input[type="checkbox"]:checked {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 50%;
   padding: 0.5rem;
   color: var(--primary);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-  transition: all 0.3s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              0 2px 10px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .icon-badge:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.65);
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5),
+              0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 @utility glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-glass);
 }
 
 @utility glass-panel {
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--glass-border);
-  border-radius: 1.25rem;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+  border-radius: 1.5rem;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5),
+              0 8px 32px 0 rgba(0, 0, 0, 0.04);
 }
 
 @utility glass-input {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.35);
   border: 1px solid var(--glass-border);
   border-radius: 0.5rem;
   padding: 0.5rem 1rem;
