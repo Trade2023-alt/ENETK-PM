@@ -1,19 +1,15 @@
+@import "tailwindcss";
+
 :root {
-  /* ENETK Brand Theme - Light Mode */
-  --background: #e8e8e8;
-  /* Light Gray Background */
-  --foreground: #1a1a1a;
-  /* Dark Text for readability */
+  /* ENETK Brand Theme - Cool Glassmorphism Dark Grey/Maroon */
+  --background: #111827; /* dark grey */
+  --foreground: #e11d48; /* maroon/rose red for glowing text */
 
-  --card-bg: rgba(139, 40, 40, 0.85);
-  /* Semi-transparent Light Maroon */
-  --card-border: rgba(139, 0, 0, 0.3);
-  /* Maroon border */
+  --card-bg: rgba(17, 24, 39, 0.7);
+  --card-border: rgba(159, 18, 57, 0.5); /* maroon border */
 
-  --primary: #8b0000;
-  /* ENETK Deep Maroon */
-  --primary-hover: #b30000;
-  /* Lighter Maroon */
+  --primary: #9f1239; /* ENETK Deep Maroon */
+  --primary-hover: #be123c; /* Lighter Maroon */
 
   --text-muted: rgba(255, 255, 255, 0.7);
   /* Light Gray on maroon cards */
@@ -35,7 +31,12 @@
 }
 
 body {
-  background: var(--background);
+  background-color: #111827;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(30,41,59,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, rgba(136,19,55,0.3) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, rgba(15,23,42,1) 0, transparent 50%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
   line-height: 1.5;
@@ -204,3 +205,36 @@ header button {
 header .btn {
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
+
+@utility glass {
+  background-color: rgba(17, 24, 39, 0.5);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(159, 18, 57, 0.3); /* maroon border */
+  box-shadow: 0 0 20px rgba(159, 18, 57, 0.1);
+}
+
+@utility glass-panel {
+  background-color: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(159, 18, 57, 0.4);
+  border-radius: 1rem;
+  box-shadow: 0 0 30px rgba(159, 18, 57, 0.15);
+}
+
+@utility glass-input {
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(159, 18, 57, 0.3);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  color: #f1f5f9;
+  backdrop-filter: blur(4px);
+  transition-property: all;
+  transition-duration: 300ms;
+
+  &:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.7);
+    border-color: rgba(225, 29, 72, 1);
+  }
+}
