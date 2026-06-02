@@ -47,6 +47,7 @@ export default async function Home() {
       .select(`
                 *,
                 customer:customers(name, address),
+                lead:users(username),
                 assignments:job_assignments(
                     user:users(username)
                 )
@@ -73,6 +74,7 @@ export default async function Home() {
       ...job,
       customer_name: job.customer?.name,
       customer_address: job.customer?.address,
+      lead_name: job.lead?.username,
       assigned_users: job.assignments?.map(a => a.user?.username).filter(Boolean).join(', ')
     }));
   } catch (error) {

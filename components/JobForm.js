@@ -77,6 +77,16 @@ export default function JobForm({ customers, contacts, users }) {
             )}
 
             <div style={{ marginBottom: '1rem' }}>
+                <label className="label">Job Lead</label>
+                <select name="lead_id" className="input">
+                    <option value="">Select Job Lead (Optional)...</option>
+                    {users.map(u => (
+                        <option key={u.id} value={u.id}>{u.username}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
                 <label className="label">Assign Team Members</label>
                 <div style={{
                     display: 'grid',
@@ -112,7 +122,7 @@ export default function JobForm({ customers, contacts, users }) {
                 </div>
                 <div>
                     <label className="label">Due Date</label>
-                    <input name="due_date" type="date" className="input" />
+                    <input name="due_date" type="date" className="input" required />
                 </div>
                 <div>
                     <label className="label">Priority</label>

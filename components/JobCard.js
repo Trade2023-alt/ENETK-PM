@@ -29,13 +29,12 @@ export default function JobCard({ job }) {
     const statusClass = job.status === 'Complete' ? 'job-card-complete' : job.status === 'In Progress' ? 'job-card-in-progress' : 'job-card-scheduled';
 
     return (
-        <div className={`card ${statusClass}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', color: 'var(--foreground)' }}>{job.title || 'Untitled Job'}</h3>
+        <div className={`card card-condensed ${statusClass}`}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.25rem' }}>
+                <h3 style={{ color: 'var(--foreground)' }}>{job.title || 'Untitled Job'}</h3>
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                     <span style={{
-                        fontSize: '0.75rem',
-                        padding: '0.25rem 0.5rem',
+                        padding: '0.125rem 0.375rem',
                         borderRadius: '1rem',
                         background: `rgba(0,0,0,0.2)`,
                         color: statusColors[job.status] || 'var(--text-muted)',
@@ -46,24 +45,30 @@ export default function JobCard({ job }) {
                 </div>
             </div>
 
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            <p style={{ color: 'var(--text-muted)' }}>
                 {job.description}
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', color: 'var(--text-muted)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span>📅 {formatDate(job.scheduled_date)}</span>
                     <span>📍 {job.customer_address}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>👤 {job.customer_name}</span>
+                    <span>👑 Lead: <strong style={{ color: 'var(--primary)' }}>{job.lead_name || 'Unassigned'}</strong></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                        👥 {job.assigned_users || 'Unassigned'}
+                    </span>
                     <span>⏱️ {job.actual_hours || 0} / {job.estimated_hours || 0} hrs</span>
                 </div>
             </div>
 
             <div style={{
-                marginTop: '1.5rem',
-                paddingTop: '1rem',
+                marginTop: '0.75rem',
+                paddingTop: '0.5rem',
                 borderTop: '1px solid var(--card-border)',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -71,7 +76,6 @@ export default function JobCard({ job }) {
             }}>
                 <Link href={`/jobs/${job.id}`} style={{
                     color: 'var(--primary)',
-                    fontSize: '0.875rem',
                     fontWeight: 500
                 }}>
                     View Details →

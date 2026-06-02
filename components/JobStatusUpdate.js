@@ -67,6 +67,15 @@ export default function JobStatusUpdate({ job, allUsers }) {
                     <label className="label">Due Date</label>
                     <input name="due_date" type="date" className="input" defaultValue={job.due_date ? new Date(job.due_date).toISOString().split('T')[0] : ''} />
                 </div>
+                <div>
+                    <label className="label">Job Lead</label>
+                    <select name="lead_id" className="input" defaultValue={job.lead_id || ''}>
+                        <option value="">Select Job Lead (Optional)...</option>
+                        {allUsers.map(u => (
+                            <option key={u.id} value={u.id}>{u.username}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <div style={{ marginTop: '1rem' }}>

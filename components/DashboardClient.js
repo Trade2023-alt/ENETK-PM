@@ -80,8 +80,8 @@ export default function DashboardClient({ initialJobs }) {
             {(grouping === 'none' || grouping === 'incomplete') ? (
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                    gap: '1.5rem'
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                    gap: '1rem'
                 }}>
                     {jobs.map(job => (
                         <JobCard key={job.id} job={job} />
@@ -89,7 +89,7 @@ export default function DashboardClient({ initialJobs }) {
                     {jobs.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No jobs found.</p>}
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     {Object.keys(groupedJobs).sort().map(group => (
                         <div key={group}>
                             <h3 style={{ borderBottom: '1px solid var(--card-border)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--primary)' }}>
@@ -97,8 +97,8 @@ export default function DashboardClient({ initialJobs }) {
                             </h3>
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                                gap: '1.5rem'
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                                gap: '1rem'
                             }}>
                                 {groupedJobs[group].map(job => (
                                     <JobCard key={job.id} job={job} />

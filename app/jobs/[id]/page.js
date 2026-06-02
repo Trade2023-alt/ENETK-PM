@@ -27,6 +27,7 @@ export default async function JobDetailPage({ params }) {
                 *,
                 customer:customers(id, name),
                 contact:customer_contacts(name, phone),
+                lead:users(id, username),
                 assignments:job_assignments(
                     user:users(id, username)
                 )
@@ -44,7 +45,7 @@ export default async function JobDetailPage({ params }) {
             .select(`
                 *,
                 assignments:sub_task_assignments(
-                    user:users(username)
+                    user:users(id, username)
                 )
             `)
             .eq('job_id', id)
@@ -62,13 +63,16 @@ export default async function JobDetailPage({ params }) {
             customer_name: jobRaw.customer?.name,
             contact_name: jobRaw.contact?.name,
             contact_phone: jobRaw.contact?.phone,
+            lead_name: jobRaw.lead?.username,
+            lead_id: jobRaw.lead?.id,
             assigned_users: jobRaw.assignments?.map(a => a.user?.username).filter(Boolean).join(', '),
             assigned_user_ids: jobRaw.assignments?.map(a => a.user?.id)
         };
 
         const subTasks = (subTasksRaw || []).map(st => ({
             ...st,
-            assigned_users: st.assignments?.map(a => a.user?.username).filter(Boolean).join(', ')
+            assigned_users: st.assignments?.map(a => a.user?.username).filter(Boolean).join(', '),
+            assigned_ids: st.assignments?.map(a => a.user?.id).filter(Boolean).join(',')
         }));
 
         return (
@@ -116,7 +120,11 @@ export default async function JobDetailPage({ params }) {
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Assigned To</h3>
+                            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>👑 Job Lead</h3>
+                            <div style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '1rem' }}>
+                                {job.lead_name || 'Unassigned'}
+                            </div>
+                            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>👥 Assigned Team</h3>
                             <div style={{ fontSize: '1.125rem' }}>{job.assigned_users || 'Unassigned'}</div>
                         </div>
                     </div>

@@ -10,13 +10,14 @@ export async function createJob(prevState, formData) {
     const customerId = formData.get('customer_id');
     const customerContactId = formData.get('customer_contact_id') || null;
     const assignedUserIds = formData.getAll('assigned_user_ids');
+    const leadId = formData.get('lead_id');
     const scheduledDate = formData.get('scheduled_date');
     const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
     const dueDate = formData.get('due_date');
     const priority = formData.get('priority') || 'Normal';
 
-    if (!title || !customerId || assignedUserIds.length === 0 || !scheduledDate) {
-        return { error: 'Missing required fields. Please ensure Title, Customer, Team, and Schedule are set.' };
+    if (!title || !customerId || assignedUserIds.length === 0 || !scheduledDate || !dueDate) {
+        return { error: 'Missing required fields. Please ensure Title, Customer, Team, Schedule, and Due Date are set.' };
     }
 
     try {
@@ -27,6 +28,7 @@ export async function createJob(prevState, formData) {
             description,
             customer_id: customerId,
             customer_contact_id: customerContactId === '' ? null : customerContactId,
+            lead_id: leadId === '' ? null : leadId,
             scheduled_date: scheduledDate,
             estimated_hours: estimatedHours,
             due_date: dueDate === '' ? null : dueDate,

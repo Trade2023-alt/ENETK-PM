@@ -11,6 +11,7 @@ export async function updateJobStatus(formData) {
     const estimatedHours = formData.get('estimated_hours');
     const dueDate = formData.get('due_date');
     const description = formData.get('description');
+    const leadId = formData.get('lead_id');
 
     try {
         // 1. Fetch current job to get current hours
@@ -44,6 +45,7 @@ export async function updateJobStatus(formData) {
         }
         if (dueDate !== null) updateData.due_date = dueDate === '' ? null : dueDate;
         if (description !== null) updateData.description = description;
+        if (leadId !== null) updateData.lead_id = leadId === '' ? null : leadId;
 
         updateData.updated_at = new Date().toISOString();
 

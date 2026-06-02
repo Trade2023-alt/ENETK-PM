@@ -315,3 +315,29 @@ input[type="checkbox"]:checked {
     border-color: rgba(159, 18, 57, 0.6);
   }
 }
+
+/* Condensed Card Layout for Dashboard */
+.card.card-condensed {
+  padding: 0.75rem 1rem !important;
+  border-radius: 0.75rem !important;
+}
+
+.card-condensed h3 {
+  font-size: 1rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.card-condensed p {
+  font-size: 0.8rem !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.4 !important;
+}
+
+.card-condensed div, .card-condensed span {
+  font-size: 0.775rem !important;
+}
+
+.card-condensed .btn, .card-condensed a {
+  font-size: 0.775rem !important;
+  padding: 0.375rem 0.75rem !important;
+}
