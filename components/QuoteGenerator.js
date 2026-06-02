@@ -59,10 +59,10 @@ export default function QuoteGenerator({ initialData = null }) {
 
         setLoading(true);
         const reader = new FileReader();
+        const extension = file.name.split('.').pop().toLowerCase();
 
         reader.onload = async (event) => {
             const content = event.target.result;
-            const extension = file.name.split('.').pop().toLowerCase();
 
             const result = await parseEHQuote(content, extension);
             if (result.success) {
@@ -73,11 +73,8 @@ export default function QuoteGenerator({ initialData = null }) {
             setLoading(false);
         };
 
-        if (file.name.endsWith('.xlsx')) {
-            // Excel requires binary reading or a different approach
-            // For now we support text-based formats
-            alert("Excel import coming soon. Please use RTF or XML for now.");
-            setLoading(false);
+        if (extension === 'xlsx') {
+            reader.readAsDataURL(file);
         } else {
             reader.readAsText(file);
         }

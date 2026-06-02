@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 /**
  * Parses EH Quote data from various formats (RTF text, XML, or Excel logic)
@@ -21,7 +22,7 @@ export async function parseEHQuote(fileContent, fileType) {
         } else if (fileType === 'csv' || fileType === 'txt' && fileContent.includes(',')) {
             items = parseCSVContent(fileContent);
         } else if (fileType === 'xlsx') {
-            return { success: false, error: "XLSX parsing requires server-side processing. Please convert to CSV for now." };
+            items = parseExcelContent(fileContent);
         }
 
         return { success: true, items };
@@ -141,6 +142,184 @@ function parseCSVContent(content) {
             config: row.Configuration || ''
         };
     }).filter(item => item.description.length > 2 || item.model);
+}
+
+function parseExcelContent(content) {
+    // content is a data URL: data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,....
+    const base64Data = content.split(';base64,').pop();
+    const workbook = XLSX.read(base64Data, { type: 'base64' });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    
+    // Convert to JSON array of arrays
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const items = [];
+
+    // Extract price utility
+    const extractPrice = (priceText) => {
+        if (!priceText) return 0.0;
+        const text = String(priceText).replace('$', '').replace(/,/g, '').replace('USD', '').trim();
+        const match = text.match(/(\d+\.?\d*)/);
+        return match ? parseFloat(match[1]) : 0.0;
+    };
+
+    // Extract quantity utility
+    const extractQuantity = (qtyText) => {
+        if (!qtyText) return 1;
+        const text = String(qtyText).trim();
+        const match = text.match(/(\d+\.?\d*)/);
+        return match ? parseInt(parseFloat(match[1])) : 1;
+    };
+
+    // Clean text utility
+    const cleanText = (text) => {
+        if (!text) return '';
+        return String(text).trim().replace(/\n/g, ' ').replace(/\r/g, ' ');
+    };
+
+    const isPriceValue = (value) => {
+        if (!value) return false;
+        const cleanValue = String(value).replace('$', '').replace(/,/g, '').replace('USD', '').trim();
+        const price = parseFloat(cleanValue);
+        return !isNaN(price) && price >= 0.01 && price <= 1000000;
+    };
+
+    // Try to find data starting from row 1 (assuming row 0 is header)
+    for (let r = 1; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row || !row.length) continue;
+
+        // Ensure row has string values
+        const cells = Array.from({ length: 20 }, (_, i) => row[i] ? String(row[i]) : '');
+
+        // Skip empty rows
+        if (cells.every(c => !c.trim())) continue;
+
+        const firstCell = cells[0].toLowerCase().trim();
+        const headers = ['sales document', 'endress+hauser', 'quote', 'product details', 'item', 'quantity', 'unit', 'product name', 'order code'];
+        if (headers.some(h => firstCell.includes(h))) continue;
+
+        let item = {
+            description: '',
+            quantity: 1,
+            unit: 'EA',
+            unit_price: 0.0,
+            model: '',
+            order_code: '',
+            config: '',
+            sales_text: '',
+            delivery_time: '',
+            country_origin: '',
+            country_dispatch: '',
+            customer_ref: ''
+        };
+
+        let parsedAsEH = false;
+
+        // Check if first cell is a numeric item number (like 20.0, 30.0)
+        const itemNum = parseFloat(cells[0]);
+        if (!isNaN(itemNum) && itemNum > 0 && cells.length >= 4) {
+            item.quantity = cells[1] ? extractQuantity(cells[1]) : 1;
+            item.unit = cells[2] ? cells[2].trim() : 'EA';
+            const baseDesc = cells[3] ? cleanText(cells[3]) : '';
+            if (cells[4]) item.order_code = cleanText(cells[4]);
+            if (cells[5]) item.customer_ref = cleanText(cells[5]);
+            if (cells[6]) item.model = cleanText(cells[6]);
+            if (cells[7]) item.config = cleanText(cells[7]);
+            if (cells[8]) item.sales_text = cleanText(cells[8]);
+            if (cells[9]) item.delivery_time = cleanText(cells[9]);
+
+            for (let i = 10; i < Math.min(13, cells.length); i++) {
+                if (cells[i] && isPriceValue(cells[i])) {
+                    item.unit_price = extractPrice(cells[i]);
+                    break;
+                }
+            }
+
+            if (cells[12]) item.country_origin = cleanText(cells[12]);
+            if (cells[13]) item.country_dispatch = cleanText(cells[13]);
+
+            const descParts = [];
+            if (baseDesc) descParts.push(baseDesc);
+            if (item.sales_text) descParts.push(`Description: ${item.sales_text}`);
+            if (item.delivery_time) descParts.push(`Delivery time: ${item.delivery_time}`);
+            if (item.order_code) {
+                descParts.push(`Order code description:`);
+                descParts.push(item.order_code);
+            }
+            if (item.config) {
+                descParts.push(`Product Configuration:`);
+                descParts.push(item.config);
+            }
+            
+            const countryInfo = [];
+            if (item.country_origin) countryInfo.push(`Origin: ${item.country_origin}`);
+            if (item.country_dispatch) countryInfo.push(`Dispatch: ${item.country_dispatch}`);
+            if (countryInfo.length) {
+                descParts.push(`Country Information:`);
+                descParts.push(...countryInfo);
+            }
+
+            item.description = descParts.join('\\n\\n');
+            if (item.description) {
+                items.push(item);
+                parsedAsEH = true;
+            }
+        }
+
+        if (!parsedAsEH) {
+            // Fallback logic
+            let descriptionFound = false;
+            let priceFound = false;
+            let qtyFound = false;
+
+            for (let cell of cells) {
+                if (!cell.trim()) continue;
+
+                if (cell.length > 10 && !/^\\d+\\.?\\d*$/.test(cell) && !descriptionFound) {
+                    item.description = cleanText(cell);
+                    descriptionFound = true;
+                    continue;
+                }
+                
+                if (/^\\d+$/.test(cell) && parseInt(cell) < 1000 && !qtyFound) {
+                    item.quantity = parseInt(cell);
+                    qtyFound = true;
+                    continue;
+                }
+
+                if (isPriceValue(cell) && !priceFound) {
+                    item.unit_price = extractPrice(cell);
+                    priceFound = true;
+                    continue;
+                }
+
+                if (/^[A-Za-z0-9\\-_]+$/.test(cell) && cell.length < 20 && !item.model) {
+                    item.model = cell;
+                    continue;
+                }
+            }
+
+            if (!descriptionFound && cells[0].trim()) {
+                item.description = cleanText(cells[0]);
+            }
+
+            for (let cell of cells) {
+                if (!cell.trim()) continue;
+                if (cell.length > 50 && !item.sales_text && !isPriceValue(cell)) {
+                    item.sales_text = cleanText(cell);
+                }
+                if (cell.toLowerCase().includes('wrk.day') || cell.toLowerCase().includes('day')) {
+                    item.delivery_time = cleanText(cell);
+                }
+            }
+
+            if (item.description) {
+                items.push(item);
+            }
+        }
+    }
+    return items;
 }
 
 export async function saveQuote(quoteData, lineItems) {
