@@ -23,6 +23,35 @@ export default function MSProjectImportButton() {
         setSuccess(false);
         setParsedTasks([]);
 
+        if (file.name.endsWith('.mpp')) {
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/mpp', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (data.tasks && data.tasks.length > 0) {
+                    setParsedTasks(data.tasks);
+                } else {
+                    throw new Error('No tasks returned by parser.');
+                }
+            } catch (err) {
+                console.error(err);
+                setError(err.message || 'Failed to parse MPP file. Verify Docker service is running.');
+            } finally {
+                setIsParsing(false);
+            }
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
@@ -32,7 +61,7 @@ export default function MSProjectImportButton() {
                 } else if (file.name.endsWith('.csv')) {
                     parseCSVProject(text);
                 } else {
-                    throw new Error('Unsupported file extension. Please upload an XML or CSV export.');
+                    throw new Error('Unsupported file extension. Please upload an XML, CSV, or MPP file.');
                 }
             } catch (err) {
                 console.error(err);
@@ -293,22 +322,21 @@ export default function MSProjectImportButton() {
                                 <div className="bg-slate-50 p-4 rounded-xl border flex gap-3 text-slate-600 text-sm">
                                     <HelpCircle className="text-rose-800 flex-shrink-0" size={20} />
                                     <div className="space-y-1">
-                                        <span className="font-bold text-slate-800 block">How to export from MS Project:</span>
-                                        <p>1. Open your project schedule in Microsoft Project.</p>
-                                        <p>2. Go to <strong>File &gt; Save As</strong>.</p>
-                                        <p>3. Choose <strong>XML Format (*.xml)</strong> in the file type dropdown.</p>
-                                        <p>4. Upload the saved XML file here. We will recreate your outline hierarchy (Jobs and Sub-Tasks) and copy all durations and milestone dates.</p>
+                                        <span className="font-bold text-slate-800 block">Supported MS Project Formats:</span>
+                                        <p>• <strong>Binary (.mpp)</strong>: Upload directly if the Docker parser microservice is running.</p>
+                                        <p>• <strong>XML Export (*.xml)</strong>: Recommended. In MS Project, choose Save As &gt; XML Format (*.xml).</p>
+                                        <p>• <strong>CSV Export</strong>: Recreates flat task tables.</p>
                                     </div>
                                 </div>
 
                                 <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center flex flex-col items-center gap-3 bg-slate-50/50 hover:bg-slate-50 transition-colors">
                                     <Upload size={32} className="text-rose-800" />
                                     <div className="text-sm font-semibold text-slate-700">
-                                        Upload MS Project XML or CSV Schedule file
+                                        Upload MS Project MPP, XML, or CSV Schedule file
                                     </div>
                                     <input
                                         type="file"
-                                        accept=".xml,.csv"
+                                        accept=".mpp,.xml,.csv"
                                         ref={fileInputRef}
                                         onChange={handleFileChange}
                                         className="hidden"
