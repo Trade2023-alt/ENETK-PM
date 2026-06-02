@@ -137,6 +137,7 @@ export default function Header({ userRole }) {
                         <Link href="/schedule" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📅 Schedule</Link>
                         <Link href="/inventory" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📦 Stock</Link>
                         <Link href="/quotes" style={navButtonStyle} onClick={() => setMenuOpen(false)}>💰 Quotes</Link>
+                        <Link href="/estimate" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📏 Estimating</Link>
                         <Link href="/roadmap" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🗺️ Road Map</Link>
                     </div>
 

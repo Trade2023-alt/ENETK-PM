@@ -171,6 +171,13 @@ export default async function Home() {
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>View & manage your tasks</div>
           </div>
         </Link>
+        <Link href="/estimate" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #10b981' }}>
+          <div style={{ fontSize: '1.5rem' }}>📏</div>
+          <div>
+            <div style={{ fontWeight: 600 }}>Estimation Pro</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>MTO Forms & Blueprint OCR</div>
+          </div>
+        </Link>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
