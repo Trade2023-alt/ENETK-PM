@@ -33,8 +33,10 @@ export default async function CustomerPortalPage() {
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                    {jobs.map(job => (
-                        <div key={job.id} className="card">
+                    {jobs.map(job => {
+                        const statusClass = job.status === 'Complete' ? 'job-card-complete' : job.status === 'In Progress' ? 'job-card-in-progress' : 'job-card-scheduled';
+                        return (
+                            <div key={job.id} className={`card ${statusClass}`}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                                 <h3 style={{ fontSize: '1.125rem', fontWeight: 600 }}>{job.title}</h3>
                                 <span style={{
@@ -81,8 +83,9 @@ export default async function CustomerPortalPage() {
                                 </div>
                             )}
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
+            </div>
             )}
         </div>
     );

@@ -25,30 +25,35 @@ export async function POST(request: Request) {
     const buffer = await file.arrayBuffer();
     const mimeType = file.type;
     
-    // In a real application, you would use the Files API or send base64 data to Gemini.
-    // This is the boilerplate logic structure.
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const base64Data = Buffer.from(buffer).toString("base64");
     
-    // Boilerplate for sending an image/pdf to Gemini to extract takeoffs
-    // const response = await ai.models.generateContent({
-    //   model: 'gemini-2.5-flash',
-    //   contents: [
-    //     {
-    //       role: 'user',
-    //       parts: [
-    //         {
-    //           inlineData: {
-    //             data: Buffer.from(buffer).toString("base64"),
-    //             mimeType
-    //           }
-    //         },
-    //         { text: "Analyze this electrical blueprint and count the electrical symbols. Return a JSON array mapped to standard cost codes." }
-    //       ]
-    //     }
-    //   ]
-    // });
+    const aiResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType
+          }
+        },
+        "Analyze this electrical drawing and count the electrical parts or symbols. " +
+        "Return a JSON array of takeoff lines. Each takeoff line must be a JSON object with: " +
+        "itemCode (e.g. C-101, W-202, etc.), description (name of parts/wires), and qty (number count). " +
+        "Return ONLY the raw JSON list of these objects."
+      ],
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    const text = aiResponse.text || "[]";
+    const parsedTakeoff = JSON.parse(text.trim());
     
-    return NextResponse.json({ status: "success", message: "OCR processing boilerplate ready." });
+    return NextResponse.json({
+      status: "success",
+      mockTakeoff: parsedTakeoff
+    });
   } catch (error) {
     console.error("Gemini OCR Error:", error);
     return NextResponse.json(

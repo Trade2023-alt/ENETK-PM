@@ -26,8 +26,10 @@ export default function JobCard({ job }) {
         }
     };
 
+    const statusClass = job.status === 'Complete' ? 'job-card-complete' : job.status === 'In Progress' ? 'job-card-in-progress' : 'job-card-scheduled';
+
     return (
-        <div className="card">
+        <div className={`card ${statusClass}`}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', color: 'var(--foreground)' }}>{job.title || 'Untitled Job'}</h3>
                 <div style={{ display: 'flex', gap: '0.25rem' }}>

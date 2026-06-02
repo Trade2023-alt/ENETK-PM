@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { MessageSquare, X, Send, Bot, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function ChatWidget() {
+export default function ChatWidget({ projectId }: { projectId?: number | "" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -25,11 +25,13 @@ export default function ChatWidget() {
     setIsLoading(true);
 
     try {
-      // Boilerplate for Gemini API connection
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage.content }),
+        body: JSON.stringify({ 
+          message: userMessage.content,
+          projectId: projectId 
+        }),
       });
 
       const data = await response.json();

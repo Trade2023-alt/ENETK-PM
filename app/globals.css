@@ -1,19 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  /* ENETK Brand Theme - Full Glassmorphism Black/Maroon */
-  --background: #000000; /* Pure black */
-  --foreground: #ffffff; /* White text for contrast */
+  /* ENETK Brand Theme - Refined Light-Grey Glassmorphism */
+  --background: #f1f5f9; /* Slate-100 / Light grey */
+  --foreground: #0f172a; /* Slate-900 / Dark text for contrast */
 
   /* Glassmorphism Variables */
-  --glass-bg: rgba(255, 255, 255, 0.03); /* Extremely translucent white/grey for pure glass */
-  --glass-border: rgba(255, 255, 255, 0.08); /* Subtle white border to catch light */
-  --glass-highlight: rgba(255, 255, 255, 0.15); /* Slightly stronger border on hover */
+  --glass-bg: rgba(255, 255, 255, 0.45); /* Frosty translucent white */
+  --glass-border: rgba(255, 255, 255, 0.6); /* Translucent white border */
+  --glass-highlight: rgba(255, 255, 255, 0.85); /* Highlighted white border on hover */
+  --card-border: rgba(0, 0, 0, 0.07); /* For internal borders */
 
   --primary: #9f1239; /* ENETK Deep Maroon */
   --primary-hover: #be123c; /* Lighter Maroon */
 
-  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(15, 23, 42, 0.6); /* Muted slate text */
 
   --success: #10b981;
   --warning: #f59e0b;
@@ -21,7 +22,7 @@
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --radius: 1rem;
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow-glass: 0 8px 32px 0 rgba(15, 23, 42, 0.06); /* Lighter shadow for light theme */
 }
 
 * {
@@ -32,11 +33,11 @@
 
 body {
   background-color: var(--background);
-  /* Animated mesh gradient using black and subtle maroon/rose glow without blue */
+  /* Elegant light mesh gradient with subtle rose/maroon glow */
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(225, 29, 72, 0.12), transparent 35%),
-    radial-gradient(circle at 85% 30%, rgba(159, 18, 57, 0.15), transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(136, 19, 55, 0.1), transparent 40%);
+    radial-gradient(circle at 15% 50%, rgba(159, 18, 57, 0.04), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(159, 18, 57, 0.06), transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(159, 18, 57, 0.03), transparent 40%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
@@ -45,17 +46,21 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: #ffffff;
+  color: #0f172a;
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 
-.card h1, .card h2, .card h3, .card h4, .card h5, .card h6, .card p, .card span, .card div, .card label {
-  color: #ffffff;
+.card h1, .card h2, .card h3, .card h4, .card h5, .card h6 {
+  color: #0f172a;
 }
 
-.card a { color: #ffffff; }
-.card a:hover { color: rgba(255, 255, 255, 0.8); }
+.card p, .card span, .card div, .card label {
+  color: #334155;
+}
+
+.card a { color: var(--primary); }
+.card a:hover { color: var(--primary-hover); }
 
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; }
@@ -69,7 +74,7 @@ button { cursor: pointer; }
 
 .container>h2, .container>h3, .container>p,
 .container>div>h2, .container>div>h3, .container>div>p, .container>div>div>p {
-  color: #ffffff !important;
+  color: inherit !important;
 }
 
 /* Core Glassmorphism Card */
@@ -78,18 +83,31 @@ button { cursor: pointer; }
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
+  border-left: 5px solid var(--primary); /* Left border default maroon */
   border-radius: var(--radius);
   padding: 1.5rem;
   box-shadow: var(--shadow-glass);
-  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, border-left-color 0.3s ease;
 }
 
 .card:hover {
   transform: translateY(-2px);
   border-color: var(--glass-highlight);
-  box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px 0 rgba(15, 23, 42, 0.12);
 }
 
+/* Job Status Borders for Job Cards */
+.card.job-card-scheduled {
+  border-left: 5px solid var(--danger) !important; /* red */
+}
+.card.job-card-in-progress {
+  border-left: 5px solid var(--warning) !important; /* yellow */
+}
+.card.job-card-complete {
+  border-left: 5px solid var(--success) !important; /* green */
+}
+
+/* Glassmorphism Button */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -100,35 +118,40 @@ button { cursor: pointer; }
   transition: all 0.3s ease;
   border: 1px solid var(--glass-border);
   font-size: 0.9375rem;
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.04);
 }
 
 .btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.85);
   border-color: var(--glass-highlight);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
 }
 
 .btn-primary {
-  background: rgba(159, 18, 57, 0.7); /* Translucent maroon */
-  border-color: rgba(225, 29, 72, 0.4);
+  background: rgba(159, 18, 57, 0.8); /* Sleek glass maroon */
+  border-color: rgba(159, 18, 57, 0.9);
+  color: #ffffff;
 }
 
 .btn-primary:hover {
-  background: rgba(190, 18, 60, 0.8);
-  border-color: rgba(225, 29, 72, 0.6);
-  box-shadow: 0 0 15px rgba(225, 29, 72, 0.3);
+  background: rgba(159, 18, 57, 0.95);
+  border-color: var(--primary-hover);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(159, 18, 57, 0.2);
 }
 
 .input {
   display: block;
   width: 100%;
   padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid var(--glass-border);
   border-radius: 0.5rem;
-  color: #ffffff;
+  color: var(--foreground);
   font-size: 0.9375rem;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
@@ -140,14 +163,14 @@ button { cursor: pointer; }
 
 .input:focus {
   outline: none;
-  border-color: rgba(225, 29, 72, 0.5);
-  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.2);
-  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(159, 18, 57, 0.5);
+  box-shadow: 0 0 0 2px rgba(159, 18, 57, 0.2);
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .input option {
-  background: #0a0a0a;
-  color: #ffffff;
+  background: #ffffff;
+  color: var(--foreground);
 }
 
 .label {
@@ -158,23 +181,84 @@ button { cursor: pointer; }
   margin-bottom: 0.5rem;
 }
 
-.card table { color: #ffffff; }
+.card table { color: var(--foreground); }
 .card th { color: var(--text-muted) !important; }
-.card td { color: #ffffff; }
+.card td { color: var(--foreground); }
 
 header {
-  background: rgba(0, 0, 0, 0.3) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
   border-bottom: 1px solid var(--glass-border);
 }
 
 header a, header span, header button {
-  color: #ffffff !important;
+  color: var(--foreground) !important;
 }
 
 header .btn {
   border-color: var(--glass-border) !important;
+}
+
+/* Glassmorphism Checkbox styling */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1.5px solid rgba(159, 18, 57, 0.3);
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  width: 0.625rem;
+  height: 0.625rem;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--primary);
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 8px rgba(159, 18, 57, 0.2);
+}
+
+/* Glassmorphism Icon Badge */
+.icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  padding: 0.5rem;
+  color: var(--primary);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
+}
+
+.icon-badge:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 @utility glass {
@@ -186,27 +270,27 @@ header .btn {
 }
 
 @utility glass-panel {
-  background: rgba(10, 10, 10, 0.4);
+  background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);
   border-radius: 1.25rem;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
 }
 
 @utility glass-input {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid var(--glass-border);
   border-radius: 0.5rem;
   padding: 0.5rem 1rem;
-  color: #ffffff;
+  color: var(--foreground);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   transition: all 0.3s ease;
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.4);
-    border-color: rgba(225, 29, 72, 0.6);
+    box-shadow: 0 0 0 2px rgba(159, 18, 57, 0.4);
+    border-color: rgba(159, 18, 57, 0.6);
   }
 }
