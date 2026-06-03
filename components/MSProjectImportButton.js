@@ -145,6 +145,7 @@ export default function MSProjectImportButton() {
         const startIdx = headers.findIndex(h => h.toLowerCase().includes('start'));
         const finishIdx = headers.findIndex(h => h.toLowerCase().includes('finish') || h.toLowerCase().includes('end'));
         const durationIdx = headers.findIndex(h => h.toLowerCase().includes('duration') || h.toLowerCase().includes('work'));
+        const outlineIdx = headers.findIndex(h => h.toLowerCase().includes('outline') || h.toLowerCase().includes('level') || h.toLowerCase().includes('indent'));
 
         if (nameIdx === -1) {
             throw new Error('CSV must contain a "Name" or "Title" column.');
@@ -154,23 +155,37 @@ export default function MSProjectImportButton() {
             const line = lines[i].trim();
             if (!line) continue;
             
-            const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/"/g, ''));
-            if (cols.length <= nameIdx) continue;
+            const rawCols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            if (rawCols.length <= nameIdx) continue;
 
+            const rawName = rawCols[nameIdx] || '';
+            // Strip surrounding quotes to look at leading spaces of the raw cell content
+            const nameWithoutQuotes = rawName.replace(/^["']|["']$/g, '');
+            const leadingSpaces = nameWithoutQuotes.match(/^\s*/)[0].length;
+
+            const cols = rawCols.map(c => c.trim().replace(/"/g, ''));
             const name = cols[nameIdx] || 'Unnamed Task';
             const start = cols[startIdx] ? cols[startIdx].split(' ')[0] : '';
             const finish = cols[finishIdx] ? cols[finishIdx].split(' ')[0] : '';
             const duration = cols[durationIdx] || '0';
             const hours = parseFloat(duration.replace(/[^\d.]/g, '')) || 0;
 
+            // Compute outline level from header column or indentation
+            let outlineLevel = 1;
+            if (outlineIdx !== -1 && cols[outlineIdx]) {
+                outlineLevel = parseInt(cols[outlineIdx].replace(/[^\d]/g, '')) || 1;
+            } else if (leadingSpaces > 0) {
+                outlineLevel = Math.floor(leadingSpaces / 2) + 1;
+            }
+
             tasks.push({
                 uid: String(i),
-                name,
+                name: name.trim(),
                 start,
                 finish,
                 hours,
-                isJob: true,
-                outlineLevel: 1,
+                isJob: outlineLevel === 1,
+                outlineLevel,
                 tempId: i
             });
         }
@@ -190,63 +205,177 @@ export default function MSProjectImportButton() {
         let subtasksCreatedCount = 0;
 
         try {
-            let customerId = null;
-            const { data: customer } = await supabase
-                .from('customers')
-                .select('id')
-                .eq('name', 'MS Project Import')
-                .maybeSingle();
+            const maxOutline = Math.max(...parsedTasks.map(t => t.outlineLevel || 1));
+            const isHierarchical = maxOutline >= 3;
 
-            if (customer) {
-                customerId = customer.id;
-            } else {
-                const { data: newCustomer, error: cErr } = await supabase
-                    .from('customers')
-                    .insert([{ name: 'MS Project Import', address: 'Imported from Microsoft Project' }])
-                    .select('id')
-                    .single();
-                if (cErr) throw cErr;
-                customerId = newCustomer.id;
-            }
+            if (isHierarchical) {
+                // --- HIERARCHICAL MODE ---
+                // Customer (1) > Subtasks container (2) > Job (3) > Task (4) > Subtask (5+)
+                let currentCustomerId = null;
+                let currentJobId = null;
+                let lastLevel4Title = '';
+                let fallbackCustomerId = null;
 
-            const uidToJobIdMap = {};
-            let lastJobId = null;
+                for (const task of parsedTasks) {
+                    const outline = task.outlineLevel || 1;
 
-            for (const task of parsedTasks) {
-                if (task.isJob) {
-                    const { data: job, error: jErr } = await supabase
-                        .from('jobs')
-                        .insert([
-                            {
-                                title: task.name,
-                                description: `Imported MS Project Task. Start: ${task.start}, End: ${task.finish}`,
-                                scheduled_date: task.start || new Date().toISOString().split('T')[0],
-                                estimated_hours: task.hours || 8,
-                                actual_hours: 0,
-                                status: 'Scheduled',
-                                customer_id: customerId
+                    if (outline === 1) {
+                        // Level 1: Customer Name
+                        const customerName = task.name.trim();
+                        
+                        // Find or create customer
+                        const { data: customer } = await supabase
+                            .from('customers')
+                            .select('id')
+                            .eq('name', customerName)
+                            .maybeSingle();
+
+                        if (customer) {
+                            currentCustomerId = customer.id;
+                        } else {
+                            const { data: newCustomer, error: cErr } = await supabase
+                                .from('customers')
+                                .insert([{ name: customerName, address: 'Imported Customer' }])
+                                .select('id')
+                                .single();
+                            if (cErr) throw cErr;
+                            currentCustomerId = newCustomer.id;
+                        }
+                    } 
+                    else if (outline === 2) {
+                        // Level 2: Sub-tasks container folder (skip database creation)
+                        continue;
+                    } 
+                    else if (outline === 3) {
+                        // Level 3: Job Name
+                        if (!currentCustomerId) {
+                            if (!fallbackCustomerId) {
+                                const { data: fallbackCust, error: fcErr } = await supabase
+                                    .from('customers')
+                                    .insert([{ name: 'MS Project Import', address: 'Imported from Microsoft Project' }])
+                                    .select('id')
+                                    .single();
+                                if (fcErr) throw fcErr;
+                                fallbackCustomerId = fallbackCust.id;
                             }
-                        ])
-                        .select('id')
-                        .single();
+                            currentCustomerId = fallbackCustomerId;
+                        }
 
-                    if (jErr) throw jErr;
-                    
-                    uidToJobIdMap[task.uid] = job.id;
-                    lastJobId = job.id;
-                    jobsCreatedCount++;
-                } else {
-                    let targetJobId = lastJobId;
-                    
-                    if (!targetJobId) {
-                        const { data: parentJob, error: pjErr } = await supabase
+                        // Create Job
+                        const { data: job, error: jErr } = await supabase
                             .from('jobs')
                             .insert([
                                 {
-                                    title: 'MS Project Imported Group',
-                                    description: 'Parent job for orphans',
+                                    title: task.name,
+                                    description: `Imported Job. Start: ${task.start}, End: ${task.finish}`,
                                     scheduled_date: task.start || new Date().toISOString().split('T')[0],
-                                    estimated_hours: 8,
+                                    estimated_hours: task.hours || 8,
+                                    actual_hours: 0,
+                                    status: 'Scheduled',
+                                    customer_id: currentCustomerId
+                                }
+                            ])
+                            .select('id')
+                            .single();
+
+                        if (jErr) throw jErr;
+                        currentJobId = job.id;
+                        jobsCreatedCount++;
+                    } 
+                    else if (outline === 4) {
+                        // Level 4: Task Name
+                        if (!currentJobId) {
+                            // Fallback Job if none created yet
+                            const { data: fallbackJob, error: fjErr } = await supabase
+                                .from('jobs')
+                                .insert([
+                                    {
+                                        title: 'MS Project Imported Group',
+                                        description: 'Parent job for orphans',
+                                        scheduled_date: task.start || new Date().toISOString().split('T')[0],
+                                        estimated_hours: 8,
+                                        actual_hours: 0,
+                                        status: 'Scheduled',
+                                        customer_id: currentCustomerId || fallbackCustomerId
+                                    }
+                                ])
+                                .select('id')
+                                .single();
+                            if (fjErr) throw fjErr;
+                            currentJobId = fallbackJob.id;
+                            jobsCreatedCount++;
+                        }
+
+                        lastLevel4Title = task.name;
+
+                        // Insert as sub-task
+                        const { error: stErr } = await supabase
+                            .from('sub_tasks')
+                            .insert([
+                                {
+                                    job_id: currentJobId,
+                                    title: task.name,
+                                    status: 'Pending'
+                                }
+                            ]);
+
+                        if (stErr) throw stErr;
+                        subtasksCreatedCount++;
+                    } 
+                    else if (outline >= 5) {
+                        // Level 5+: Subtask Name
+                        if (!currentJobId) continue;
+
+                        const taskTitle = lastLevel4Title ? `${lastLevel4Title} - ${task.name}` : task.name;
+
+                        const { error: stErr } = await supabase
+                            .from('sub_tasks')
+                            .insert([
+                                {
+                                    job_id: currentJobId,
+                                    title: taskTitle,
+                                    status: 'Pending'
+                                }
+                            ]);
+
+                        if (stErr) throw stErr;
+                        subtasksCreatedCount++;
+                    }
+                }
+            } else {
+                // --- ORIGINAL FLAT MODE ---
+                let customerId = null;
+                const { data: customer } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('name', 'MS Project Import')
+                    .maybeSingle();
+
+                if (customer) {
+                    customerId = customer.id;
+                } else {
+                    const { data: newCustomer, error: cErr } = await supabase
+                        .from('customers')
+                        .insert([{ name: 'MS Project Import', address: 'Imported from Microsoft Project' }])
+                        .select('id')
+                        .single();
+                    if (cErr) throw cErr;
+                    customerId = newCustomer.id;
+                }
+
+                const uidToJobIdMap = {};
+                let lastJobId = null;
+
+                for (const task of parsedTasks) {
+                    if (task.isJob) {
+                        const { data: job, error: jErr } = await supabase
+                            .from('jobs')
+                            .insert([
+                                {
+                                    title: task.name,
+                                    description: `Imported MS Project Task. Start: ${task.start}, End: ${task.finish}`,
+                                    scheduled_date: task.start || new Date().toISOString().split('T')[0],
+                                    estimated_hours: task.hours || 8,
                                     actual_hours: 0,
                                     status: 'Scheduled',
                                     customer_id: customerId
@@ -254,24 +383,50 @@ export default function MSProjectImportButton() {
                             ])
                             .select('id')
                             .single();
-                        if (pjErr) throw pjErr;
-                        targetJobId = parentJob.id;
-                        lastJobId = parentJob.id;
+
+                        if (jErr) throw jErr;
+                        
+                        uidToJobIdMap[task.uid] = job.id;
+                        lastJobId = job.id;
                         jobsCreatedCount++;
+                    } else {
+                        let targetJobId = lastJobId;
+                        
+                        if (!targetJobId) {
+                            const { data: parentJob, error: pjErr } = await supabase
+                                .from('jobs')
+                                .insert([
+                                    {
+                                        title: 'MS Project Imported Group',
+                                        description: 'Parent job for orphans',
+                                        scheduled_date: task.start || new Date().toISOString().split('T')[0],
+                                        estimated_hours: 8,
+                                        actual_hours: 0,
+                                        status: 'Scheduled',
+                                        customer_id: customerId
+                                    }
+                                ])
+                                .select('id')
+                                .single();
+                            if (pjErr) throw pjErr;
+                            targetJobId = parentJob.id;
+                            lastJobId = parentJob.id;
+                            jobsCreatedCount++;
+                        }
+
+                        const { error: stErr } = await supabase
+                            .from('sub_tasks')
+                            .insert([
+                                {
+                                    job_id: targetJobId,
+                                    title: task.name,
+                                    status: 'Pending'
+                                }
+                            ]);
+
+                        if (stErr) throw stErr;
+                        subtasksCreatedCount++;
                     }
-
-                    const { error: stErr } = await supabase
-                        .from('sub_tasks')
-                        .insert([
-                            {
-                                job_id: targetJobId,
-                                title: task.name,
-                                status: 'Pending'
-                            }
-                        ]);
-
-                    if (stErr) throw stErr;
-                    subtasksCreatedCount++;
                 }
             }
 
