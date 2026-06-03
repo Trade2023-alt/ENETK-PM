@@ -79,7 +79,8 @@ export async function getTodoItems(specificUserId = null) {
                         priority: j.priority || 'Normal',
                         date: j.due_date || j.scheduled_date,
                         customer: cName,
-                        parentTitle: null
+                        parentTitle: null,
+                        jobId: j.id
                     };
                 }),
             ...(subTaskAssignments || [])
@@ -98,7 +99,8 @@ export async function getTodoItems(specificUserId = null) {
                         priority: st.priority || 'Normal',
                         date: st.due_date,
                         customer: cName,
-                        parentTitle: j?.title || 'N/A'
+                        parentTitle: j?.title || 'N/A',
+                        jobId: st.job_id
                     };
                 })
         ];

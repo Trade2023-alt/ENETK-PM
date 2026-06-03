@@ -12,6 +12,7 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
     const [sortBy, setSortBy] = useState('date'); // date, priority
     const [selectedUser, setSelectedUser] = useState(currentUserId);
     const [loading, setLoading] = useState(false);
+    const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
 
     const loadTasks = async (userId) => {
         setLoading(true);
@@ -65,6 +66,29 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
             return new Date(a.date || '9999-12-31') - new Date(b.date || '9999-12-31');
         });
 
+    const parseJobDetails = (task) => {
+        const title = task.title || '';
+        const parentTitle = task.parentTitle || '';
+        
+        let jobNumber = task.jobId ? `#${task.jobId}` : (task.originalId ? `#${task.originalId}` : 'N/A');
+        let cleanTitle = title;
+        
+        const match = title.match(/\b\d{3}-\d{4}\b/) || parentTitle.match(/\b\d{3}-\d{4}\b/);
+        if (match) {
+            jobNumber = match[0];
+            cleanTitle = title
+                .replace(/^\d+-\d+\s*(:|-|🛠️|🚀)?\s*/, '')
+                .replace(/\s*\(\b\d{3}-\d{4}\b\)/, '')
+                .trim();
+            if (!cleanTitle) cleanTitle = title;
+        }
+        
+        return {
+            jobNumber,
+            jobName: cleanTitle
+        };
+    };
+
     const priorityColors = {
         'Urgent': '#ef4444',
         'High': '#f59e0b',
@@ -74,6 +98,48 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Planner-style View Switcher */}
+            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '0.75rem' }}>
+                <button
+                    onClick={() => setViewMode('grid')}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 1.25rem',
+                        borderRadius: '0.5rem',
+                        background: viewMode === 'grid' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
+                        border: viewMode === 'grid' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
+                        color: viewMode === 'grid' ? 'var(--primary)' : 'var(--text-muted)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontSize: '0.9rem'
+                    }}
+                >
+                    <span style={{ fontSize: '1rem' }}>田</span> Grid
+                </button>
+                <button
+                    onClick={() => setViewMode('list')}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 1.25rem',
+                        borderRadius: '0.5rem',
+                        background: viewMode === 'list' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
+                        border: viewMode === 'list' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
+                        color: viewMode === 'list' ? 'var(--primary)' : 'var(--text-muted)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        fontSize: '0.9rem'
+                    }}
+                >
+                    <span style={{ fontSize: '1rem' }}>☰</span> List
+                </button>
+            </div>
+
             {/* Controls */}
             <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '300px' }}>
@@ -112,15 +178,92 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                 </div>
             </div>
 
-            {/* List */}
-            <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+            {/* List / Grid Container */}
+            <div className="card" style={{ padding: viewMode === 'grid' ? '0' : '0', overflow: 'hidden' }}>
                 {loading ? (
                     <div style={{ padding: '3rem', textAlign: 'center' }}>Loading tasks...</div>
                 ) : sortedAndFiltered.length === 0 ? (
                     <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         No tasks found for this view.
                     </div>
+                ) : viewMode === 'grid' ? (
+                    /* Planner Grid View */
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(255, 255, 255, 0.03)' }}>
+                                    <th style={{ padding: '1rem', width: '50px' }}></th>
+                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Name</th>
+                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customer Name</th>
+                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', width: '160px' }}>Job Number</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedAndFiltered.map(task => {
+                                    const isComplete = task.status === 'Complete' || task.status === 'Completed';
+                                    const { jobNumber, jobName } = parseJobDetails(task);
+                                    return (
+                                        <tr key={task.id} style={{
+                                            borderBottom: '1px solid var(--card-border)',
+                                            background: isComplete ? 'rgba(255,255,255,0.01)' : 'transparent',
+                                            transition: 'background 0.2s'
+                                        }} className="grid-row">
+                                            <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', textAlign: 'center' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isComplete}
+                                                    onChange={() => handleToggle(task)}
+                                                    style={{ 
+                                                        width: '1.25rem', 
+                                                        height: '1.25rem', 
+                                                        cursor: 'pointer',
+                                                        borderRadius: '50%',
+                                                        display: 'inline-block'
+                                                    }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{
+                                                        fontWeight: 500,
+                                                        fontSize: '0.95rem',
+                                                        textDecoration: isComplete ? 'line-through' : 'none',
+                                                        color: isComplete ? 'var(--text-muted)' : 'var(--foreground)'
+                                                    }}>
+                                                        {jobName}
+                                                    </span>
+                                                    {task.parentTitle && (
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                                                            📂 Part of: {task.parentTitle}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : '#334155', fontSize: '0.9rem' }}>
+                                                📍 {task.customer}
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle' }}>
+                                                <span style={{
+                                                    fontSize: '0.8rem',
+                                                    padding: '0.2rem 0.5rem',
+                                                    borderRadius: '6px',
+                                                    background: 'rgba(255,255,255,0.12)',
+                                                    border: '1px solid var(--card-border)',
+                                                    color: isComplete ? 'var(--text-muted)' : 'var(--foreground)',
+                                                    fontFamily: 'monospace',
+                                                    fontWeight: 600
+                                                }}>
+                                                    {jobNumber}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 ) : (
+                    /* Original List View */
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         {sortedAndFiltered.map(task => {
                             const isComplete = task.status === 'Complete' || task.status === 'Completed';
