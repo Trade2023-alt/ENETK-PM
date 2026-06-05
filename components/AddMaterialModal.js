@@ -31,7 +31,7 @@ export default function AddMaterialModal({ onClose, onSuccess }) {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'rgba(0,0,0,0.8)',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -42,9 +42,7 @@ export default function AddMaterialModal({ onClose, onSuccess }) {
                 width: '100%',
                 maxWidth: '600px',
                 maxHeight: '90vh',
-                overflowY: 'auto',
-                transition: 'none',
-                transform: 'none'
+                overflowY: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h3 style={{ margin: 0 }}>Add New Material</h3>
