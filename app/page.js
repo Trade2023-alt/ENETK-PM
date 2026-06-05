@@ -63,7 +63,6 @@ export default async function Home() {
                     user:users(username)
                 )
             `)
-      .or('is_hidden.is.null,is_hidden.eq.false')
       .order('scheduled_date', { ascending: true });
 
     // Filter by Assignment/Lead status for non-admins & non-integrators

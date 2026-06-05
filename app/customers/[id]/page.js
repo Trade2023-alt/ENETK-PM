@@ -38,7 +38,10 @@ export default async function CustomerDetailPage({ params }) {
         <div className="container" style={{ paddingBottom: '4rem' }}>
             <Header userRole={userRole} />
 
-            <div className="card" style={{ marginBottom: '2rem' }}>
+            <div className="card" style={{ marginBottom: '2rem', position: 'relative' }}>
+                <Link href={`/customers/${customer.id}/edit`} style={{ position: 'absolute', top: '1rem', right: '1rem', fontSize: '0.875rem', color: 'var(--primary)' }}>
+                    Edit Customer
+                </Link>
                 <h2>{customer.name}</h2>
                 <p className="label">{customer.address}</p>
                 <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>

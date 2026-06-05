@@ -9,10 +9,14 @@ export default function DashboardClient({ initialJobs }) {
     const [grouping, setGrouping] = useState('incomplete'); // none, customer, status, incomplete, assigned
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
     const [selectedLead, setSelectedLead] = useState('All');
+    const [showHidden, setShowHidden] = useState(false);
 
     const uniqueLeads = Array.from(new Set(initialJobs.map(j => j.lead_name || 'Unassigned'))).sort();
 
     let filteredJobs = initialJobs;
+    if (!showHidden) {
+        filteredJobs = filteredJobs.filter(j => !j.is_hidden);
+    }
     if (selectedLead !== 'All') {
         filteredJobs = filteredJobs.filter(j => (j.lead_name || 'Unassigned') === selectedLead);
     }
@@ -95,7 +99,8 @@ export default function DashboardClient({ initialJobs }) {
                             <tr key={job.id} style={{
                                 borderBottom: '1px solid var(--card-border)',
                                 background: isComplete ? 'rgba(255,255,255,0.01)' : 'transparent',
-                                transition: 'background 0.2s'
+                                transition: 'background 0.2s',
+                                opacity: job.is_hidden ? 0.6 : 1
                             }} className="grid-row">
                                 <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', textAlign: 'center' }}>
                                     <input
@@ -119,6 +124,7 @@ export default function DashboardClient({ initialJobs }) {
                                         color: isComplete ? 'var(--text-muted)' : 'var(--foreground)'
                                     }}>
                                         {jobName}
+                                        {job.is_hidden && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Hidden</span>}
                                     </Link>
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : '#334155', fontSize: '0.9rem' }}>
@@ -199,6 +205,18 @@ export default function DashboardClient({ initialJobs }) {
                     >
                         <span style={{ fontSize: '1rem' }}>📋</span> Cards
                     </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem' }}>
+                        <input 
+                            type="checkbox" 
+                            id="showHidden" 
+                            checked={showHidden} 
+                            onChange={(e) => setShowHidden(e.target.checked)} 
+                            style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="showHidden" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+                            Show Hidden
+                        </label>
+                    </div>
                 </div>
 
                 {/* Grouping Selectors (Right) */}

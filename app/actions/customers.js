@@ -65,3 +65,48 @@ export async function createCustomer(formData) {
     }
 }
 
+export async function updateCustomer(formData) {
+    const id = formData.get('customer_id');
+    const name = formData.get('name');
+    const email = formData.get('email');
+    const phone = formData.get('phone');
+    const address = formData.get('address');
+    
+    const username = formData.get('username') || null;
+    const password = formData.get('password');
+    const accessDisabled = formData.get('access_disabled') === 'on';
+
+    if (!id || !name) {
+        return { error: 'ID and Name are required' };
+    }
+
+    try {
+        const dataToUpdate = { 
+            name, 
+            email, 
+            phone, 
+            address,
+            username,
+            access_disabled: accessDisabled
+        };
+
+        if (password) {
+            dataToUpdate.password_hash = await bcrypt.hash(password, 10);
+        }
+
+        const { error } = await supabase
+            .from('customers')
+            .update(dataToUpdate)
+            .eq('id', id);
+
+        if (error) throw error;
+        revalidatePath('/customers');
+        revalidatePath(`/customers/${id}`);
+        redirect(`/customers/${id}`);
+    } catch (error) {
+        if (error.message === 'NEXT_REDIRECT') throw error;
+        console.error('Error updating customer:', error);
+        return { error: 'Failed to update customer: ' + error.message };
+    }
+}
+

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import { updateContact } from '@/app/actions/updateContact';
+import Link from 'next/link';
 
 export default async function EditContactPage({ params }) {
     const cookieStore = await cookies();
@@ -32,7 +33,24 @@ export default async function EditContactPage({ params }) {
         <div className="container">
             <Header userRole={userRole} />
 
-            <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <div className="card" style={{ maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
+                <Link 
+                    href={`/customers/${contact.customer_id}`}
+                    style={{ 
+                        position: 'absolute', 
+                        top: '1rem', 
+                        right: '1.5rem', 
+                        background: 'transparent', 
+                        border: 'none', 
+                        fontSize: '1.5rem', 
+                        cursor: 'pointer', 
+                        color: 'var(--text-muted)',
+                        textDecoration: 'none'
+                    }}
+                    aria-label="Close"
+                >
+                    &times;
+                </Link>
                 <h2 style={{ marginBottom: '0.5rem' }}>Edit Contact</h2>
                 <p className="label" style={{ marginBottom: '1.5rem' }}>For Customer: {customer?.name}</p>
 
