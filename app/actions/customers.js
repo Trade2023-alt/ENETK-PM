@@ -3,19 +3,35 @@
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import bcrypt from 'bcryptjs';
 
 export async function createCustomer(formData) {
     const name = formData.get('name');
     const email = formData.get('email');
     const phone = formData.get('phone');
     const address = formData.get('address');
+    
+    const username = formData.get('username') || null;
+    const password = formData.get('password');
+    const accessDisabled = formData.get('access_disabled') === 'on';
 
     if (!name) {
         return { error: 'Name is required' };
     }
 
     try {
-        const dataToInsert = { name, email, phone, address };
+        const dataToInsert = { 
+            name, 
+            email, 
+            phone, 
+            address,
+            username,
+            access_disabled: accessDisabled
+        };
+
+        if (password) {
+            dataToInsert.password_hash = await bcrypt.hash(password, 10);
+        }
 
         // Initial attempt
         let { error } = await supabase

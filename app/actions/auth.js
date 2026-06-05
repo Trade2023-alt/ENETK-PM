@@ -40,6 +40,9 @@ export async function login(prevState, formData) {
                 .single();
 
             if (customer) {
+                if (customer.access_disabled) {
+                    return { error: 'Access has been disabled for this account' };
+                }
                 found = true;
                 role = 'customer';
                 id = customer.id;
