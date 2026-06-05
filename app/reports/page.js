@@ -217,8 +217,8 @@ export default function ReportsPage() {
                                                 </td>
                                                 
                                                 {/* % Complete */}
-                                                <td style={{ padding: '0', verticalAlign: 'center', borderRight: '1px solid var(--card-border)' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
+                                                <td style={{ padding: '0', verticalAlign: 'middle', borderRight: '1px solid var(--card-border)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', padding: '0.75rem 1rem' }}>
                                                         <div style={{ width: '40px', background: 'rgba(255,255,255,0.1)', height: '10px', borderRadius: '4px', marginRight: '4px', overflow: 'hidden' }}>
                                                             <div style={{ width: `${task.completion_percent || 0}%`, background: 'var(--primary)', height: '100%', transition: 'width 0.3s ease' }}></div>
                                                         </div>
@@ -226,7 +226,7 @@ export default function ReportsPage() {
                                                             type="number"
                                                             min="0"
                                                             max="100"
-                                                            style={{ width: '45px', border: 'none', background: 'transparent', padding: '0.75rem 0', textAlign: 'right', color: 'var(--foreground)' }}
+                                                            style={{ width: '45px', border: 'none', background: 'transparent', padding: '0', textAlign: 'right', color: 'var(--foreground)' }}
                                                             value={task.completion_percent || 0}
                                                             onChange={(e) => handleUpdateTask(task.id, 'completion_percent', parseInt(e.target.value) || 0)}
                                                         />

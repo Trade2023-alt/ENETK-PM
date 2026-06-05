@@ -2,19 +2,19 @@
 
 :root {
   /* ENETK Brand Theme - WWDC2025 Liquid Glassmorphism */
-  --background: #f8fafc; /* Slate-50 base */
-  --foreground: #0f172a; /* Slate-900 text */
+  --background: #0f172a; /* Dark slate base if image fails */
+  --foreground: #f8fafc; /* Slate-50 text */
 
   /* Liquid Glassmorphism Variables */
-  --glass-bg: rgba(255, 255, 255, 0.14); /* Super clear transparent white */
-  --glass-border: rgba(255, 255, 255, 0.45); /* Sharp specular highlight border */
-  --glass-highlight: rgba(255, 255, 255, 0.7); /* Brighter highlights on hover */
-  --card-border: rgba(255, 255, 255, 0.3);
+  --glass-bg: rgba(0, 0, 0, 0.35); /* Darker transparent bg for glass */
+  --glass-border: rgba(255, 255, 255, 0.15); /* Sharp specular highlight border */
+  --glass-highlight: rgba(255, 255, 255, 0.25); /* Brighter highlights on hover */
+  --card-border: rgba(255, 255, 255, 0.15);
 
   --primary: #9f1239; /* ENETK Deep Maroon */
   --primary-hover: #be123c;
 
-  --text-muted: rgba(15, 23, 42, 0.6);
+  --text-muted: rgba(248, 250, 252, 0.65); /* Light muted text */
 
   --success: #10b981;
   --warning: #f59e0b;
@@ -24,9 +24,9 @@
   --radius: 1.25rem; /* Smoother, larger corners like iOS/visionOS */
   
   /* Specular reflections: top edge highlight + internal gloss */
-  --shadow-glass: inset 0 1px 1px rgba(255, 255, 255, 0.5), 
-                  inset 0 12px 24px -12px rgba(255, 255, 255, 0.3),
-                  0 8px 32px 0 rgba(15, 23, 42, 0.05);
+  --shadow-glass: inset 0 1px 1px rgba(255, 255, 255, 0.2), 
+                  inset 0 12px 24px -12px rgba(255, 255, 255, 0.1),
+                  0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -51,17 +51,17 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: #0f172a;
+  color: var(--foreground);
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 
 .card h1, .card h2, .card h3, .card h4, .card h5, .card h6 {
-  color: #0f172a;
+  color: var(--foreground);
 }
 
 .card p, .card span, .card div, .card label {
-  color: #334155;
+  color: var(--foreground);
 }
 
 .card a { color: var(--primary); }
