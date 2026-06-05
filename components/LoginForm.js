@@ -48,9 +48,7 @@ export default function LoginForm() {
 
             <SubmitButton />
 
-            <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                <p>Default Login: admin / admin123</p>
-            </div>
+
         </form>
     );
 }
