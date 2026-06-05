@@ -33,9 +33,15 @@ export default function JobForm({ customers, contacts, users, userRole }) {
                     {state.error}
                 </div>
             )}
-            <div style={{ marginBottom: '1rem' }}>
-                <label className="label">Job Title</label>
-                <input name="title" type="text" className="input" placeholder="e.g. Kitchen Wiring" required />
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                    <label className="label">Job Title</label>
+                    <input name="title" type="text" className="input" placeholder="e.g. Kitchen Wiring" required />
+                </div>
+                <div>
+                    <label className="label">Job Number</label>
+                    <input name="job_number" type="text" className="input" placeholder="e.g. 123-4567" />
+                </div>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>

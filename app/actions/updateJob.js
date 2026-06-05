@@ -13,6 +13,7 @@ export async function updateJobStatus(formData) {
     const description = formData.get('description');
     const leadId = formData.get('lead_id');
     const isHiddenRaw = formData.get('is_hidden');
+    const jobNumber = formData.get('job_number');
 
     try {
         // 1. Fetch current job to get current hours
@@ -48,6 +49,7 @@ export async function updateJobStatus(formData) {
         if (description !== null) updateData.description = description;
         if (leadId !== null) updateData.lead_id = leadId === '' ? null : leadId;
         if (isHiddenRaw !== null) updateData.is_hidden = isHiddenRaw === 'true';
+        if (jobNumber !== null) updateData.job_number = jobNumber;
 
         updateData.updated_at = new Date().toISOString();
 

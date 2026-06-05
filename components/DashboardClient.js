@@ -45,18 +45,22 @@ export default function DashboardClient({ initialJobs }) {
 
     const parseJobDetails = (job) => {
         const title = job.title || '';
-        let jobNumber = job.id ? `#${job.id}` : 'N/A';
+        let jobNumber = job.job_number || (job.id ? `#${job.id}` : 'N/A');
         let cleanTitle = title;
         
+        // Even if we have job.job_number, we might want to clean it out of the title if it's there
         const match = title.match(/\b\d{3}-\d{4}\b/);
         if (match) {
-            jobNumber = match[0];
+            if (!job.job_number) {
+                jobNumber = match[0];
+            }
             cleanTitle = title
                 .replace(/^\d+-\d+\s*(:|-|🛠️|🚀)?\s*/, '')
                 .replace(/\s*\(\b\d{3}-\d{4}\b\)/, '')
                 .trim();
             if (!cleanTitle) cleanTitle = title;
         }
+        
         
         return {
             jobNumber,

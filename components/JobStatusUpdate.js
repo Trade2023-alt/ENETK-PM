@@ -60,6 +60,10 @@ export default function JobStatusUpdate({ job, allUsers }) {
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Current: {job.used_hours || 0} hrs</div>
                 </div>
                 <div>
+                    <label className="label">Job Number</label>
+                    <input name="job_number" type="text" className="input" defaultValue={job.job_number || ''} placeholder="e.g. 123-4567" />
+                </div>
+                <div>
                     <label className="label">Estimated Hours</label>
                     <input name="estimated_hours" type="number" step="0.5" className="input" defaultValue={job.estimated_hours || 0} />
                 </div>

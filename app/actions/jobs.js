@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function createJob(prevState, formData) {
     const title = formData.get('title');
+    const jobNumber = formData.get('job_number') || null;
     const description = formData.get('description');
     const customerId = formData.get('customer_id');
     const customerContactId = formData.get('customer_contact_id') || null;
@@ -25,6 +26,7 @@ export async function createJob(prevState, formData) {
         // Insert job with sequence mismatch recovery
         const jobToInsert = {
             title,
+            job_number: jobNumber,
             description,
             customer_id: customerId,
             customer_contact_id: customerContactId === '' ? null : customerContactId,
