@@ -6,12 +6,20 @@ import Link from 'next/link';
 import { updateJobStatus } from '@/app/actions/updateJob';
 
 export default function DashboardClient({ initialJobs }) {
-    const [grouping, setGrouping] = useState('none'); // none, customer, status, incomplete
+    const [grouping, setGrouping] = useState('incomplete'); // none, customer, status, incomplete, assigned
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
+    const [selectedLead, setSelectedLead] = useState('All');
+
+    const uniqueLeads = Array.from(new Set(initialJobs.map(j => j.lead_name || 'Unassigned'))).sort();
+
+    let filteredJobs = initialJobs;
+    if (selectedLead !== 'All') {
+        filteredJobs = filteredJobs.filter(j => (j.lead_name || 'Unassigned') === selectedLead);
+    }
 
     const jobs = grouping === 'incomplete'
-        ? initialJobs.filter(j => j.status !== 'Complete')
-        : initialJobs;
+        ? filteredJobs.filter(j => j.status !== 'Complete')
+        : filteredJobs;
 
     const groupedJobs = {};
 
@@ -190,7 +198,19 @@ export default function DashboardClient({ initialJobs }) {
                 </div>
 
                 {/* Grouping Selectors (Right) */}
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <select 
+                        value={selectedLead} 
+                        onChange={(e) => setSelectedLead(e.target.value)}
+                        className="input"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', maxWidth: '200px', height: '100%' }}
+                    >
+                        <option value="All">All Leads</option>
+                        {uniqueLeads.map(lead => (
+                            <option key={lead} value={lead}>{lead}</option>
+                        ))}
+                    </select>
+                    <div style={{ width: '1px', height: '24px', background: 'var(--card-border)', margin: '0 0.5rem' }}></div>
                     <button
                         onClick={() => setGrouping('none')}
                         className={`btn ${grouping === 'none' ? 'btn-primary' : ''}`}

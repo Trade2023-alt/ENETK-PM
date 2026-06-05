@@ -8,8 +8,10 @@ import SubTaskList from '@/components/SubTaskList';
 import EmailReminderButton from '@/components/EmailReminderButton';
 import JobMilestones from '@/components/JobMilestones';
 import LessonsLearned from '@/components/LessonsLearned';
+import JobNotes from '@/components/JobNotes';
 import { getJobMilestones } from '@/app/actions/roadmap';
 import { getLessonsLearned } from '@/app/actions/lessons';
+import { getJobNotes } from '@/app/actions/notes';
 
 export default async function JobDetailPage({ params }) {
     const cookieStore = await cookies();
@@ -116,7 +118,7 @@ export default async function JobDetailPage({ params }) {
                                         Due: {new Date(job.due_date).toLocaleDateString()}
                                     </div>
                                 )}
-                                <EmailReminderButton />
+                                <EmailReminderButton jobId={job.id} />
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -150,6 +152,8 @@ export default async function JobDetailPage({ params }) {
                     <JobMilestones jobId={job.id} initialMilestones={await getJobMilestones(job.id)} subTasks={subTasks} />
 
                     <SubTaskList jobId={job.id} subTasks={subTasks} users={users} />
+
+                    <JobNotes jobId={job.id} initialNotes={await getJobNotes(job.id)} />
 
                     <LessonsLearned jobId={job.id} initialLessons={await getLessonsLearned(job.id)} />
                 </div>

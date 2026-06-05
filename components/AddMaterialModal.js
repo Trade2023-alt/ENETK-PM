@@ -133,7 +133,7 @@ export default function AddMaterialModal({ onClose, onSuccess }) {
                     </div>
 
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                        <button type="button" onClick={onClose} className="btn" style={{ flex: 1 }}>Cancel</button>
+                        <button type="button" onClick={onClose} className="btn" style={{ flex: 1 }}>Close</button>
                         <button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={loading}>
                             {loading ? 'Adding...' : 'Add to Inventory'}
                         </button>

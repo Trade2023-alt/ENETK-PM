@@ -54,8 +54,8 @@ export default async function Home() {
             `)
       .order('scheduled_date', { ascending: true });
 
-    // Filter by Assignment for non-admins
-    if (userRole !== 'admin') {
+    // Filter by Assignment/Lead status for non-admins & non-integrators
+    if (userRole !== 'admin' && userRole !== 'system_integrator') {
       const { data: userAssignments } = await supabase
         .from('job_assignments')
         .select('job_id')
@@ -63,8 +63,12 @@ export default async function Home() {
 
       const assignedJobIds = userAssignments?.map(a => a.job_id) || [];
 
-      // Filter the main query to only show assigned jobs
-      query = query.in('id', assignedJobIds.length ? assignedJobIds : [0]);
+      // Filter the main query to show assigned jobs OR jobs where the user is the lead
+      if (assignedJobIds.length > 0) {
+        query = query.or(`id.in.(${assignedJobIds.join(',')}),lead_id.eq.${userId}`);
+      } else {
+        query = query.eq('lead_id', userId);
+      }
     }
 
     const { data, error } = await query;

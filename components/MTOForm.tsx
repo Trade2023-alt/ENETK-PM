@@ -2427,7 +2427,7 @@ export default function MTOForm({ onProjectChange }: { onProjectChange?: (id: nu
 
             <div className="flex justify-end gap-2 border-t pt-4">
               <button onClick={() => setIsAddingCustom(false)} className="btn py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">
-                Cancel
+                Close
               </button>
               <button onClick={handleAddCustomLine} className="btn btn-primary py-2 px-5 font-bold text-xs">
                 Add to Takeoff Sheet

@@ -106,7 +106,7 @@ export default function ImportCsvModal({ onClose, onSuccess }) {
                 )}
 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                    <button type="button" onClick={onClose} className="btn" style={{ flex: 1 }}>Cancel</button>
+                    <button type="button" onClick={onClose} className="btn" style={{ flex: 1 }}>Close</button>
                     <button
                         onClick={handleImport}
                         className="btn btn-primary"

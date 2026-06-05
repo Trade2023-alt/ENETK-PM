@@ -219,6 +219,27 @@ const tools = [
             },
             required: ["description", "qty"]
         }
+    },
+    {
+        name: "get_job_notes",
+        description: "Fetch historical notes for a specific job.",
+        input_schema: {
+            type: "object",
+            properties: {
+                job_id: { type: "string", description: "The ID of the job" }
+            },
+            required: ["job_id"]
+        }
+    },
+    {
+        name: "get_lessons_learned",
+        description: "Search the company knowledge base for lessons learned and tips & tricks.",
+        input_schema: {
+            type: "object",
+            properties: {
+                query: { type: "string", description: "Search query (e.g., 'solar panels', 'safety', 'permit')" }
+            }
+        }
     }
 ];
 
@@ -392,6 +413,24 @@ async function handleToolCall(toolName, input) {
                     users: ["id", "username", "role", "company"]
                 };
             }
+            case "get_job_notes": {
+                const { data, error } = await supabase
+                    .from('job_notes')
+                    .select('*, user:users(username)')
+                    .eq('job_id', input.job_id)
+                    .order('created_at', { ascending: false });
+                if (error) throw error;
+                return data;
+            }
+            case "get_lessons_learned": {
+                let query = supabase.from('lessons_learned').select('*, job:jobs(title)');
+                if (input.query) {
+                    query = query.or(`title.ilike.%${input.query}%,description.ilike.%${input.query}%,category.ilike.%${input.query}%`);
+                }
+                const { data, error } = await query.order('created_at', { ascending: false }).limit(20);
+                if (error) throw error;
+                return data;
+            }
             default:
                 return { error: "Unknown tool" };
         }
@@ -457,7 +496,7 @@ export async function chatWithAI(messages, conversationId = null) {
             });
         }
 
-        const systemPrompt = `You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, and team members. 
+        const systemPrompt = `You are the ENETK Project Management AI Agent. You have FULL ACCESS to the company database including: inventory, jobs, sub-tasks, customers, contacts, quotes, attendance logs, team members, job notes, and lessons learned (tips & tricks). 
 You can analyze data, update statuses, and provide business insights. 
 ALWAYS use tools to check real data before answering questions about records.
 When the user asks to CREATE a new customer, job, or inventory item:

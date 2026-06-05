@@ -130,7 +130,10 @@ export default function PipelinePage() {
                     padding: '1rem'
                 }}>
                     <div className="card" style={{ maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h3>{isAdding ? 'Add New Prospect' : 'Edit Prospect'}</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0 }}>{isAdding ? 'Add New Prospect' : 'Edit Prospect'}</h3>
+                            <button onClick={() => { setIsAdding(false); setEditingId(null); setEditForm(null); }} className="btn" style={{ padding: '0.5rem' }}>✕</button>
+                        </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
                             <div className="form-group" style={{ gridColumn: 'span 2' }}>
                                 <label>Company Name</label>
@@ -174,7 +177,7 @@ export default function PipelinePage() {
                             </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
-                            <button onClick={() => { setIsAdding(false); setEditingId(null); setEditForm(null); }} className="btn" style={{ background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
+                            <button onClick={() => { setIsAdding(false); setEditingId(null); setEditForm(null); }} className="btn" style={{ background: 'rgba(255,255,255,0.05)' }}>Close</button>
                             <button onClick={isAdding ? handleSaveNew : handleSave} className="btn btn-primary">{isAdding ? 'Create Prospect' : 'Save Changes'}</button>
                         </div>
                     </div>
