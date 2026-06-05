@@ -108,15 +108,15 @@ export default function ReportsPage() {
             ) : jobsData.length === 0 ? (
                 <div className="card text-center" style={{ padding: '3rem' }}>No active jobs found for this customer.</div>
             ) : (
-                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     
                     {/* Top Summary Section (Excel Style) */}
-                    <div style={{ padding: '1rem', borderBottom: '2px solid #3b82f6', background: '#f8fafc' }}>
+                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.05)' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '250px 250px 1fr 50px', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem' }}>
                             <div style={{ fontWeight: 'bold' }}>All Tasks</div>
                             <div style={{ fontWeight: 'bold' }}>Total Project Completion</div>
-                            <div style={{ width: '100%', background: '#e2e8f0', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: `${overallProjectCompletion}%`, background: 'linear-gradient(90deg, #86efac 0%, #22c55e 100%)', height: '100%' }}></div>
+                            <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ width: `${overallProjectCompletion}%`, background: 'var(--primary)', height: '100%', transition: 'width 0.5s ease' }}></div>
                             </div>
                             <div style={{ fontWeight: 'bold', textAlign: 'right' }}>{overallProjectCompletion}</div>
                         </div>
@@ -127,8 +127,8 @@ export default function ReportsPage() {
                                 <div key={job.id} style={{ display: 'grid', gridTemplateColumns: '250px 250px 1fr 50px', gap: '1rem', alignItems: 'center', padding: '0.25rem 0' }}>
                                     <div style={{ fontWeight: 500 }}>{job.title}</div>
                                     <div>Overall Completion</div>
-                                    <div style={{ width: '100%', background: '#e2e8f0', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <div style={{ width: `${jobComp}%`, background: 'linear-gradient(90deg, #a7f3d0 0%, #10b981 100%)', height: '100%' }}></div>
+                                    <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${jobComp}%`, background: 'var(--primary)', height: '100%', opacity: 0.8, transition: 'width 0.5s ease' }}></div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>{jobComp}</div>
                                 </div>
@@ -139,16 +139,16 @@ export default function ReportsPage() {
                     {/* Bottom Details Table Section */}
                     <div style={{ overflowX: 'auto', width: '100%' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead style={{ background: '#2563eb', color: 'white', textAlign: 'left' }}>
+                            <thead style={{ background: 'rgba(255,255,255,0.05)', textAlign: 'left', borderBottom: '1px solid var(--card-border)' }}>
                                 <tr>
-                                    <th style={{ padding: '0.5rem 1rem', borderRight: '1px solid #1d4ed8' }}>Task</th>
-                                    <th style={{ padding: '0.5rem 1rem', borderRight: '1px solid #1d4ed8' }}>Sub-Task</th>
-                                    <th style={{ padding: '0.5rem 1rem', borderRight: '1px solid #1d4ed8' }}>Scope of Work</th>
-                                    <th style={{ padding: '0.5rem 1rem', borderRight: '1px solid #1d4ed8', width: '130px' }}>Start</th>
-                                    <th style={{ padding: '0.5rem 1rem', borderRight: '1px solid #1d4ed8', width: '130px' }}>End Date</th>
-                                    <th style={{ padding: '0.5rem 1rem', borderRight: '1px solid #1d4ed8', width: '150px' }}>Current Status</th>
-                                    <th style={{ padding: '0.5rem 1rem', borderRight: '1px solid #1d4ed8', width: '100px' }}>% Complete</th>
-                                    <th style={{ padding: '0.5rem 1rem' }}>Notes</th>
+                                    <th style={{ padding: '0.75rem 1rem', borderRight: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Task</th>
+                                    <th style={{ padding: '0.75rem 1rem', borderRight: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Sub-Task</th>
+                                    <th style={{ padding: '0.75rem 1rem', borderRight: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Scope of Work</th>
+                                    <th style={{ padding: '0.75rem 1rem', borderRight: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', width: '130px' }}>Start</th>
+                                    <th style={{ padding: '0.75rem 1rem', borderRight: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', width: '130px' }}>End Date</th>
+                                    <th style={{ padding: '0.75rem 1rem', borderRight: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', width: '150px' }}>Current Status</th>
+                                    <th style={{ padding: '0.75rem 1rem', borderRight: '1px solid var(--card-border)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', width: '100px' }}>% Complete</th>
+                                    <th style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>Notes</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -157,24 +157,25 @@ export default function ReportsPage() {
                                         const isComplete = task.status === 'Complete';
                                         const isProgress = task.status === 'In Progress' || (task.completion_percent > 0 && task.completion_percent < 100);
                                         
-                                        const statusBg = isComplete ? '#86efac' : isProgress ? '#fde047' : 'transparent';
+                                        const statusBg = isComplete ? 'rgba(16, 185, 129, 0.1)' : isProgress ? 'rgba(245, 158, 11, 0.1)' : 'transparent';
+                                        const statusColor = isComplete ? 'var(--success)' : isProgress ? 'var(--warning)' : 'var(--text-muted)';
                                         
                                         return (
-                                            <tr key={task.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#f8fafc' : 'white' }}>
+                                            <tr key={task.id} style={{ borderBottom: '1px solid var(--card-border)', background: idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
                                                 {/* Task (Job Title) */}
-                                                <td style={{ padding: '0.25rem 0.5rem', fontWeight: 500, verticalAlign: 'top', borderRight: '1px solid #e2e8f0' }}>
+                                                <td style={{ padding: '0.75rem 1rem', fontWeight: 500, verticalAlign: 'top', borderRight: '1px solid var(--card-border)' }}>
                                                     {idx === 0 ? job.title : ''}
                                                 </td>
                                                 
                                                 {/* Sub-Task */}
-                                                <td style={{ padding: '0.25rem 0.5rem', verticalAlign: 'top', borderRight: '1px solid #e2e8f0' }}>
+                                                <td style={{ padding: '0.75rem 1rem', verticalAlign: 'top', borderRight: '1px solid var(--card-border)' }}>
                                                     {task.title}
                                                 </td>
                                                 
                                                 {/* Scope of Work */}
-                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid #e2e8f0' }}>
+                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid var(--card-border)' }}>
                                                     <textarea 
-                                                        style={{ width: '100%', height: '100%', minHeight: '40px', border: 'none', background: 'transparent', padding: '0.25rem 0.5rem', resize: 'vertical' }}
+                                                        style={{ width: '100%', height: '100%', minHeight: '40px', border: 'none', background: 'transparent', padding: '0.75rem 1rem', resize: 'vertical', color: 'var(--foreground)' }}
                                                         value={task.description || ''}
                                                         onChange={(e) => handleUpdateTask(task.id, 'description', e.target.value)}
                                                         placeholder="Enter scope..."
@@ -182,50 +183,50 @@ export default function ReportsPage() {
                                                 </td>
                                                 
                                                 {/* Start Date */}
-                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid #e2e8f0' }}>
+                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid var(--card-border)' }}>
                                                     <input 
                                                         type="date"
-                                                        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.25rem 0.5rem' }}
+                                                        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.75rem 1rem', color: 'var(--foreground)' }}
                                                         value={formatDateForInput(task.start_date)}
                                                         onChange={(e) => handleUpdateTask(task.id, 'start_date', e.target.value)}
                                                     />
                                                 </td>
                                                 
                                                 {/* End Date */}
-                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid #e2e8f0' }}>
+                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid var(--card-border)' }}>
                                                     <input 
                                                         type="date"
-                                                        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.25rem 0.5rem' }}
+                                                        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.75rem 1rem', color: 'var(--foreground)' }}
                                                         value={formatDateForInput(task.due_date)}
                                                         onChange={(e) => handleUpdateTask(task.id, 'due_date', e.target.value)}
                                                     />
                                                 </td>
                                                 
                                                 {/* Current Status */}
-                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid #e2e8f0', background: statusBg }}>
+                                                <td style={{ padding: '0', verticalAlign: 'top', borderRight: '1px solid var(--card-border)', background: statusBg }}>
                                                     <select 
-                                                        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.25rem 0.5rem', cursor: 'pointer' }}
+                                                        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.75rem 1rem', cursor: 'pointer', color: statusColor, fontWeight: 600 }}
                                                         value={task.status || 'Not Started'}
                                                         onChange={(e) => handleUpdateTask(task.id, 'status', e.target.value)}
                                                     >
-                                                        <option value="Not Started">Not Started</option>
-                                                        <option value="Pending">Pending</option>
-                                                        <option value="In Progress">In Progress</option>
-                                                        <option value="Complete">Complete</option>
+                                                        <option value="Not Started" style={{color: 'black'}}>Not Started</option>
+                                                        <option value="Pending" style={{color: 'black'}}>Pending</option>
+                                                        <option value="In Progress" style={{color: 'black'}}>In Progress</option>
+                                                        <option value="Complete" style={{color: 'black'}}>Complete</option>
                                                     </select>
                                                 </td>
                                                 
                                                 {/* % Complete */}
-                                                <td style={{ padding: '0', verticalAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
+                                                <td style={{ padding: '0', verticalAlign: 'center', borderRight: '1px solid var(--card-border)' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
-                                                        <div style={{ width: '40px', background: '#e2e8f0', height: '10px', borderRadius: '2px', marginRight: '4px', overflow: 'hidden' }}>
-                                                            <div style={{ width: `${task.completion_percent || 0}%`, background: '#22c55e', height: '100%' }}></div>
+                                                        <div style={{ width: '40px', background: 'rgba(255,255,255,0.1)', height: '10px', borderRadius: '4px', marginRight: '4px', overflow: 'hidden' }}>
+                                                            <div style={{ width: `${task.completion_percent || 0}%`, background: 'var(--primary)', height: '100%', transition: 'width 0.3s ease' }}></div>
                                                         </div>
                                                         <input 
                                                             type="number"
                                                             min="0"
                                                             max="100"
-                                                            style={{ width: '45px', border: 'none', background: 'transparent', padding: '0.25rem 0', textAlign: 'right' }}
+                                                            style={{ width: '45px', border: 'none', background: 'transparent', padding: '0.75rem 0', textAlign: 'right', color: 'var(--foreground)' }}
                                                             value={task.completion_percent || 0}
                                                             onChange={(e) => handleUpdateTask(task.id, 'completion_percent', parseInt(e.target.value) || 0)}
                                                         />
@@ -235,7 +236,7 @@ export default function ReportsPage() {
                                                 {/* Notes */}
                                                 <td style={{ padding: '0', verticalAlign: 'top' }}>
                                                     <textarea 
-                                                        style={{ width: '100%', height: '100%', minHeight: '40px', border: 'none', background: 'transparent', padding: '0.25rem 0.5rem', resize: 'vertical' }}
+                                                        style={{ width: '100%', height: '100%', minHeight: '40px', border: 'none', background: 'transparent', padding: '0.75rem 1rem', resize: 'vertical', color: 'var(--foreground)' }}
                                                         value={task.notes || ''}
                                                         onChange={(e) => handleUpdateTask(task.id, 'notes', e.target.value)}
                                                         placeholder="Enter notes..."
