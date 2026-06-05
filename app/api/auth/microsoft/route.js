@@ -10,12 +10,14 @@ const getMsalConfig = () => ({
     }
 });
 
+import { cookies } from 'next/headers';
+
 export async function GET(request) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
 
     if (!userId) {
-        return Response.json({ error: 'UserId required' }, { status: 400 });
+        return Response.json({ error: 'UserId required. Please login first.' }, { status: 400 });
     }
 
     const authCodeUrlParameters = {
