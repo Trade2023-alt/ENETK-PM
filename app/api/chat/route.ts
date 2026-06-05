@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from "@/lib/supabase";
+import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   try {
@@ -35,9 +36,15 @@ export async function POST(request: Request) {
       };
     }
 
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get('user_role')?.value;
+
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
-    const contextText = `
+    let systemPrompt = `You are an expert Automation and Electrical Estimation Assistant. 
+Analyze the project context provided below and answer the user's question. Use clear, helpful language and show calculations if requested.
+
+Project Context:
 Project Name: ${projectInfo?.projectName || 'Unnamed'}
 RFP Number: ${projectInfo?.rfpNumber || 'N/A'}
 Bid Due Date: ${projectInfo?.bidDueDate || 'N/A'}
@@ -49,20 +56,24 @@ ${JSON.stringify(laborRates || [], null, 2)}
 
 Material Takeoff (MTO) Lines:
 ${JSON.stringify(mtoLines || [], null, 2)}
-`;
+
+User Question:
+${message}`;
+
+    if (userRole === 'guest') {
+      systemPrompt = `You are an AI assistant for ENETK. You are currently speaking with a Guest user.
+You may only answer questions about the SCADA app (enetkscada.com) and general questions about ENETK.
+CRITICAL INSTRUCTION: You MUST NOT answer any questions or reveal any information regarding our jobs, hours, project materials, labor rates, or financial information. If the user asks about these topics, politely decline to answer.
+
+User Question:
+${message}`;
+    }
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
         {
-          text: `You are an expert Automation and Electrical Estimation Assistant. 
-Analyze the project context provided below and answer the user's question. Use clear, helpful language and show calculations if requested.
-
-Project Context:
-${contextText}
-
-User Question:
-${message}`
+          text: systemPrompt
         }
       ]
     });

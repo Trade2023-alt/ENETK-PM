@@ -13,6 +13,23 @@ export async function login(prevState, formData) {
         return { error: 'Username and password are required' };
     }
 
+    if (username.toLowerCase() === 'guest' && password.toLowerCase() === 'guest') {
+        const cookieStore = await cookies();
+        cookieStore.set('user_id', 'guest', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7 // 1 week
+        });
+        cookieStore.set('user_role', 'guest', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7
+        });
+        redirect('/scada');
+    }
+
     try {
         // Check users table
         const { data: user, error: userError } = await supabase
