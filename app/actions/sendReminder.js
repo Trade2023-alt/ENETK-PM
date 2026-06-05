@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { sendEmail } from '@/lib/outlook';
+import { getAppUrl } from '@/lib/emailHelper';
 
 export async function sendManualReminder(jobId) {
     try {
@@ -38,6 +39,7 @@ export async function sendManualReminder(jobId) {
             return { error: 'No users assigned to this job to remind.' };
         }
 
+        const appUrl = getAppUrl();
         const subject = `🔔 Manual Reminder: Project "${job.title}"`;
         const content = `
             <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid #3b82f6; border-radius: 8px;">
@@ -46,7 +48,7 @@ export async function sendManualReminder(jobId) {
                 <p><strong>Due Date:</strong> ${job.due_date ? new Date(job.due_date).toLocaleDateString() : 'Not Set'}</p>
                 <p>Please ensure all your tasks are up to date.</p>
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
-                <p><a href="http://localhost:3000/jobs/${job.id}" style="background-color: #3b82f6; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                <p><a href="${appUrl}/jobs/${job.id}" style="background-color: #3b82f6; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
             </div>
         `;
 

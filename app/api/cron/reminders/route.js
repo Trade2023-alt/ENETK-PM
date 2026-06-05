@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { sendNotificationToUsers } from '@/lib/emailHelper';
+import { sendNotificationToUsers, getAppUrl } from '@/lib/emailHelper';
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
@@ -43,6 +43,7 @@ export async function GET(request) {
                     const statusText = isOverdue ? 'OVERDUE' : 'DUE TOMORROW';
                     const color = isOverdue ? '#ef4444' : '#f59e0b';
                     
+                    const appUrl = getAppUrl();
                     const subject = `⚠️ Reminder: Project "${job.title || 'Unknown'}" is ${statusText}`;
                     const content = `
                         <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid ${color}; border-radius: 8px;">
@@ -50,7 +51,7 @@ export async function GET(request) {
                             <p>The project <strong>${job.title || 'Unknown'}</strong> is <strong>${statusText.toLowerCase()}</strong>.</p>
                             <p><strong>Due Date:</strong> ${new Date(job.due_date).toLocaleDateString()}</p>
                             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
-                            <p><a href="http://localhost:3000/jobs/${job.id}" style="background-color: ${color}; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                            <p><a href="${appUrl}/jobs/${job.id}" style="background-color: ${color}; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
                         </div>
                     `;
                     
@@ -83,6 +84,7 @@ export async function GET(request) {
                     const statusText = isOverdue ? 'OVERDUE' : 'DUE TOMORROW';
                     const color = isOverdue ? '#ef4444' : '#f59e0b';
                     
+                    const appUrl = getAppUrl();
                     const subject = `⚠️ Reminder: Subtask "${subTask.title || 'Unknown'}" is ${statusText}`;
                     const content = `
                         <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid ${color}; border-radius: 8px;">
@@ -90,7 +92,7 @@ export async function GET(request) {
                             <p>The subtask <strong>${subTask.title || 'Unknown'}</strong> is <strong>${statusText.toLowerCase()}</strong>.</p>
                             <p><strong>Due Date:</strong> ${new Date(subTask.due_date).toLocaleDateString()}</p>
                             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
-                            <p><a href="http://localhost:3000/jobs/${subTask.job_id}" style="background-color: ${color}; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                            <p><a href="${appUrl}/jobs/${subTask.job_id}" style="background-color: ${color}; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
                         </div>
                     `;
                     

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
-import { sendNotificationToUsers } from '@/lib/emailHelper';
+import { sendNotificationToUsers, getAppUrl } from '@/lib/emailHelper';
 
 export async function updateJobStatus(formData) {
     const jobId = formData.get('job_id');
@@ -88,6 +88,7 @@ export async function updateJobStatus(formData) {
 
         // Send Email Notification to Newly Assigned Users
         if (newlyAssignedUserIds.length > 0) {
+            const appUrl = getAppUrl();
             const subject = `🔔 You have been assigned to Project: "${currentJob.title || 'Unknown Project'}"`;
             const content = `
                 <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid #10b981; border-radius: 8px;">
@@ -95,7 +96,7 @@ export async function updateJobStatus(formData) {
                     <p>You have been assigned to the project <strong>${currentJob.title || 'Unknown Project'}</strong>.</p>
                     <p>Please review the workspace for any pending tasks.</p>
                     <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
-                    <p><a href="http://localhost:3000/jobs/${jobId}" style="background-color: #10b981; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                    <p><a href="${appUrl}/jobs/${jobId}" style="background-color: #10b981; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
                 </div>
             `;
             // Trigger async without waiting to not block UI
