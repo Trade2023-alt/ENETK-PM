@@ -81,7 +81,7 @@ export default function DashboardClient({ initialJobs }) {
     };
 
     const renderGridTable = (jobsArray) => (
-        <div style={{ overflowX: 'auto', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-glass)', backdropFilter: 'blur(30px)' }}>
+        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(255, 255, 255, 0.03)' }}>
