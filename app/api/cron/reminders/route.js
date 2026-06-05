@@ -55,8 +55,8 @@ export async function GET(request) {
                         </div>
                     `;
                     
-                    await sendNotificationToUsers(userIds, subject, content);
-                    sentCount++;
+                    const result = await sendNotificationToUsers(userIds, subject, content);
+                    if (result.sentCount) sentCount += result.sentCount;
                 }
             }
         }
@@ -96,8 +96,8 @@ export async function GET(request) {
                         </div>
                     `;
                     
-                    await sendNotificationToUsers(userIds, subject, content);
-                    sentCount++;
+                    const result = await sendNotificationToUsers(userIds, subject, content);
+                    if (result.sentCount) sentCount += result.sentCount;
                 }
             }
         }
