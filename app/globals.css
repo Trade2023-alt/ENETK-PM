@@ -39,10 +39,10 @@ body {
   background-color: var(--background);
   /* Liquid-like multi-color soft mesh gradient for clear glass backdrop */
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(244, 63, 94, 0.09), transparent 35%),
-    radial-gradient(circle at 90% 40%, rgba(59, 130, 246, 0.07), transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.06), transparent 35%),
-    radial-gradient(circle at 30% 60%, rgba(159, 18, 57, 0.04), transparent 30%);
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.8)),
+    url('/background.jpg');
+  background-size: cover;
+  background-position: center;
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
