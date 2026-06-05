@@ -12,6 +12,7 @@ import JobNotes from '@/components/JobNotes';
 import { getJobMilestones } from '@/app/actions/roadmap';
 import { getLessonsLearned } from '@/app/actions/lessons';
 import { getJobNotes } from '@/app/actions/notes';
+import JobDetailActions from '@/components/JobDetailActions';
 
 export default async function JobDetailPage({ params }) {
     const cookieStore = await cookies();
@@ -95,9 +96,12 @@ export default async function JobDetailPage({ params }) {
                                 {job.status}
                             </span>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Scheduled for</div>
-                            <div style={{ fontWeight: 500 }}>{job.scheduled_date ? new Date(job.scheduled_date).toLocaleString() : 'Not set'}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+                            <JobDetailActions jobId={job.id} isHidden={job.is_hidden} />
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Scheduled for</div>
+                                <div style={{ fontWeight: 500 }}>{job.scheduled_date ? new Date(job.scheduled_date).toLocaleString() : 'Not set'}</div>
+                            </div>
                         </div>
                     </div>
 
