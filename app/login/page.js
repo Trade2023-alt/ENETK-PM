@@ -7,7 +7,7 @@ export default function LoginPage() {
             minHeight: '100vh',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#e8e8e8'
+            background: 'transparent'
         }}>
             <LoginForm />
         </div>
