@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import { sendNotificationToUsers } from '@/lib/emailHelper';
 
 export async function createSubTask(formData) {
     const jobId = formData.get('job_id');
@@ -55,6 +56,19 @@ export async function createSubTask(formData) {
 
         if (assignmentError) throw assignmentError;
 
+        if (assignedUserIds.length > 0) {
+            const subject = `🔔 You have been assigned to Subtask: "${title}"`;
+            const content = `
+                <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid #10b981; border-radius: 8px;">
+                    <h2 style="color: #059669; margin-top: 0;">New Subtask Assignment</h2>
+                    <p>You have been assigned to the subtask <strong>${title}</strong>.</p>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
+                    <p><a href="http://localhost:3000/jobs/${jobId}" style="background-color: #10b981; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                </div>
+            `;
+            sendNotificationToUsers(assignedUserIds, subject, content).catch(e => console.error('Subtask notify error:', e));
+        }
+
         revalidatePath(`/jobs/${jobId}`);
     } catch (error) {
         console.error('Error creating subtask:', error);
@@ -84,6 +98,15 @@ export async function updateSubTask(formData) {
             const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
             const rawUsedHours = formData.get('used_hours');
             const assignedUserIds = formData.getAll('assigned_user_ids');
+
+            // Fetch existing assignments
+            const { data: existingAssignments } = await supabase
+                .from('sub_task_assignments')
+                .select('user_id')
+                .eq('sub_task_id', id);
+            
+            const existingUserIds = existingAssignments?.map(a => a.user_id.toString()) || [];
+            const newlyAssignedUserIds = assignedUserIds.filter(uid => !existingUserIds.includes(uid.toString()));
 
             const updateFields = {
                 title,
@@ -118,6 +141,19 @@ export async function updateSubTask(formData) {
 
             if (assignments.length > 0) {
                 await supabase.from('sub_task_assignments').insert(assignments);
+            }
+
+            if (newlyAssignedUserIds.length > 0) {
+                const subject = `🔔 You have been assigned to Subtask: "${title}"`;
+                const content = `
+                    <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid #10b981; border-radius: 8px;">
+                        <h2 style="color: #059669; margin-top: 0;">New Subtask Assignment</h2>
+                        <p>You have been assigned to the subtask <strong>${title}</strong>.</p>
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
+                        <p><a href="http://localhost:3000/jobs/${jobId}" style="background-color: #10b981; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                    </div>
+                `;
+                sendNotificationToUsers(newlyAssignedUserIds, subject, content).catch(e => console.error('Subtask notify error:', e));
             }
 
         } else {
@@ -180,6 +216,17 @@ export async function bulkCreateSubTasks(tasks) {
                     user_id: uid
                 }));
                 await supabase.from('sub_task_assignments').insert(assignments);
+
+                const subject = `🔔 You have been assigned to Subtask: "${task.title}"`;
+                const content = `
+                    <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid #10b981; border-radius: 8px;">
+                        <h2 style="color: #059669; margin-top: 0;">New Subtask Assignment</h2>
+                        <p>You have been assigned to the subtask <strong>${task.title}</strong>.</p>
+                        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
+                        <p><a href="http://localhost:3000/jobs/${task.job_id}" style="background-color: #10b981; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                    </div>
+                `;
+                sendNotificationToUsers(task.assigned_user_ids, subject, content).catch(e => console.error('Bulk subtask notify error:', e));
             }
         }
 

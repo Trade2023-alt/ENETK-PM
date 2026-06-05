@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
+import { sendNotificationToUsers } from '@/lib/emailHelper';
 
 export async function updateJobStatus(formData) {
     const jobId = formData.get('job_id');
@@ -64,6 +65,15 @@ export async function updateJobStatus(formData) {
 
         const assignedUserIds = formData.getAll('assigned_user_ids');
 
+        // Fetch existing assignments to detect new ones
+        const { data: existingAssignments } = await supabase
+            .from('job_assignments')
+            .select('user_id')
+            .eq('job_id', jobId);
+        
+        const existingUserIds = existingAssignments?.map(a => a.user_id.toString()) || [];
+        const newlyAssignedUserIds = assignedUserIds.filter(id => !existingUserIds.includes(id.toString()));
+
         // Update Assignments
         await supabase.from('job_assignments').delete().eq('job_id', jobId);
 
@@ -74,6 +84,22 @@ export async function updateJobStatus(formData) {
             }));
             const { error: assignmentError } = await supabase.from('job_assignments').insert(assignments);
             if (assignmentError) throw assignmentError;
+        }
+
+        // Send Email Notification to Newly Assigned Users
+        if (newlyAssignedUserIds.length > 0) {
+            const subject = `🔔 You have been assigned to Project: "${currentJob.title || 'Unknown Project'}"`;
+            const content = `
+                <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid #10b981; border-radius: 8px;">
+                    <h2 style="color: #059669; margin-top: 0;">New Project Assignment</h2>
+                    <p>You have been assigned to the project <strong>${currentJob.title || 'Unknown Project'}</strong>.</p>
+                    <p>Please review the workspace for any pending tasks.</p>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
+                    <p><a href="http://localhost:3000/jobs/${jobId}" style="background-color: #10b981; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                </div>
+            `;
+            // Trigger async without waiting to not block UI
+            sendNotificationToUsers(newlyAssignedUserIds, subject, content).catch(e => console.error('Email notify error:', e));
         }
 
         revalidatePath(`/jobs/${jobId}`);
