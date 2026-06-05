@@ -116,7 +116,7 @@ export default function ReportsPage() {
                             <div style={{ fontWeight: 'bold' }}>All Tasks</div>
                             <div style={{ fontWeight: 'bold' }}>Total Project Completion</div>
                             <div style={{ width: '100%', background: '#e2e8f0', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: \`\${overallProjectCompletion}%\`, background: 'linear-gradient(90deg, #86efac 0%, #22c55e 100%)', height: '100%' }}></div>
+                                <div style={{ width: `${overallProjectCompletion}%`, background: 'linear-gradient(90deg, #86efac 0%, #22c55e 100%)', height: '100%' }}></div>
                             </div>
                             <div style={{ fontWeight: 'bold', textAlign: 'right' }}>{overallProjectCompletion}</div>
                         </div>
@@ -128,7 +128,7 @@ export default function ReportsPage() {
                                     <div style={{ fontWeight: 500 }}>{job.title}</div>
                                     <div>Overall Completion</div>
                                     <div style={{ width: '100%', background: '#e2e8f0', height: '20px', borderRadius: '4px', overflow: 'hidden' }}>
-                                        <div style={{ width: \`\${jobComp}%\`, background: 'linear-gradient(90deg, #a7f3d0 0%, #10b981 100%)', height: '100%' }}></div>
+                                        <div style={{ width: `${jobComp}%`, background: 'linear-gradient(90deg, #a7f3d0 0%, #10b981 100%)', height: '100%' }}></div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>{jobComp}</div>
                                 </div>
@@ -219,7 +219,7 @@ export default function ReportsPage() {
                                                 <td style={{ padding: '0', verticalAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem' }}>
                                                         <div style={{ width: '40px', background: '#e2e8f0', height: '10px', borderRadius: '2px', marginRight: '4px', overflow: 'hidden' }}>
-                                                            <div style={{ width: \`\${task.completion_percent || 0}%\`, background: '#22c55e', height: '100%' }}></div>
+                                                            <div style={{ width: `${task.completion_percent || 0}%`, background: '#22c55e', height: '100%' }}></div>
                                                         </div>
                                                         <input 
                                                             type="number"
