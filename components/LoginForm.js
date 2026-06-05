@@ -48,7 +48,18 @@ export default function LoginForm() {
 
             <SubmitButton />
 
-
+            <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--card-border)' }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Want to see our SCADA App?</p>
+                <a href="/scada" className="btn" style={{ 
+                    display: 'inline-block', 
+                    background: 'rgba(16, 185, 129, 0.1)', 
+                    color: '#10b981', 
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    textDecoration: 'none'
+                }}>
+                    View ENETK SCADA
+                </a>
+            </div>
         </form>
     );
 }
