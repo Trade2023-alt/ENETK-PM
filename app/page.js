@@ -19,22 +19,33 @@ export default async function Home() {
   let userProfile = null;
 
   try {
-    // Fetch current user profile
-    const { data, error } = await supabase
-      .from('users')
-      .select('username, company')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (!error) userProfile = data;
-    else {
-      // Fallback if 'company' is missing
-      const { data: fallbackData } = await supabase
-        .from('users')
-        .select('username')
+    if (userRole === 'customer') {
+      const { data } = await supabase
+        .from('customers')
+        .select('name as username')
         .eq('id', userId)
         .maybeSingle();
-      userProfile = fallbackData;
+      if (data) {
+        userProfile = { username: data.username, company: data.username };
+      }
+    } else {
+      // Fetch current user profile
+      const { data, error } = await supabase
+        .from('users')
+        .select('username, company')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!error) userProfile = data;
+      else {
+        // Fallback if 'company' is missing
+        const { data: fallbackData } = await supabase
+          .from('users')
+          .select('username')
+          .eq('id', userId)
+          .maybeSingle();
+        userProfile = fallbackData;
+      }
     }
   } catch (err) {
     console.error('Safe dashboard fetch error:', err);
@@ -55,7 +66,9 @@ export default async function Home() {
       .order('scheduled_date', { ascending: true });
 
     // Filter by Assignment/Lead status for non-admins & non-integrators
-    if (userRole !== 'admin' && userRole !== 'system_integrator') {
+    if (userRole === 'customer') {
+      query = query.eq('customer_id', userId);
+    } else if (userRole !== 'admin' && userRole !== 'system_integrator') {
       const { data: userAssignments } = await supabase
         .from('job_assignments')
         .select('job_id')
@@ -97,6 +110,7 @@ export default async function Home() {
       </div>
 
       {/* Main Actions Panel Grid */}
+      {userRole !== 'customer' && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '3rem' }}>
         <Link href="/pipeline" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid var(--primary)' }}>
           <div style={{ fontSize: '1.5rem' }}>💰</div>
@@ -127,13 +141,16 @@ export default async function Home() {
           </div>
         </Link>
       </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.5rem' }}>Upcoming Jobs</h2>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          {userRole !== 'customer' && (
           <Link href="/todo/bulk" className="btn" style={{ background: 'rgba(255,255,255,0.05)' }}>
             📋 Bulk Add Tasks
           </Link>
+          )}
           <Link href="/jobs/new" className="btn btn-primary">
             + New Job
           </Link>

@@ -15,9 +15,12 @@ function SubmitButton() {
     );
 }
 
-export default function JobForm({ customers, contacts, users }) {
+export default function JobForm({ customers, contacts, users, userRole }) {
     const [state, formAction] = useActionState(createJob, null);
-    const [selectedCustomerId, setSelectedCustomerId] = useState('');
+    
+    // Automatically select the customer if there's only one (e.g. for customer role)
+    const initialCustomer = (userRole === 'customer' && customers.length === 1) ? customers[0].id.toString() : '';
+    const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomer);
 
     const filteredContacts = selectedCustomerId
         ? contacts.filter(c => c.customer_id.toString() === selectedCustomerId)
@@ -37,7 +40,12 @@ export default function JobForm({ customers, contacts, users }) {
 
             <div style={{ marginBottom: '1rem' }}>
                 <label className="label">Customer</label>
-                {customers.length > 0 ? (
+                {userRole === 'customer' && customers.length === 1 ? (
+                    <>
+                        <input type="hidden" name="customer_id" value={customers[0].id} />
+                        <input type="text" className="input" disabled value={customers[0].name} style={{ background: 'var(--input-bg)', opacity: 0.8 }} />
+                    </>
+                ) : customers.length > 0 ? (
                     <select
                         name="customer_id"
                         className="input"
@@ -53,7 +61,7 @@ export default function JobForm({ customers, contacts, users }) {
                 ) : (
                     <div style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '0.5rem' }}>
                         <span style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>No customers found.</span>
-                        <Link href="/customers/new" style={{ color: 'var(--primary)', fontSize: '0.875rem' }}>Create Customer +</Link>
+                        {userRole !== 'customer' && <Link href="/customers/new" style={{ color: 'var(--primary)', fontSize: '0.875rem' }}>Create Customer +</Link>}
                     </div>
                 )}
             </div>

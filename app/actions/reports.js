@@ -2,13 +2,24 @@
 
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
 // Fetch all customers for the dropdown
 export async function getReportCustomers() {
-    const { data, error } = await supabase
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get('user_role')?.value;
+    const userId = cookieStore.get('user_id')?.value;
+
+    let query = supabase
         .from('customers')
         .select('id, name')
         .order('name');
+
+    if (userRole === 'customer' && userId) {
+        query = query.eq('id', userId);
+    }
+
+    const { data, error } = await query;
     
     if (error) {
         console.error('Error fetching customers:', error);
@@ -20,6 +31,14 @@ export async function getReportCustomers() {
 // Fetch report data for a specific customer
 export async function getCustomerReportData(customerId) {
     if (!customerId) return { jobs: [] };
+
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get('user_role')?.value;
+    const userId = cookieStore.get('user_id')?.value;
+
+    if (userRole === 'customer' && userId && customerId !== userId) {
+        return { error: 'Unauthorized access to report data.', jobs: [] };
+    }
 
     const { data: jobs, error: jobsError } = await supabase
         .from('jobs')

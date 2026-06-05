@@ -124,7 +124,7 @@ export default function Header({ userRole }) {
                     {/* Main Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
                         <Link href="/" style={activeButtonStyle} onClick={() => setMenuOpen(false)}>🏠 Dashboard</Link>
-                        <Link href="/todo" style={navButtonStyle} onClick={() => setMenuOpen(false)}>✅ To-Do</Link>
+                        {userRole !== 'customer' && <Link href="/todo" style={navButtonStyle} onClick={() => setMenuOpen(false)}>✅ To-Do</Link>}
                     </div>
 
                     {/* Section Label */}
@@ -132,15 +132,15 @@ export default function Header({ userRole }) {
 
                     {/* Operations Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
-                        <Link href="/pipeline" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📊 Pipeline</Link>
-                        <Link href="/customers" style={navButtonStyle} onClick={() => setMenuOpen(false)}>👥 Clients</Link>
-                        <Link href="/schedule" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📅 Schedule</Link>
-                        <Link href="/inventory" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📦 Stock</Link>
-                        <Link href="/quotes" style={navButtonStyle} onClick={() => setMenuOpen(false)}>💰 Quotes</Link>
-                        <Link href="/estimate" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📏 Estimating</Link>
-                        <Link href="/roadmap" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🗺️ Road Map</Link>
+                        {userRole !== 'customer' && <Link href="/pipeline" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📊 Pipeline</Link>}
+                        {userRole !== 'customer' && <Link href="/customers" style={navButtonStyle} onClick={() => setMenuOpen(false)}>👥 Clients</Link>}
+                        {userRole !== 'customer' && <Link href="/schedule" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📅 Schedule</Link>}
+                        {userRole !== 'customer' && <Link href="/inventory" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📦 Stock</Link>}
+                        {userRole !== 'customer' && <Link href="/quotes" style={navButtonStyle} onClick={() => setMenuOpen(false)}>💰 Quotes</Link>}
+                        {userRole !== 'customer' && <Link href="/estimate" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📏 Estimating</Link>}
+                        {userRole !== 'customer' && <Link href="/roadmap" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🗺️ Road Map</Link>}
                         <Link href="/reports" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📈 Reports</Link>
-                        <Link href="/knowledge" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🧠 Tips & Tricks</Link>
+                        {userRole !== 'customer' && <Link href="/knowledge" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🧠 Tips & Tricks</Link>}
                     </div>
 
                     {/* AI Section */}

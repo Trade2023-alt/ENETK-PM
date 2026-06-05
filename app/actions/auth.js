@@ -66,9 +66,8 @@ export async function login(prevState, formData) {
             maxAge: 60 * 60 * 24 * 7
         });
 
-        if (role === 'customer') {
-            redirect('/portal');
-        }
+        // Customer role no longer redirects to /portal
+
 
     } catch (error) {
         if (error.message === 'NEXT_REDIRECT') {
