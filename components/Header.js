@@ -139,15 +139,17 @@ export default function Header({ userRole }) {
                         {userRole !== 'customer' && <Link href="/quotes" style={navButtonStyle} onClick={() => setMenuOpen(false)}>💰 Quotes</Link>}
                         {userRole !== 'customer' && <Link href="/estimate" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📏 Estimating</Link>}
                         {userRole !== 'customer' && <Link href="/roadmap" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🗺️ Road Map</Link>}
-                        <Link href="/reports" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📈 Reports</Link>
+                        {userRole !== 'customer' && <Link href="/reports" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📈 Reports</Link>}
                         {userRole !== 'customer' && <Link href="/knowledge" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🧠 Tips & Tricks</Link>}
                         <Link href="/scada" style={{...navButtonStyle, color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)'}} onClick={() => setMenuOpen(false)}>🌐 SCADA App</Link>
                     </div>
 
                     {/* AI Section */}
-                    <div style={{ marginBottom: '1rem' }}>
-                        <Link href="/ai-chat" style={aiButtonStyle} onClick={() => setMenuOpen(false)}>🤖 AI Agent</Link>
-                    </div>
+                    {userRole !== 'customer' && (
+                        <div style={{ marginBottom: '1rem' }}>
+                            <Link href="/ai-chat" style={aiButtonStyle} onClick={() => setMenuOpen(false)}>🤖 AI Agent</Link>
+                        </div>
+                    )}
 
                     {/* Admin Section */}
                     {userRole === 'admin' && (
