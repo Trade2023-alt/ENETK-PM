@@ -127,7 +127,7 @@ export default function DashboardClient({ initialJobs }) {
                                         {job.is_hidden && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Hidden</span>}
                                     </Link>
                                 </td>
-                                <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : '#334155', fontSize: '0.9rem' }}>
+                                <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : 'var(--foreground)', fontSize: '0.9rem' }}>
                                     📍 {job.customer_name || 'N/A'}
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle' }}>
