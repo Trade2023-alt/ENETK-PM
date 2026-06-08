@@ -3,13 +3,28 @@
 import Link from 'next/link';
 import MarkCompleteButton from './MarkCompleteButton';
 import { useState, useEffect } from 'react';
+import { updateJobStatus } from '@/app/actions/updateJob';
 
 export default function JobCard({ job, userRole, onDelete }) {
     const [mounted, setMounted] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [titleVal, setTitleVal] = useState(job.title || '');
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    const handleTitleSave = async () => {
+        setIsEditingTitle(false);
+        if (titleVal.trim() !== '' && titleVal !== job.title) {
+            const formData = new FormData();
+            formData.append('job_id', job.id);
+            formData.append('title', titleVal);
+            await updateJobStatus(formData);
+        } else {
+            setTitleVal(job.title || '');
+        }
+    };
 
     const statusColors = {
         'Scheduled': 'var(--primary)',
@@ -31,7 +46,22 @@ export default function JobCard({ job, userRole, onDelete }) {
     return (
         <div className={`card card-condensed ${statusClass}`}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.25rem' }}>
-                <h3 style={{ color: 'var(--foreground)' }}>{job.title || 'Untitled Job'}</h3>
+                {isEditingTitle ? (
+                    <input 
+                        type="text" 
+                        value={titleVal}
+                        onChange={(e) => setTitleVal(e.target.value)}
+                        onBlur={handleTitleSave}
+                        onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                        autoFocus
+                        style={{ fontSize: '1.17em', fontWeight: 'bold', width: '100%', background: 'var(--card-bg)', color: 'var(--foreground)', border: '1px solid var(--primary)', borderRadius: '4px', padding: '0.1rem 0.25rem', outline: 'none' }}
+                    />
+                ) : (
+                    <h3 onClick={() => setIsEditingTitle(true)} style={{ color: 'var(--foreground)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, marginRight: '0.5rem' }} title="Click to edit title">
+                        {job.title || 'Untitled Job'}
+                        <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>✏️</span>
+                    </h3>
+                )}
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                     <span style={{
                         padding: '0.125rem 0.375rem',
