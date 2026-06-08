@@ -168,8 +168,8 @@ export default function SubTaskList({ jobId, subTasks, users }) {
 
                         <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Used: {task.used_hours}h</div>
-                            <button onClick={() => { setAddingChildTo(task.id); setIsAdding(false); setEditingTaskId(null); }} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', borderColor: 'rgba(59, 130, 246, 0.2)' }} title="Add Child Task">
-                                + Sub
+                            <button onClick={() => { setAddingChildTo(task.id); setIsAdding(false); setEditingTaskId(null); }} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', borderColor: 'rgba(59, 130, 246, 0.2)' }} title="Add Micro Task">
+                                + Micro Task
                             </button>
                             <button onClick={() => { setEditingTaskId(task.id); setIsAdding(false); setAddingChildTo(null); }} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--card-border)' }}>
                                 Edit

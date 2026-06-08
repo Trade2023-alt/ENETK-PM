@@ -101,7 +101,7 @@ export async function getTodoItems(specificUserId = null) {
                     return {
                         id: `sub-${st.id}`,
                         originalId: st.id,
-                        type: st.parent_id ? 'Sub-Sub-Task' : 'Sub-task',
+                        type: st.parent_id ? 'Micro Task' : 'Sub-task',
                         title: st.title || 'Untitled Task',
                         description: null,
                         status: st.status || 'Pending',
