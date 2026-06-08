@@ -11,6 +11,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
     const [selectedLead, setSelectedLead] = useState('All');
     const [showHidden, setShowHidden] = useState(false);
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     const uniqueLeads = Array.from(new Set(initialJobs.map(j => j.lead_name || 'Unassigned'))).sort();
 
@@ -87,20 +88,49 @@ export default function DashboardClient({ initialJobs, userRole }) {
         }
     };
 
-    const renderGridTable = (jobsArray) => (
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const renderGridTable = (jobsArray) => {
+        const sortedJobs = [...jobsArray].sort((a, b) => {
+            if (!sortConfig.key) return 0;
+            
+            const aDetails = parseJobDetails(a);
+            const bDetails = parseJobDetails(b);
+            
+            let aValue = sortConfig.key === 'customer_name' ? (a.customer_name || '').toLowerCase() : (aDetails[sortConfig.key] || '').toLowerCase();
+            let bValue = sortConfig.key === 'customer_name' ? (b.customer_name || '').toLowerCase() : (bDetails[sortConfig.key] || '').toLowerCase();
+            
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return (
         <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(255, 255, 255, 0.03)' }}>
                         <th style={{ padding: '1rem', width: '50px' }}></th>
-                        <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Name</th>
-                        <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customer Name</th>
-                        <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', width: '160px' }}>Job Number</th>
+                        <th onClick={() => handleSort('jobName')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>
+                            Job Name {sortConfig.key === 'jobName' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                        </th>
+                        <th onClick={() => handleSort('customer_name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>
+                            Customer Name {sortConfig.key === 'customer_name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                        </th>
+                        <th onClick={() => handleSort('jobNumber')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', width: '160px', cursor: 'pointer' }}>
+                            Job Number {sortConfig.key === 'jobNumber' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                        </th>
                         {userRole === 'admin' && <th style={{ padding: '1rem', width: '50px' }}></th>}
                     </tr>
                 </thead>
                 <tbody>
-                    {jobsArray.map(job => {
+                    {sortedJobs.map(job => {
                         const isComplete = job.status === 'Complete';
                         const { jobNumber, jobName } = parseJobDetails(job);
                         return (
@@ -169,7 +199,8 @@ export default function DashboardClient({ initialJobs, userRole }) {
                 </tbody>
             </table>
         </div>
-    );
+        );
+    };
 
     return (
         <div>
