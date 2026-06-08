@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import { sendNotificationToUsers, getAppUrl } from '@/lib/emailHelper';
 
 export async function createJob(prevState, formData) {
     const title = formData.get('title');
@@ -69,6 +70,30 @@ export async function createJob(prevState, formData) {
             .insert(assignments);
 
         if (assignmentError) throw assignmentError;
+
+        // Send Email Notification
+        const appUrl = getAppUrl();
+        const usersToNotify = new Set([...assignedUserIds]);
+        if (leadId) usersToNotify.add(leadId.toString());
+
+        const emailRecipients = Array.from(usersToNotify);
+
+        if (emailRecipients.length > 0) {
+            const subject = `🚀 New Project Assignment: "${title}"`;
+            const content = `
+                <div style="font-family: sans-serif; padding: 1.5rem; max-width: 600px; border: 1px solid #3b82f6; border-radius: 8px;">
+                    <h2 style="color: #2563eb; margin-top: 0;">New Project Created & Assigned</h2>
+                    <p>You have been assigned to the new project: <strong>${title}</strong></p>
+                    ${jobNumber ? `<p><strong>Job Number:</strong> ${jobNumber}</p>` : ''}
+                    <p><strong>Scheduled Date:</strong> ${new Date(scheduledDate).toLocaleDateString()}</p>
+                    <p><strong>Due Date:</strong> ${new Date(dueDate).toLocaleDateString()}</p>
+                    ${description ? `<p><strong>Description:</strong> ${description}</p>` : ''}
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;" />
+                    <p><a href="${appUrl}/jobs/${jobId}" style="background-color: #3b82f6; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; display: inline-block;">Open Project Workspace</a></p>
+                </div>
+            `;
+            sendNotificationToUsers(emailRecipients, subject, content).catch(e => console.error('Job creation notify error:', e));
+        }
 
     } catch (error) {
         console.error('Error creating job:', error);
