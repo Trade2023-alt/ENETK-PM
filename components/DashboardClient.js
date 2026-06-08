@@ -4,8 +4,9 @@ import { useState } from 'react';
 import JobCard from '@/components/JobCard';
 import Link from 'next/link';
 import { updateJobStatus } from '@/app/actions/updateJob';
+import { deleteJob } from '@/app/actions/deleteJob';
 
-export default function DashboardClient({ initialJobs }) {
+export default function DashboardClient({ initialJobs, userRole }) {
     const [grouping, setGrouping] = useState('incomplete'); // none, customer, status, incomplete, assigned
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
     const [selectedLead, setSelectedLead] = useState('All');
@@ -80,6 +81,12 @@ export default function DashboardClient({ initialJobs }) {
         await updateJobStatus(formData);
     };
 
+    const handleDeleteJob = async (jobId) => {
+        if (confirm('Are you sure you want to delete this job? This cannot be undone.')) {
+            await deleteJob(jobId);
+        }
+    };
+
     const renderGridTable = (jobsArray) => (
         <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
@@ -89,6 +96,7 @@ export default function DashboardClient({ initialJobs }) {
                         <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Name</th>
                         <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customer Name</th>
                         <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', width: '160px' }}>Job Number</th>
+                        {userRole === 'admin' && <th style={{ padding: '1rem', width: '50px' }}></th>}
                     </tr>
                 </thead>
                 <tbody>
@@ -144,6 +152,17 @@ export default function DashboardClient({ initialJobs }) {
                                         {jobNumber}
                                     </span>
                                 </td>
+                                {userRole === 'admin' && (
+                                    <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', textAlign: 'center' }}>
+                                        <button 
+                                            onClick={() => handleDeleteJob(job.id)}
+                                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem' }}
+                                            title="Delete Job"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </td>
+                                )}
                             </tr>
                         );
                     })}
@@ -281,7 +300,7 @@ export default function DashboardClient({ initialJobs }) {
                         gap: '1rem'
                     }}>
                         {jobs.map(job => (
-                            <JobCard key={job.id} job={job} />
+                            <JobCard key={job.id} job={job} userRole={userRole} onDelete={() => handleDeleteJob(job.id)} />
                         ))}
                         {jobs.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No jobs found.</p>}
                     </div>
@@ -302,7 +321,7 @@ export default function DashboardClient({ initialJobs }) {
                                     gap: '1rem'
                                 }}>
                                     {groupedJobs[group].map(job => (
-                                        <JobCard key={job.id} job={job} />
+                                        <JobCard key={job.id} job={job} userRole={userRole} onDelete={() => handleDeleteJob(job.id)} />
                                     ))}
                                 </div>
                             )}

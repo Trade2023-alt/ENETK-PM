@@ -4,7 +4,7 @@ import Link from 'next/link';
 import MarkCompleteButton from './MarkCompleteButton';
 import { useState, useEffect } from 'react';
 
-export default function JobCard({ job }) {
+export default function JobCard({ job, userRole, onDelete }) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -74,12 +74,23 @@ export default function JobCard({ job }) {
                 justifyContent: 'space-between',
                 alignItems: 'center'
             }}>
-                <Link href={`/jobs/${job.id}`} style={{
-                    color: 'var(--primary)',
-                    fontWeight: 500
-                }}>
-                    View Details →
-                </Link>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <Link href={`/jobs/${job.id}`} style={{
+                        color: 'var(--primary)',
+                        fontWeight: 500
+                    }}>
+                        View Details →
+                    </Link>
+                    {userRole === 'admin' && (
+                        <button 
+                            onClick={onDelete}
+                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1rem', padding: 0 }}
+                            title="Delete Job"
+                        >
+                            🗑️
+                        </button>
+                    )}
+                </div>
                 {job.status !== 'Complete' && <MarkCompleteButton jobId={job.id} />}
             </div>
         </div>

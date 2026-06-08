@@ -163,7 +163,7 @@ export default async function Home() {
           <Link href="/jobs/new" style={{ color: 'var(--primary)' }}>Create your first job</Link>
         </div>
       ) : (
-        <DashboardClient initialJobs={jobs} />
+        <DashboardClient initialJobs={jobs} userRole={userRole} />
       )}
     </div>
   );
