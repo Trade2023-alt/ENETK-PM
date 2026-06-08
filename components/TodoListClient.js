@@ -224,16 +224,29 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                             </td>
                                             <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span style={{
-                                                        fontWeight: 500,
-                                                        fontSize: '0.95rem',
-                                                        textDecoration: isComplete ? 'line-through' : 'none',
-                                                        color: isComplete ? 'var(--text-muted)' : 'var(--foreground)'
-                                                    }}>
-                                                        {jobName}
-                                                    </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <span style={{
+                                                            fontWeight: 500,
+                                                            fontSize: '0.95rem',
+                                                            textDecoration: isComplete ? 'line-through' : 'none',
+                                                            color: isComplete ? 'var(--text-muted)' : 'var(--foreground)'
+                                                        }}>
+                                                            {jobName}
+                                                        </span>
+                                                        <span style={{
+                                                            fontSize: '0.65rem',
+                                                            padding: '0.1rem 0.35rem',
+                                                            borderRadius: '4px',
+                                                            background: task.type === 'Job' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                                                            color: task.type === 'Job' ? '#3b82f6' : '#8b5cf6',
+                                                            fontWeight: 600,
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                            {task.type}
+                                                        </span>
+                                                    </div>
                                                     {task.parentTitle && (
-                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                                                             📂 Part of: {task.parentTitle}
                                                         </span>
                                                     )}

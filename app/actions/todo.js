@@ -31,7 +31,32 @@ export async function getTodoItems(specificUserId = null) {
 
         if (jobErr) console.error('Todo Job Fetch Error:', jobErr);
 
-        // 2. Fetch Sub-task Assignments
+        const jobIds = jobAssignments?.map(a => a.job_id) || [];
+
+        // 2. Fetch all subtasks for the jobs the user is assigned to
+        let allSubTasks = [];
+        if (jobIds.length > 0) {
+            const { data: jobSubTasks, error: jobSubErr } = await supabase
+                .from('sub_tasks')
+                .select(`
+                    id,
+                    job_id,
+                    title,
+                    status,
+                    priority,
+                    due_date,
+                    parent_id,
+                    parent:sub_tasks!sub_tasks_parent_id_fkey(title),
+                    job:jobs(title, customer:customers(name))
+                `)
+                .in('job_id', jobIds);
+                
+            if (!jobSubErr && jobSubTasks) {
+                allSubTasks = [...jobSubTasks];
+            }
+        }
+
+        // 3. Fetch any subtasks explicitly assigned to the user (if they aren't assigned to the parent job)
         const { data: subTaskAssignments, error: subErr } = await supabase
             .from('sub_task_assignments')
             .select(`
@@ -52,7 +77,6 @@ export async function getTodoItems(specificUserId = null) {
 
         if (subErr) console.error('Todo Sub-task Fetch Error:', subErr);
 
-        // Recursive safe helper to handle array/object ambiguity in Supabase returns
         const getSafe = (obj, path) => {
             let current = Array.isArray(obj) ? obj[0] : obj;
             if (!current) return null;
@@ -64,6 +88,15 @@ export async function getTodoItems(specificUserId = null) {
             }
             return current;
         };
+
+        if (subTaskAssignments) {
+            subTaskAssignments.forEach(a => {
+                const st = getSafe(a, 'sub_task');
+                if (st && !allSubTasks.find(existing => existing.id === st.id)) {
+                    allSubTasks.push(st);
+                }
+            });
+        }
 
         const tasks = [
             ...(jobAssignments || [])
@@ -85,10 +118,9 @@ export async function getTodoItems(specificUserId = null) {
                         jobId: j.id
                     };
                 }),
-            ...(subTaskAssignments || [])
-                .filter(a => a && getSafe(a, 'sub_task'))
-                .map(a => {
-                    const st = getSafe(a, 'sub_task');
+            ...(allSubTasks || [])
+                .filter(st => st)
+                .map(st => {
                     const j = getSafe(st, 'job');
                     const parent = getSafe(st, 'parent');
                     const cName = getSafe(j, 'customer.name') || 'N/A';
