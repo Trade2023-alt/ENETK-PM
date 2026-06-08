@@ -11,6 +11,8 @@ export async function createSubTask(formData) {
     const dueDate = formData.get('due_date');
     const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
     const priority = formData.get('priority') || 'Normal';
+    const parentIdRaw = formData.get('parent_id');
+    const parentId = parentIdRaw ? parseInt(parentIdRaw, 10) : null;
 
     if (!jobId || !title) {
         return { error: 'Job ID and Title are required' };
@@ -22,7 +24,8 @@ export async function createSubTask(formData) {
             title,
             due_date: dueDate === '' ? null : dueDate,
             estimated_hours: estimatedHours,
-            priority
+            priority,
+            parent_id: parentId
         };
 
         let { data: taskData, error: taskError } = await supabase

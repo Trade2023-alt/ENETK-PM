@@ -43,6 +43,8 @@ export async function getTodoItems(specificUserId = null) {
                     status,
                     priority,
                     due_date,
+                    parent_id,
+                    parent:sub_tasks!sub_tasks_parent_id_fkey(title),
                     job:jobs(title, customer:customers(name))
                 )
             `)
@@ -88,18 +90,25 @@ export async function getTodoItems(specificUserId = null) {
                 .map(a => {
                     const st = getSafe(a, 'sub_task');
                     const j = getSafe(st, 'job');
+                    const parent = getSafe(st, 'parent');
                     const cName = getSafe(j, 'customer.name') || 'N/A';
+                    
+                    let parentContext = j?.title || 'N/A';
+                    if (parent && parent.title) {
+                        parentContext = `${parentContext} > ${parent.title}`;
+                    }
+
                     return {
                         id: `sub-${st.id}`,
                         originalId: st.id,
-                        type: 'Sub-task',
+                        type: st.parent_id ? 'Sub-Sub-Task' : 'Sub-task',
                         title: st.title || 'Untitled Task',
                         description: null,
                         status: st.status || 'Pending',
                         priority: st.priority || 'Normal',
                         date: st.due_date,
                         customer: cName,
-                        parentTitle: j?.title || 'N/A',
+                        parentTitle: parentContext,
                         jobId: st.job_id
                     };
                 })
