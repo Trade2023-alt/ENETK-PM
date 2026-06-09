@@ -1,7 +1,7 @@
 'use server'
 
 import { supabase } from '@/lib/supabase';
-import { sendEmail } from '@/lib/outlook';
+import { sendEmail } from '@/lib/mailer';
 import { getAppUrl } from '@/lib/emailHelper';
 
 export async function sendManualReminder(jobId) {
