@@ -154,10 +154,9 @@ export default function Header({ userRole }) {
                         <>
                             <div style={{ fontSize: '0.65rem', color: 'rgba(59, 130, 246, 0.8)', marginBottom: '0.75rem', opacity: 0.8, paddingLeft: '0.25rem', marginTop: '1rem' }}>Admin / Integrations</div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                                <Link href="/team" style={adminButtonStyle} onClick={() => setMenuOpen(false)}>👤 Team</Link>
+                                <Link href="/team" style={adminButtonStyle} onClick={() => setMenuOpen(false)}>👥 Team</Link>
                                 <Link href="/admin/chats" style={adminButtonStyle} onClick={() => setMenuOpen(false)}>📋 Audit</Link>
                                 <Link href="/admin/email-logs" style={adminButtonStyle} onClick={() => setMenuOpen(false)}>📧 Email Logs</Link>
-                                <a href="/api/auth/microsoft" style={{...adminButtonStyle, color: '#2563eb', borderColor: 'rgba(37, 99, 235, 0.3)', background: 'rgba(37, 99, 235, 0.1)'}} onClick={() => setMenuOpen(false)}>🔗 Connect MS Graph</a>
                             </div>
                         </>
                     )}
