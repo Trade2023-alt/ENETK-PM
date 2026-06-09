@@ -2,14 +2,16 @@ import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-// Initialize MSAL lazily
-const getMsalConfig = () => ({
-    auth: {
-        clientId: process.env.MS_CLIENT_ID,
-        clientSecret: process.env.MS_CLIENT_SECRET,
-        authority: 'https://login.microsoftonline.com/common'
-    }
-});
+const getMsalConfig = () => {
+    const tenant = process.env.MS_TENANT_ID || 'common';
+    return {
+        auth: {
+            clientId: process.env.MS_CLIENT_ID,
+            clientSecret: process.env.MS_CLIENT_SECRET,
+            authority: `https://login.microsoftonline.com/${tenant}`
+        }
+    };
+};
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
