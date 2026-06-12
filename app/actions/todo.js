@@ -11,6 +11,18 @@ export async function getTodoItems(specificUserId = null) {
     if (!targetUserId) return { tasks: [] };
 
     try {
+        const getSafe = (obj, path) => {
+            let current = Array.isArray(obj) ? obj[0] : obj;
+            if (!current) return null;
+
+            const keys = path.split('.');
+            for (const key of keys) {
+                current = Array.isArray(current[key]) ? current[key][0] : current[key];
+                if (!current) return null;
+            }
+            return current;
+        };
+
         // 1. Fetch Job Assignments
         const { data: jobAssignments, error: jobErr } = await supabase
             .from('job_assignments')
@@ -31,9 +43,39 @@ export async function getTodoItems(specificUserId = null) {
 
         if (jobErr) console.error('Todo Job Fetch Error:', jobErr);
 
-        const jobIds = jobAssignments?.map(a => a.job_id) || [];
+        // Fetch jobs where user is the lead
+        const { data: leadJobs, error: leadErr } = await supabase
+            .from('jobs')
+            .select(`
+                id,
+                title,
+                description,
+                status,
+                priority,
+                scheduled_date,
+                due_date,
+                customer:customers(name)
+            `)
+            .eq('lead_id', targetUserId);
 
-        // 2. Fetch all subtasks for the jobs the user is assigned to
+        if (leadErr) console.error('Todo Lead Job Fetch Error:', leadErr);
+
+        const assignedJobs = (jobAssignments || [])
+            .map(a => getSafe(a, 'job'))
+            .filter(Boolean);
+
+        const allUserJobs = [...assignedJobs];
+        if (leadJobs) {
+            leadJobs.forEach(lj => {
+                if (!allUserJobs.find(j => j.id === lj.id)) {
+                    allUserJobs.push(lj);
+                }
+            });
+        }
+
+        const jobIds = allUserJobs.map(j => j.id);
+
+        // 2. Fetch all subtasks for the jobs the user is assigned to (or is lead of)
         let allSubTasks = [];
         if (jobIds.length > 0) {
             const { data: jobSubTasks, error: jobSubErr } = await supabase
@@ -46,7 +88,7 @@ export async function getTodoItems(specificUserId = null) {
                     priority,
                     due_date,
                     parent_id,
-                    parent:sub_tasks!sub_tasks_parent_id_fkey(title),
+                    parent:sub_tasks!parent_id(title),
                     job:jobs(title, customer:customers(name))
                 `)
                 .in('job_id', jobIds);
@@ -69,25 +111,13 @@ export async function getTodoItems(specificUserId = null) {
                     priority,
                     due_date,
                     parent_id,
-                    parent:sub_tasks!sub_tasks_parent_id_fkey(title),
+                    parent:sub_tasks!parent_id(title),
                     job:jobs(title, customer:customers(name))
                 )
             `)
             .eq('user_id', targetUserId);
 
         if (subErr) console.error('Todo Sub-task Fetch Error:', subErr);
-
-        const getSafe = (obj, path) => {
-            let current = Array.isArray(obj) ? obj[0] : obj;
-            if (!current) return null;
-
-            const keys = path.split('.');
-            for (const key of keys) {
-                current = Array.isArray(current[key]) ? current[key][0] : current[key];
-                if (!current) return null;
-            }
-            return current;
-        };
 
         if (subTaskAssignments) {
             subTaskAssignments.forEach(a => {
@@ -99,10 +129,8 @@ export async function getTodoItems(specificUserId = null) {
         }
 
         const tasks = [
-            ...(jobAssignments || [])
-                .filter(a => a && getSafe(a, 'job'))
-                .map(a => {
-                    const j = getSafe(a, 'job');
+            ...(allUserJobs || [])
+                .map(j => {
                     const cName = getSafe(j, 'customer.name') || 'N/A';
                     return {
                         id: `job-${j.id}`,

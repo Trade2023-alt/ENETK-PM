@@ -45,6 +45,10 @@ export async function getCustomerReportData(customerId) {
         .select(`
             id,
             title,
+            description,
+            actual_hours,
+            estimated_hours,
+            status,
             sub_tasks (
                 id,
                 title,
@@ -53,7 +57,9 @@ export async function getCustomerReportData(customerId) {
                 due_date,
                 status,
                 completion_percent,
-                notes
+                notes,
+                used_hours,
+                estimated_hours
             )
         `)
         .eq('customer_id', customerId)

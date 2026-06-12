@@ -13,7 +13,7 @@ function UpdateButton() {
     );
 }
 
-export default function JobStatusUpdate({ job, allUsers }) {
+export default function JobStatusUpdate({ job, allUsers, allCustomers = [] }) {
     const [result, setResult] = useState(null);
 
     const handleSubmit = async (formData) => {
@@ -36,7 +36,20 @@ export default function JobStatusUpdate({ job, allUsers }) {
             <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem' }}>Update Job</h3>
             <input type="hidden" name="job_id" value={job.id} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                <div>
+                    <label className="label">Job Title</label>
+                    <input name="title" type="text" className="input" defaultValue={job.title || ''} required />
+                </div>
+                <div>
+                    <label className="label">Customer</label>
+                    <select name="customer_id" className="input" defaultValue={job.customer_id || ''} required>
+                        <option value="">Select Customer...</option>
+                        {allCustomers.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                </div>
                 <div>
                     <label className="label">Status</label>
                     <select name="status" className="input" defaultValue={job.status}>

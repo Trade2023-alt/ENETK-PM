@@ -60,6 +60,16 @@ export default async function JobDetailPage({ params }) {
             .select('id, username')
             .order('username', { ascending: true });
 
+        // Fetch all customers for the update modal
+        const { data: customers } = await supabase
+            .from('customers')
+            .select('id, name')
+            .order('name', { ascending: true });
+
+        // Calculate total hours from subtasks
+        const subTasksActual = (subTasksRaw || []).reduce((sum, st) => sum + (st.used_hours || 0), 0);
+        const subTasksEst = (subTasksRaw || []).reduce((sum, st) => sum + (st.estimated_hours || 0), 0);
+
         // Transform data for UI compatibility
         const job = {
             ...jobRaw,
@@ -69,7 +79,10 @@ export default async function JobDetailPage({ params }) {
             lead_name: jobRaw.lead?.username,
             lead_id: jobRaw.lead?.id,
             assigned_users: jobRaw.assignments?.map(a => a.user?.username).filter(Boolean).join(', '),
-            assigned_user_ids: jobRaw.assignments?.map(a => a.user?.id)
+            assigned_user_ids: jobRaw.assignments?.map(a => a.user?.id),
+            // Display total hours (job own hours + subtask hours)
+            actual_hours: (jobRaw.actual_hours || 0) + subTasksActual,
+            estimated_hours: (jobRaw.estimated_hours || 0) + subTasksEst
         };
 
         const subTasks = (subTasksRaw || []).map(st => ({
@@ -151,7 +164,7 @@ export default async function JobDetailPage({ params }) {
                         <p style={{ lineHeight: '1.6' }}>{job.description}</p>
                     </div>
 
-                    <JobStatusUpdate job={{ ...job, used_hours: job.actual_hours }} allUsers={users} />
+                    <JobStatusUpdate job={{ ...job, used_hours: jobRaw.actual_hours, estimated_hours: jobRaw.estimated_hours }} allUsers={users} allCustomers={customers || []} />
 
                     <JobMilestones jobId={job.id} initialMilestones={await getJobMilestones(job.id)} subTasks={subTasks} />
 

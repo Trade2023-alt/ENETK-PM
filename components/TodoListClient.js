@@ -24,9 +24,7 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
     };
 
     useEffect(() => {
-        if (selectedUser !== currentUserId) {
-            loadTasks(selectedUser);
-        }
+        loadTasks(selectedUser);
     }, [selectedUser]);
 
     const handleToggle = async (task) => {

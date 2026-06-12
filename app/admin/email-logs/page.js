@@ -1,8 +1,19 @@
 import { supabase } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import Header from '@/components/Header';
+import TestEmailForm from '@/components/TestEmailForm';
 
 export const revalidate = 0; // Disable caching so logs are always fresh
 
 export default async function EmailLogsPage() {
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get('user_role')?.value;
+
+    if (userRole !== 'admin') {
+        redirect('/');
+    }
+
     // Fetch logs, newest first
     const { data: logs, error } = await supabase
         .from('email_logs')
@@ -11,15 +22,21 @@ export default async function EmailLogsPage() {
         .limit(100);
 
     return (
-        <main className="container-padding">
-            <header className="page-header">
+        <div className="container" style={{ paddingBottom: '4rem' }}>
+            <Header userRole={userRole} />
+
+            <header className="page-header" style={{ marginBottom: '2rem' }}>
                 <div>
                     <h1 className="page-title">System Email Logs</h1>
                     <p className="page-subtitle">Track the delivery status of all automated system emails.</p>
                 </div>
             </header>
 
+            {/* Test Email SMTP Diagnostic Form */}
+            <TestEmailForm />
+
             <div className="card">
+                <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>Delivery Log</h2>
                 {error ? (
                     <div style={{ color: '#ef4444', padding: '20px' }}>
                         Error loading logs. Please ensure you have run the SQL command to create the <strong>email_logs</strong> table in Supabase.
@@ -76,6 +93,7 @@ export default async function EmailLogsPage() {
                     </div>
                 )}
             </div>
-        </main>
+        </div>
     );
 }
+

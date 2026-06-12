@@ -116,8 +116,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(255, 255, 255, 0.03)' }}>
-                        <th style={{ padding: '1rem', width: '50px' }}></th>
-                        <th onClick={() => handleSort('jobName')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>
+                        <th onClick={() => handleSort('jobName')} style={{ padding: '1rem 1rem 1rem 1.5rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>
                             Job Name {sortConfig.key === 'jobName' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
                         </th>
                         <th onClick={() => handleSort('customer_name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>
@@ -140,21 +139,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
                                 transition: 'background 0.2s',
                                 opacity: job.is_hidden ? 0.6 : 1
                             }} className="grid-row">
-                                <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', textAlign: 'center' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={isComplete}
-                                        onChange={() => handleToggleJob(job.id, job.status)}
-                                        style={{ 
-                                            width: '1.25rem', 
-                                            height: '1.25rem', 
-                                            cursor: 'pointer',
-                                            borderRadius: '50%',
-                                            display: 'inline-block'
-                                        }}
-                                    />
-                                </td>
-                                <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle' }}>
+                                <td style={{ padding: '0.75rem 1rem 0.75rem 1.5rem', verticalAlign: 'middle' }}>
                                     <Link href={`/jobs/${job.id}`} style={{
                                         fontWeight: 500,
                                         fontSize: '0.95rem',

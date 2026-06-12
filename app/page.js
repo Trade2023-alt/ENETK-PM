@@ -61,7 +61,8 @@ export default async function Home() {
                 lead:users(username),
                 assignments:job_assignments(
                     user:users(username)
-                )
+                ),
+                sub_tasks(used_hours, estimated_hours)
             `)
       .order('scheduled_date', { ascending: true });
 
@@ -87,13 +88,19 @@ export default async function Home() {
     const { data, error } = await query;
     if (error) throw error;
 
-    jobs = data.map(job => ({
-      ...job,
-      customer_name: job.customer?.name,
-      customer_address: job.customer?.address,
-      lead_name: job.lead?.username,
-      assigned_users: job.assignments?.map(a => a.user?.username).filter(Boolean).join(', ')
-    }));
+    jobs = data.map(job => {
+      const subTasksActual = (job.sub_tasks || []).reduce((sum, st) => sum + (st.used_hours || 0), 0);
+      const subTasksEst = (job.sub_tasks || []).reduce((sum, st) => sum + (st.estimated_hours || 0), 0);
+      return {
+        ...job,
+        customer_name: job.customer?.name,
+        customer_address: job.customer?.address,
+        lead_name: job.lead?.username,
+        assigned_users: job.assignments?.map(a => a.user?.username).filter(Boolean).join(', '),
+        actual_hours: (job.actual_hours || 0) + subTasksActual,
+        estimated_hours: (job.estimated_hours || 0) + subTasksEst
+      };
+    });
   } catch (error) {
     console.error('Error fetching jobs:', error);
   }
