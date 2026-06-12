@@ -7,7 +7,7 @@ import { updateJobStatus } from '@/app/actions/updateJob';
 import { deleteJob } from '@/app/actions/deleteJob';
 
 export default function DashboardClient({ initialJobs, userRole }) {
-    const [grouping, setGrouping] = useState('incomplete'); // none, customer, status, incomplete, assigned
+    const [grouping, setGrouping] = useState('customer'); // none, customer, status, incomplete, assigned
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
     const [selectedLead, setSelectedLead] = useState('All');
     const [showHidden, setShowHidden] = useState(false);
@@ -201,7 +201,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
                 paddingBottom: '0.75rem'
             }}>
                 {/* View Selector (Left) */}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <button
                         onClick={() => setViewMode('grid')}
                         style={{
@@ -240,17 +240,40 @@ export default function DashboardClient({ initialJobs, userRole }) {
                     >
                         <span style={{ fontSize: '1rem' }}>📋</span> Cards
                     </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem' }}>
-                        <input 
-                            type="checkbox" 
-                            id="showHidden" 
-                            checked={showHidden} 
-                            onChange={(e) => setShowHidden(e.target.checked)} 
-                            style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
-                        />
-                        <label htmlFor="showHidden" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
-                            Show Hidden
-                        </label>
+                    <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        gap: '0.2rem',
+                        marginLeft: '1rem'
+                    }}>
+                        <div style={{ 
+                            fontSize: '0.75rem', 
+                            fontWeight: 700, 
+                            color: 'var(--primary)',
+                            background: 'rgba(159, 18, 57, 0.15)',
+                            border: '1px solid rgba(159, 18, 57, 0.3)',
+                            padding: '0.1rem 0.5rem',
+                            borderRadius: '10px',
+                            lineHeight: '1.2',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            {jobs.length}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                                type="checkbox" 
+                                id="showHidden" 
+                                checked={showHidden} 
+                                onChange={(e) => setShowHidden(e.target.checked)} 
+                                style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                            />
+                            <label htmlFor="showHidden" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                                Show Hidden
+                            </label>
+                        </div>
                     </div>
                 </div>
 
