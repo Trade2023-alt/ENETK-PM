@@ -245,3 +245,35 @@ export async function bulkCreateSubTasks(tasks) {
     }
 }
 
+export async function deleteSubTask(subTaskId, jobId) {
+    try {
+        // Delete assignments
+        await supabase
+            .from('sub_task_assignments')
+            .delete()
+            .eq('sub_task_id', subTaskId);
+
+        // Delete micro tasks (children)
+        await supabase
+            .from('sub_tasks')
+            .delete()
+            .eq('parent_id', subTaskId);
+
+        // Delete the subtask itself
+        const { error } = await supabase
+            .from('sub_tasks')
+            .delete()
+            .eq('id', subTaskId);
+
+        if (error) throw error;
+
+        revalidatePath(`/jobs/${jobId}`);
+        revalidatePath('/todo');
+        revalidatePath('/');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting subtask:', error);
+        return { error: error.message };
+    }
+}
+

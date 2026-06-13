@@ -7,10 +7,13 @@ import { updateJobStatus } from '@/app/actions/updateJob';
 import { deleteJob } from '@/app/actions/deleteJob';
 
 export default function DashboardClient({ initialJobs, userRole }) {
-    const [grouping, setGrouping] = useState('customer'); // none, customer, status, incomplete, assigned
+    const [grouping, setGrouping] = useState('customer'); // none, customer, status, assigned
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
     const [selectedLead, setSelectedLead] = useState('All');
     const [showHidden, setShowHidden] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('Active'); // Default to Active (hides Completed)
+    const [priorityFilter, setPriorityFilter] = useState('All');
+    const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     const uniqueLeads = Array.from(new Set(initialJobs.map(j => j.lead_name || 'Unassigned'))).sort();
@@ -22,10 +25,24 @@ export default function DashboardClient({ initialJobs, userRole }) {
     if (selectedLead !== 'All') {
         filteredJobs = filteredJobs.filter(j => (j.lead_name || 'Unassigned') === selectedLead);
     }
+    if (statusFilter === 'Active') {
+        filteredJobs = filteredJobs.filter(j => j.status !== 'Complete');
+    } else if (statusFilter !== 'All') {
+        filteredJobs = filteredJobs.filter(j => j.status === statusFilter);
+    }
+    if (priorityFilter !== 'All') {
+        filteredJobs = filteredJobs.filter(j => j.priority === priorityFilter);
+    }
+    if (searchTerm.trim() !== '') {
+        const term = searchTerm.toLowerCase();
+        filteredJobs = filteredJobs.filter(j => 
+            (j.title || '').toLowerCase().includes(term) ||
+            (j.customer_name || '').toLowerCase().includes(term) ||
+            (j.job_number || '').toLowerCase().includes(term)
+        );
+    }
 
-    const jobs = grouping === 'incomplete'
-        ? filteredJobs.filter(j => j.status !== 'Complete')
-        : filteredJobs;
+    const jobs = filteredJobs;
 
     const groupedJobs = {};
 
@@ -111,8 +128,14 @@ export default function DashboardClient({ initialJobs, userRole }) {
             return 0;
         });
 
+        const statusBorderColors = {
+            'Scheduled': 'var(--danger)',
+            'In Progress': 'var(--warning)',
+            'Complete': 'var(--success)'
+        };
+
         return (
-        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+        <div className="card" style={{ padding: 0, overflowX: 'auto', borderLeft: 'none', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(255, 255, 255, 0.03)' }}>
@@ -132,6 +155,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
                     {sortedJobs.map(job => {
                         const isComplete = job.status === 'Complete';
                         const { jobNumber, jobName } = parseJobDetails(job);
+                        const statusColor = statusBorderColors[job.status] || 'var(--primary)';
                         return (
                             <tr key={job.id} style={{
                                 borderBottom: '1px solid var(--card-border)',
@@ -139,7 +163,11 @@ export default function DashboardClient({ initialJobs, userRole }) {
                                 transition: 'background 0.2s',
                                 opacity: job.is_hidden ? 0.6 : 1
                             }} className="grid-row">
-                                <td style={{ padding: '0.75rem 1rem 0.75rem 1.5rem', verticalAlign: 'middle' }}>
+                                <td style={{ 
+                                    padding: '0.75rem 1rem 0.75rem 1.5rem', 
+                                    verticalAlign: 'middle',
+                                    borderLeft: `5px solid ${statusColor}`
+                                }}>
                                     <Link href={`/jobs/${job.id}`} style={{
                                         fontWeight: 500,
                                         fontSize: '0.95rem',
@@ -189,9 +217,9 @@ export default function DashboardClient({ initialJobs, userRole }) {
 
     return (
         <div>
-            {/* View and Grouping Switchers */}
+            {/* View and Grouping Switchers (Row 1) */}
             <div style={{ 
-                marginBottom: '1.5rem', 
+                marginBottom: '1rem', 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
@@ -259,7 +287,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center'
-                        }}>
+                        }} title="Total jobs showing">
                             {jobs.length}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -279,18 +307,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
 
                 {/* Grouping Selectors (Right) */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <select 
-                        value={selectedLead} 
-                        onChange={(e) => setSelectedLead(e.target.value)}
-                        className="input"
-                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', maxWidth: '200px', height: '100%' }}
-                    >
-                        <option value="All">All Leads</option>
-                        {uniqueLeads.map(lead => (
-                            <option key={lead} value={lead}>{lead}</option>
-                        ))}
-                    </select>
-                    <div style={{ width: '1px', height: '24px', background: 'var(--card-border)', margin: '0 0.5rem' }}></div>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>Group by:</span>
                     <button
                         onClick={() => setGrouping('none')}
                         className={`btn ${grouping === 'none' ? 'btn-primary' : ''}`}
@@ -319,13 +336,78 @@ export default function DashboardClient({ initialJobs, userRole }) {
                     >
                         By Assigned
                     </button>
-                    <button
-                        onClick={() => setGrouping('incomplete')}
-                        className={`btn ${grouping === 'incomplete' ? 'btn-primary' : ''}`}
-                        style={{ background: grouping === 'incomplete' ? undefined : 'var(--card-bg)', border: '1px solid var(--card-border)', fontSize: '0.85rem', padding: '0.5rem 0.85rem' }}
+                </div>
+            </div>
+
+            {/* Search and Filters Toolbar (Row 2) */}
+            <div className="card" style={{ 
+                marginBottom: '1.5rem', 
+                padding: '0.75rem 1.25rem',
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '0.75rem'
+            }}>
+                {/* Search Input (Left) */}
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: '240px', position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-muted)', fontSize: '0.9rem', pointerEvents: 'none' }}>🔍</span>
+                    <input
+                        type="text"
+                        placeholder="Search job title, customer, or number..."
+                        className="input"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ paddingLeft: '2.25rem', fontSize: '0.85rem', height: '38px', width: '100%', background: 'rgba(255,255,255,0.05)' }}
+                    />
+                </div>
+
+                {/* Filters Dropdowns (Right) */}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Filters:</span>
+                    
+                    {/* Lead filter */}
+                    <select 
+                        value={selectedLead} 
+                        onChange={(e) => setSelectedLead(e.target.value)}
+                        className="input"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', width: '140px', height: '38px', background: 'rgba(255,255,255,0.05)' }}
                     >
-                        Active Only
-                    </button>
+                        <option value="All">All Leads</option>
+                        {uniqueLeads.map(lead => (
+                            <option key={lead} value={lead}>{lead}</option>
+                        ))}
+                    </select>
+
+                    {/* Status filter */}
+                    <select 
+                        value={statusFilter} 
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="input"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', width: '140px', height: '38px', background: 'rgba(255,255,255,0.05)' }}
+                    >
+                        <option value="All">All Statuses</option>
+                        <option value="Active">Active Only</option>
+                        <option value="Scheduled">Scheduled Only</option>
+                        <option value="In Progress">In Progress Only</option>
+                        <option value="Complete">Completed Only</option>
+                    </select>
+
+                    {/* Priority filter */}
+                    <select 
+                        value={priorityFilter} 
+                        onChange={(e) => setPriorityFilter(e.target.value)}
+                        className="input"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', width: '140px', height: '38px', background: 'rgba(255,255,255,0.05)' }}
+                    >
+                        <option value="All">All Priorities</option>
+                        <option value="Low">Low</option>
+                        <option value="Normal">Normal</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                    </select>
                 </div>
             </div>
 

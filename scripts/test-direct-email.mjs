@@ -61,10 +61,34 @@ async function testGmailSMTP() {
     }
 }
 
+async function testGmailServiceRaw() {
+    console.log('\n--- Testing with Service: "gmail" and Raw Password (with spaces) ---');
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: cleanUser,
+            pass: pass,
+        },
+    });
+
+    try {
+        console.log('Verifying connection...');
+        await transporter.verify();
+        console.log('Success! Connection verified.');
+        return true;
+    } catch (error) {
+        console.error('Failed with service: "gmail" and spaces. Error:', error.message);
+        return false;
+    }
+}
+
 async function run() {
     const serviceOk = await testGmailService();
     if (!serviceOk) {
-        await testGmailSMTP();
+        const rawOk = await testGmailServiceRaw();
+        if (!rawOk) {
+            await testGmailSMTP();
+        }
     }
 }
 

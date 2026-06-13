@@ -1,6 +1,6 @@
 'use client'
 
-import { createSubTask, updateSubTask } from '@/app/actions/subtasks';
+import { createSubTask, updateSubTask, deleteSubTask } from '@/app/actions/subtasks';
 import { useState } from 'react';
 
 export default function SubTaskList({ jobId, subTasks, users }) {
@@ -173,6 +173,17 @@ export default function SubTaskList({ jobId, subTasks, users }) {
                             </button>
                             <button onClick={() => { setEditingTaskId(task.id); setIsAdding(false); setAddingChildTo(null); }} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--card-border)' }}>
                                 Edit
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    if (confirm('Are you sure you want to delete this task?')) {
+                                        await deleteSubTask(task.id, jobId);
+                                    }
+                                }} 
+                                className="btn" 
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                            >
+                                Delete
                             </button>
                         </div>
                     </li>
