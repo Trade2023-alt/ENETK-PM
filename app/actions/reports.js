@@ -91,3 +91,46 @@ export async function updateReportSubTask(taskId, updateData) {
     revalidatePath('/reports');
     return { success: true };
 }
+
+// Fetch global report data for charts
+export async function getGlobalReportData() {
+    const cookieStore = await cookies();
+    const userRole = cookieStore.get('user_role')?.value;
+    const userId = cookieStore.get('user_id')?.value;
+
+    let query = supabase
+        .from('jobs')
+        .select(`
+            id,
+            title,
+            description,
+            actual_hours,
+            estimated_hours,
+            status,
+            customer_id,
+            customer:customers(id, name),
+            sub_tasks (
+                id,
+                title,
+                status,
+                completion_percent,
+                used_hours,
+                estimated_hours
+            )
+        `)
+        .order('title');
+
+    // Restrict customer role to only their own projects
+    if (userRole === 'customer' && userId) {
+        query = query.eq('customer_id', userId);
+    }
+
+    const { data: jobs, error } = await query;
+
+    if (error) {
+        console.error('Error fetching global report data:', error);
+        return { error: error.message, jobs: [] };
+    }
+
+    return { jobs: jobs || [] };
+}

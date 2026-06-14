@@ -88,6 +88,26 @@ export default function JobCard({ job, userRole, onDelete }) {
                     <span>👤 {job.customer_name}</span>
                     <span>👑 Lead: <strong style={{ color: 'var(--primary)' }}>{job.lead_name || 'Unassigned'}</strong></span>
                 </div>
+                
+                {/* Job Completion Progress Bar */}
+                {(() => {
+                    const subTasks = job.sub_tasks || [];
+                    const pct = subTasks.length > 0
+                        ? Math.round(subTasks.reduce((sum, st) => sum + (st.completion_percent || 0), 0) / subTasks.length)
+                        : (job.status === 'Complete' ? 100 : (job.status === 'In Progress' ? 50 : 0));
+                    return (
+                        <div style={{ margin: '0.35rem 0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.2rem' }}>
+                                <span>Completion</span>
+                                <span style={{ fontWeight: 600, color: 'var(--success)' }}>{pct}%</span>
+                            </div>
+                            <div style={{ width: '100%', background: 'rgba(255, 255, 255, 0.08)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${pct}%`, background: 'var(--success)', height: '100%', transition: 'width 0.4s ease' }} />
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '140px' }}>
                         👥 {job.assigned_users || 'Unassigned'}

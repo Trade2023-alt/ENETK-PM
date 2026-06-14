@@ -13,6 +13,8 @@ import { getJobMilestones } from '@/app/actions/roadmap';
 import { getLessonsLearned } from '@/app/actions/lessons';
 import { getJobNotes } from '@/app/actions/notes';
 import JobDetailActions from '@/components/JobDetailActions';
+import JobPhases from '@/components/JobPhases';
+import { getJobPhases } from '@/app/actions/phases';
 
 export default async function JobDetailPage({ params }) {
     const cookieStore = await cookies();
@@ -66,6 +68,9 @@ export default async function JobDetailPage({ params }) {
             .select('id, name')
             .order('name', { ascending: true });
 
+        // Fetch Job Phases
+        const phases = await getJobPhases(id);
+
         // Calculate total hours from subtasks
         const subTasksActual = (subTasksRaw || []).reduce((sum, st) => sum + (st.used_hours || 0), 0);
         const subTasksEst = (subTasksRaw || []).reduce((sum, st) => sum + (st.estimated_hours || 0), 0);
@@ -91,6 +96,14 @@ export default async function JobDetailPage({ params }) {
             assigned_ids: st.assignments?.map(a => a.user?.id).filter(Boolean).join(',')
         }));
 
+        // Calculate job completion percentage based on subtasks, phases, or status
+        const subTasksCount = subTasksRaw?.length || 0;
+        const jobPercentComplete = subTasksCount > 0
+            ? Math.round(subTasksRaw.reduce((sum, st) => sum + (st.completion_percent || 0), 0) / subTasksCount)
+            : (phases && phases.length > 0 && !phases.error
+                ? Math.round((phases.filter(p => p.status === 'Complete').length / phases.length) * 100)
+                : (jobRaw.status === 'Complete' ? 100 : (jobRaw.status === 'In Progress' ? 50 : 0)));
+
         return (
             <div className="container">
                 <Header userRole={userRole} />
@@ -99,15 +112,25 @@ export default async function JobDetailPage({ params }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid var(--card-border)', paddingBottom: '1rem' }}>
                         <div>
                             <h2 style={{ marginBottom: '0.5rem' }}>{job.title}</h2>
-                            <span style={{
-                                background: 'rgba(59, 130, 246, 0.2)',
-                                color: 'var(--primary)',
-                                padding: '0.25rem 0.5rem',
-                                borderRadius: '0.5rem',
-                                fontSize: '0.875rem'
-                            }}>
-                                {job.status}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                <span style={{
+                                    background: 'rgba(59, 130, 246, 0.2)',
+                                    color: 'var(--primary)',
+                                    padding: '0.25rem 0.5rem',
+                                    borderRadius: '0.5rem',
+                                    fontSize: '0.875rem'
+                                }}>
+                                    {job.status}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ width: '100px', background: 'rgba(255,255,255,0.1)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${jobPercentComplete}%`, background: 'var(--success)', height: '100%', transition: 'width 0.4s ease' }} />
+                                    </div>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--success)' }}>
+                                        {jobPercentComplete}% Complete
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
                             <JobDetailActions jobId={job.id} isHidden={job.is_hidden} />
@@ -163,6 +186,8 @@ export default async function JobDetailPage({ params }) {
                         <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Description</h3>
                         <p style={{ lineHeight: '1.6' }}>{job.description}</p>
                     </div>
+
+                    <JobPhases jobId={job.id} initialPhases={phases} />
 
                     <JobStatusUpdate job={{ ...job, used_hours: jobRaw.actual_hours, estimated_hours: jobRaw.estimated_hours }} allUsers={users} allCustomers={customers || []} />
 

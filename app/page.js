@@ -62,7 +62,7 @@ export default async function Home() {
                 assignments:job_assignments(
                     user:users(username)
                 ),
-                sub_tasks(used_hours, estimated_hours)
+                sub_tasks(used_hours, estimated_hours, completion_percent, status)
             `)
       .order('scheduled_date', { ascending: true });
 

@@ -106,11 +106,17 @@ export default function SubTaskList({ jobId, subTasks, users }) {
                                 })}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ fontSize: '0.75rem' }}>Add Hrs:</label>
-                                    <input name="used_hours" type="number" step="0.5" className="input" defaultValue="0" style={{ width: '80px', display: 'inline-block', marginLeft: '0.5rem' }} />
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>Current: {task.used_hours}h</span>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div style={{ flex: 1, display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem' }}>Add Hrs:</label>
+                                        <input name="used_hours" type="number" step="0.5" className="input" defaultValue="0" style={{ width: '70px', display: 'inline-block', marginLeft: '0.5rem', padding: '0.4rem' }} />
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>Current: {task.used_hours}h</span>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.75rem' }}>% Complete:</label>
+                                        <input name="completion_percent" type="number" min="0" max="100" className="input" defaultValue={task.completion_percent || 0} style={{ width: '70px', display: 'inline-block', marginLeft: '0.5rem', padding: '0.4rem' }} />
+                                    </div>
                                 </div>
                                 <button type="button" onClick={() => setEditingTaskId(null)} className="btn" style={{ fontSize: '0.75rem', background: 'var(--card-border)' }}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" style={{ fontSize: '0.75rem' }}>Save Changes</button>
@@ -144,7 +150,7 @@ export default function SubTaskList({ jobId, subTasks, users }) {
                         <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                                 <div style={{ fontWeight: 500, textDecoration: task.status === 'Complete' ? 'line-through' : 'none' }}>
-                                    {task.title}
+                                    {task.title} <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: 600 }}>({task.completion_percent || 0}%)</span>
                                 </div>
                                 <span style={{
                                     fontSize: '0.7rem',

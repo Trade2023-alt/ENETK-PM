@@ -59,6 +59,29 @@ export async function createJob(prevState, formData) {
 
         const jobId = jobData.id;
 
+        // Insert default job phases safely (table might not exist yet if DDL hasn't been run)
+        const defaultPhases = [
+            { job_id: jobId, phase_name: 'Opportunity', status: 'Not Started', sequence_order: 1 },
+            { job_id: jobId, phase_name: 'Estimating', status: 'Not Started', sequence_order: 2 },
+            { job_id: jobId, phase_name: 'Planning', status: 'Not Started', sequence_order: 3 },
+            { job_id: jobId, phase_name: 'Procurement', status: 'Not Started', sequence_order: 4 },
+            { job_id: jobId, phase_name: 'Installation', status: 'Not Started', sequence_order: 5 },
+            { job_id: jobId, phase_name: 'Finish', status: 'Not Started', sequence_order: 6 },
+            { job_id: jobId, phase_name: 'Customer Follow UP / Turnover', status: 'Not Started', sequence_order: 7 }
+        ];
+        
+        await supabase
+            .from('job_phases')
+            .insert(defaultPhases)
+            .then(({ error }) => {
+                if (error) {
+                    console.error('Failed to pre-create job phases (check if SQL DDL was run):', error);
+                }
+            })
+            .catch(err => {
+                console.error('Exception pre-creating job phases:', err);
+            });
+
         // Insert job assignments
         const assignments = assignedUserIds.map(userId => ({
             job_id: jobId,

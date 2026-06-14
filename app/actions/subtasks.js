@@ -120,6 +120,19 @@ export async function updateSubTask(formData) {
                 updated_at: new Date().toISOString()
             };
 
+            const completionPercentRaw = formData.get('completion_percent');
+            if (completionPercentRaw !== null) {
+                const percent = Math.min(100, Math.max(0, parseInt(completionPercentRaw, 10) || 0));
+                updateFields.completion_percent = percent;
+                if (percent === 100) {
+                    updateFields.status = 'Complete';
+                } else if (percent > 0) {
+                    updateFields.status = 'In Progress';
+                } else {
+                    updateFields.status = 'Pending';
+                }
+            }
+
             // ADDITIVE HOURS
             if (rawUsedHours !== null && rawUsedHours !== '') {
                 const addedHours = parseFloat(rawUsedHours);
@@ -179,9 +192,14 @@ export async function updateSubTask(formData) {
                 }
             } else {
                 const status = statusRaw === 'on' ? 'Complete' : 'Pending';
+                const completionPercent = status === 'Complete' ? 100 : 0;
                 const { error } = await supabase
                     .from('sub_tasks')
-                    .update({ status: status, updated_at: new Date().toISOString() })
+                    .update({ 
+                        status: status, 
+                        completion_percent: completionPercent, 
+                        updated_at: new Date().toISOString() 
+                    })
                     .eq('id', id);
                 if (error) throw error;
             }
