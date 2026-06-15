@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { reassignTaskAction } from '@/app/actions/reassign';
 
 // Default on-call rotation roster (fallback if no schedule passed)
 const DEFAULT_ROSTER = [
@@ -45,6 +46,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
     const [draggedOverDay, setDraggedOverDay] = useState(null);
     const [draggedOverItem, setDraggedOverItem] = useState(null);
     const [contextMenu, setContextMenu] = useState(null); // { x, y, type: 'item'|'day', target: item|dateKey }
+    const [hoveredMenuItem, setHoveredMenuItem] = useState(null); // 'reassign' or null
     const [copiedItem, setCopiedItem] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = sessionStorage.getItem('enetk_copied_task');
@@ -179,6 +181,28 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
         } catch (err) {
             console.error('Error pasting task:', err);
             alert('Failed to paste task: ' + err.message);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleReassignTask = async (item, targetUserId) => {
+        setContextMenu(null);
+        setIsUpdating(true);
+
+        try {
+            const res = await reassignTaskAction({
+                itemId: item.id,
+                itemType: item.type,
+                userId: targetUserId
+            });
+
+            if (res.error) throw new Error(res.error);
+
+            router.refresh();
+        } catch (err) {
+            console.error('Error reassigning task:', err);
+            alert('Failed to reassign task: ' + err.message);
         } finally {
             setIsUpdating(false);
         }
@@ -678,23 +702,87 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                     onClick={(e) => e.stopPropagation()}
                 >
                     {contextMenu.type === 'item' && (
-                        <div
-                            onClick={() => handleCopyItem(contextMenu.target)}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                color: '#f8fafc',
-                                transition: 'background 0.2s',
-                                fontWeight: 500
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                            📋 Copy Task
+                        <div style={{ position: 'relative' }}>
+                            <div
+                                onClick={() => handleCopyItem(contextMenu.target)}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    color: '#f8fafc',
+                                    transition: 'background 0.2s',
+                                    fontWeight: 500
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                                📋 Copy Task
+                            </div>
+                            <div
+                                onMouseEnter={() => setHoveredMenuItem('reassign')}
+                                onMouseLeave={() => setHoveredMenuItem(null)}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '0.5rem',
+                                    color: '#f8fafc',
+                                    background: hoveredMenuItem === 'reassign' ? '#334155' : 'transparent',
+                                    transition: 'background 0.2s',
+                                    fontWeight: 500,
+                                    position: 'relative'
+                                }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>👤 Reassign To</span>
+                                <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>▶</span>
+
+                                {hoveredMenuItem === 'reassign' && (
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            left: '100%',
+                                            top: 0,
+                                            background: '#1e293b',
+                                            border: '1px solid #334155',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                                            padding: '0.25rem 0',
+                                            minWidth: '150px',
+                                            zIndex: 10001,
+                                            maxHeight: '200px',
+                                            overflowY: 'auto'
+                                        }}
+                                    >
+                                        {users.map(u => (
+                                            <div
+                                                key={u.id}
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    await handleReassignTask(contextMenu.target, u.id);
+                                                }}
+                                                style={{
+                                                    padding: '0.5rem 1rem',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.8rem',
+                                                    color: '#f8fafc',
+                                                    transition: 'background 0.2s',
+                                                    fontWeight: 500
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                👤 {u.username}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                     {contextMenu.type === 'day' && (
