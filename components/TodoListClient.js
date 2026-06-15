@@ -346,7 +346,7 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                                     </div>
                                                 )}
                                             </td>
-                                            <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : '#334155', fontSize: '0.9rem' }}>
+                                            <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : 'var(--foreground)', fontSize: '0.9rem' }}>
                                                 📍 {task.customer}
                                             </td>
                                             <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle' }}>
