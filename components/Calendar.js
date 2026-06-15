@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -44,6 +44,145 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
     const [isUpdating, setIsUpdating] = useState(false);
     const [draggedOverDay, setDraggedOverDay] = useState(null);
     const [draggedOverItem, setDraggedOverItem] = useState(null);
+    const [contextMenu, setContextMenu] = useState(null); // { x, y, type: 'item'|'day', target: item|dateKey }
+    const [copiedItem, setCopiedItem] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('enetk_copied_task');
+            return saved ? JSON.parse(saved) : null;
+        }
+        return null;
+    });
+
+    useEffect(() => {
+        const handleCloseMenu = () => setContextMenu(null);
+        window.addEventListener('click', handleCloseMenu);
+        window.addEventListener('contextmenu', handleCloseMenu);
+        return () => {
+            window.removeEventListener('click', handleCloseMenu);
+            window.removeEventListener('contextmenu', handleCloseMenu);
+        };
+    }, []);
+
+    const handleItemContextMenu = (e, item) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            type: 'item',
+            target: item
+        });
+    };
+
+    const handleDayContextMenu = (e, dateKey) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            type: 'day',
+            target: dateKey
+        });
+    };
+
+    const handleCopyItem = (item) => {
+        setCopiedItem(item);
+        sessionStorage.setItem('enetk_copied_task', JSON.stringify(item));
+        setContextMenu(null);
+    };
+
+    const insertJobSafely = async (jobData) => {
+        let { data, error } = await supabase.from('jobs').insert([jobData]).select().single();
+        if (error && error.message.includes('jobs_pkey')) {
+            const { data: lastItem } = await supabase.from('jobs').select('id').order('id', { ascending: false }).limit(1);
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            jobData.id = nextId;
+            const retry = await supabase.from('jobs').insert([jobData]).select().single();
+            data = retry.data;
+            error = retry.error;
+        }
+        if (error) throw error;
+        return data;
+    };
+
+    const insertSubTaskSafely = async (subData) => {
+        let { data, error } = await supabase.from('sub_tasks').insert([subData]).select().single();
+        if (error && error.message.includes('sub_tasks_pkey')) {
+            const { data: lastItem } = await supabase.from('sub_tasks').select('id').order('id', { ascending: false }).limit(1);
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            subData.id = nextId;
+            const retry = await supabase.from('sub_tasks').insert([subData]).select().single();
+            data = retry.data;
+            error = retry.error;
+        }
+        if (error) throw error;
+        return data;
+    };
+
+    const handlePasteTask = async (targetDate) => {
+        if (!copiedItem) return;
+        setContextMenu(null);
+        setIsUpdating(true);
+
+        try {
+            if (copiedItem.type === 'job') {
+                const jobData = {
+                    title: `${copiedItem.title} (Copy)`,
+                    description: copiedItem.description,
+                    customer_id: copiedItem.customer_id,
+                    customer_contact_id: copiedItem.customer_contact_id,
+                    lead_id: copiedItem.lead_id,
+                    scheduled_date: targetDate,
+                    due_date: copiedItem.due_date,
+                    estimated_hours: copiedItem.estimated_hours,
+                    priority: copiedItem.priority,
+                    status: 'Scheduled'
+                };
+
+                const pastedJob = await insertJobSafely(jobData);
+                const newJobId = pastedJob.id;
+
+                if (copiedItem.assigned_ids) {
+                    const userIds = copiedItem.assigned_ids.split(',');
+                    const assignments = userIds.map(userId => ({
+                        job_id: newJobId,
+                        user_id: userId
+                    }));
+                    const { error: assignError } = await supabase.from('job_assignments').insert(assignments);
+                    if (assignError) throw assignError;
+                }
+            } else {
+                const subData = {
+                    job_id: copiedItem.jobId || copiedItem.job_id,
+                    title: `${copiedItem.title} (Copy)`,
+                    status: 'Pending',
+                    priority: copiedItem.priority,
+                    due_date: targetDate,
+                    estimated_hours: copiedItem.estimated_hours,
+                    parent_id: copiedItem.parent_id
+                };
+
+                const pastedSub = await insertSubTaskSafely(subData);
+                const newSubId = pastedSub.id;
+
+                if (copiedItem.assigned_ids) {
+                    const userIds = copiedItem.assigned_ids.split(',');
+                    const assignments = userIds.map(userId => ({
+                        sub_task_id: newSubId,
+                        user_id: userId
+                    }));
+                    const { error: assignError } = await supabase.from('sub_task_assignments').insert(assignments);
+                    if (assignError) throw assignError;
+                }
+            }
+            router.refresh();
+        } catch (err) {
+            console.error('Error pasting task:', err);
+            alert('Failed to paste task: ' + err.message);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     const [monthOffset, setMonthOffset] = useState(0);
     const [showSubTasks, setShowSubTasks] = useState(true);
@@ -400,6 +539,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                                 setDraggedOverDay(null);
                                 await handleDropOnDay(e, dateKey);
                             } : undefined}
+                            onContextMenu={day ? (e) => handleDayContextMenu(e, dateKey) : undefined}
                             style={{
                                 minHeight: '120px',
                                 background: draggedOverDay === dateKey 
@@ -466,6 +606,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                                                         const url = item.type === 'job' ? `/jobs/${item.id}` : `/jobs/${item.job_id}`;
                                                         router.push(url);
                                                      }}
+                                                     onContextMenu={(e) => handleItemContextMenu(e, item)}
                                                      style={{
                                                          display: 'inline-flex',
                                                          alignItems: 'center',
@@ -518,6 +659,68 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                     );
                 })}
             </div>
+
+            {/* Custom Context Menu */}
+            {contextMenu && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: contextMenu.y,
+                        left: contextMenu.x,
+                        background: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                        zIndex: 10000,
+                        padding: '0.25rem 0',
+                        minWidth: '150px'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {contextMenu.type === 'item' && (
+                        <div
+                            onClick={() => handleCopyItem(contextMenu.target)}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                color: '#f8fafc',
+                                transition: 'background 0.2s',
+                                fontWeight: 500
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                            📋 Copy Task
+                        </div>
+                    )}
+                    {contextMenu.type === 'day' && (
+                        <div
+                            onClick={copiedItem ? () => handlePasteTask(contextMenu.target) : undefined}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                cursor: copiedItem ? 'pointer' : 'not-allowed',
+                                fontSize: '0.8rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                color: copiedItem ? '#f8fafc' : '#64748b',
+                                transition: 'background 0.2s',
+                                fontWeight: 500
+                            }}
+                            onMouseEnter={(e) => {
+                                if (copiedItem) e.currentTarget.style.background = '#334155';
+                            }}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                            📋 Paste Task {copiedItem ? `(${copiedItem.title.slice(0, 10)}...)` : ''}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
