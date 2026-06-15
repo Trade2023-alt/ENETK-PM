@@ -18,10 +18,15 @@ export default function ManloadingChart({ manloading, users = [], alwaysExpanded
         const assignedJobs = job_manloading?.filter(jm =>
             jm.assigned_user_ids?.includes(user.id)
         ) || [];
+        const totalHours = assignedJobs.reduce((sum, jm) => {
+            const divisor = jm.assigned_user_ids?.length || 1;
+            const jobTotalHours = (jm.estimated_hours || 0) + (jm.subtask_hours || 0);
+            return sum + (jobTotalHours / divisor);
+        }, 0);
         return {
             ...user,
             job_count: assignedJobs.length,
-            total_hours: assignedJobs.reduce((sum, jm) => sum + (jm.estimated_hours || 0) + (jm.subtask_hours || 0), 0)
+            total_hours: Math.round(totalHours * 10) / 10
         };
     }).sort((a, b) => b.total_hours - a.total_hours);
 

@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 // Default on-call rotation roster (fallback if no schedule passed)
 const DEFAULT_ROSTER = [
@@ -23,7 +25,26 @@ function getDefaultOnCallForDate(date) {
     return DEFAULT_ROSTER[adjustedWeeks % DEFAULT_ROSTER.length];
 }
 
+function getInitials(username) {
+    if (!username) return '??';
+    const cleaned = username.trim();
+    const parts = cleaned.split(/[\s_\-]+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    const uppercaseLetters = cleaned.replace(/[^A-Z]/g, '');
+    if (uppercaseLetters.length >= 2) {
+        return uppercaseLetters.slice(0, 2);
+    }
+    return cleaned.slice(0, 2).toUpperCase();
+}
+
 export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedule = [] }) {
+    const router = useRouter();
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [draggedOverDay, setDraggedOverDay] = useState(null);
+    const [draggedOverItem, setDraggedOverItem] = useState(null);
+
     const [monthOffset, setMonthOffset] = useState(0);
     const [showSubTasks, setShowSubTasks] = useState(true);
     const [showOnCall, setShowOnCall] = useState(true);
@@ -87,9 +108,11 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
     const itemsByDate = {};
 
     filteredJobs.forEach(job => {
-        const dateKey = new Date(job.scheduled_date).toISOString().split('T')[0];
-        if (!itemsByDate[dateKey]) itemsByDate[dateKey] = [];
-        itemsByDate[dateKey].push({ ...job, type: 'job' });
+        if (job.scheduled_date) {
+            const dateKey = new Date(job.scheduled_date).toISOString().split('T')[0];
+            if (!itemsByDate[dateKey]) itemsByDate[dateKey] = [];
+            itemsByDate[dateKey].push({ ...job, type: 'job' });
+        }
     });
 
     if (showSubTasks) {
@@ -102,12 +125,152 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
         });
     }
 
+    // Drag-and-drop handlers for rescheduling items (jobs/subtasks)
+    const handleDragStartItem = (e, item) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({ type: 'item', itemId: item.id, itemType: item.type }));
+    };
+
+    const handleDragOverDay = (e) => {
+        e.preventDefault();
+    };
+
+    const handleDropOnDay = async (e, dateKey) => {
+        e.preventDefault();
+        if (!dateKey) return;
+
+        try {
+            const dataStr = e.dataTransfer.getData('application/json');
+            if (!dataStr) return;
+            const dragData = JSON.parse(dataStr);
+
+            if (dragData.type === 'item') {
+                setIsUpdating(true);
+                if (dragData.itemType === 'job') {
+                    const { error } = await supabase
+                        .from('jobs')
+                        .update({ scheduled_date: dateKey, updated_at: new Date().toISOString() })
+                        .eq('id', dragData.itemId);
+                    if (error) throw error;
+                } else if (dragData.itemType === 'subtask') {
+                    const { error } = await supabase
+                        .from('sub_tasks')
+                        .update({ due_date: dateKey, updated_at: new Date().toISOString() })
+                        .eq('id', dragData.itemId);
+                    if (error) throw error;
+                }
+                router.refresh();
+            }
+        } catch (err) {
+            console.error('Error updating item date via drag & drop:', err);
+            alert('Failed to update date: ' + err.message);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    // Drag-and-drop handlers for assigning users
+    const handleDragStartUser = (e, user) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({ type: 'user', userId: user.id }));
+    };
+
+    const handleDropOnItem = async (e, targetItem) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+            const dataStr = e.dataTransfer.getData('application/json');
+            if (!dataStr) return;
+            const dragData = JSON.parse(dataStr);
+
+            if (dragData.type === 'user') {
+                const userId = dragData.userId;
+                const assignedIds = targetItem.assigned_ids ? targetItem.assigned_ids.split(',') : [];
+
+                if (assignedIds.includes(String(userId))) {
+                    return; // Already assigned
+                }
+
+                setIsUpdating(true);
+                if (targetItem.type === 'job') {
+                    const { error } = await supabase
+                        .from('job_assignments')
+                        .insert([{ job_id: targetItem.id, user_id: userId }]);
+                    if (error) throw error;
+                } else if (targetItem.type === 'subtask') {
+                    const { error } = await supabase
+                        .from('sub_task_assignments')
+                        .insert([{ sub_task_id: targetItem.id, user_id: userId }]);
+                    if (error) throw error;
+                }
+                router.refresh();
+            }
+        } catch (err) {
+            console.error('Error assigning user via drag & drop:', err);
+            alert('Failed to assign user: ' + err.message);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleRemoveAssignment = async (item, userId) => {
+        if (!confirm(`Are you sure you want to remove this user from "${item.title}"?`)) {
+            return;
+        }
+
+        try {
+            setIsUpdating(true);
+            if (item.type === 'job') {
+                const { error } = await supabase
+                    .from('job_assignments')
+                    .delete()
+                    .eq('job_id', item.id)
+                    .eq('user_id', userId);
+                if (error) throw error;
+            } else if (item.type === 'subtask') {
+                const { error } = await supabase
+                    .from('sub_task_assignments')
+                    .delete()
+                    .eq('sub_task_id', item.id)
+                    .eq('user_id', userId);
+                if (error) throw error;
+            }
+            router.refresh();
+        } catch (err) {
+            console.error('Error removing user assignment:', err);
+            alert('Failed to remove assignment: ' + err.message);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     const nextMonth = () => setMonthOffset(prev => prev + 1);
     const prevMonth = () => setMonthOffset(prev => prev - 1);
     const resetMonth = () => setMonthOffset(0);
 
     return (
-        <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+        <div className="card" style={{ padding: '0', overflow: 'hidden', position: 'relative' }}>
+            {/* Loading Overlay */}
+            {isUpdating && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(2px)',
+                    zIndex: 1000,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    color: 'var(--primary)',
+                    fontWeight: 600,
+                    fontSize: '1rem'
+                }}>
+                    Saving changes...
+                </div>
+            )}
+
             {/* Current On-Call Banner */}
             {showOnCall && (
                 <div style={{
@@ -167,6 +330,54 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                 </div>
             </div>
 
+            {/* Draggable User Bar */}
+            <div style={{
+                padding: '0.6rem 1rem',
+                background: 'rgba(255,255,255,0.01)',
+                borderBottom: '1px solid var(--card-border)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                flexWrap: 'wrap'
+            }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    👋 Drag team member onto a task to assign them:
+                </span>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {users.map(user => (
+                        <div
+                            key={user.id}
+                            draggable
+                            onDragStart={(e) => handleDragStartUser(e, user)}
+                            style={{
+                                background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid var(--card-border)',
+                                borderRadius: '100px',
+                                padding: '0.2rem 0.6rem',
+                                fontSize: '0.7rem',
+                                fontWeight: 500,
+                                cursor: 'grab',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                userSelect: 'none',
+                                transition: 'all 0.15s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.borderColor = 'var(--primary)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                                e.currentTarget.style.borderColor = 'var(--card-border)';
+                            }}
+                        >
+                            👤 {user.username}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--card-border)', gap: '1px' }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                     <div key={d} style={{ padding: '0.5rem', background: 'var(--card-bg)', textAlign: 'center', fontSize: '0.875rem', fontWeight: 500 }}>
@@ -180,19 +391,35 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                     const onCall = day ? getOnCallForDate(day) : null;
 
                     return (
-                        <div key={idx} style={{
-                            minHeight: '120px',
-                            background: 'var(--card-bg)',
-                            padding: '0.5rem',
-                            opacity: day ? 1 : 0.5
-                        }}>
+                        <div 
+                            key={idx}
+                            onDragOver={day ? handleDragOverDay : undefined}
+                            onDragEnter={day ? () => setDraggedOverDay(dateKey) : undefined}
+                            onDragLeave={day ? () => setDraggedOverDay(null) : undefined}
+                            onDrop={day ? async (e) => {
+                                setDraggedOverDay(null);
+                                await handleDropOnDay(e, dateKey);
+                            } : undefined}
+                            style={{
+                                minHeight: '120px',
+                                background: draggedOverDay === dateKey 
+                                    ? 'rgba(59, 130, 246, 0.08)' 
+                                    : 'var(--card-bg)',
+                                border: draggedOverDay === dateKey 
+                                    ? '1.5px dashed var(--primary)' 
+                                    : '1px solid transparent',
+                                padding: '0.5rem',
+                                opacity: day ? 1 : 0.5,
+                                transition: 'background-color 0.2s, border-color 0.2s'
+                            }}
+                        >
                             {day && (
                                 <>
                                     <div style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        marginBottom: '0.25rem'
+                                        marginBottom: '0.35rem'
                                     }}>
                                         <span style={{
                                             fontSize: '0.75rem',
@@ -216,28 +443,75 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                                         )}
                                     </div>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        {itemsByDate[dateKey]?.map((item, i) => (
-                                            <Link key={`${item.type}-${item.id}`} href={item.type === 'job' ? `/jobs/${item.id}` : `/jobs/${item.job_id}`} style={{
-                                                display: 'block',
-                                                fontSize: '0.7rem',
-                                                background: item.status === 'Complete'
-                                                    ? 'rgba(16, 185, 129, 0.2)'
-                                                    : item.type === 'job' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                                                color: item.status === 'Complete'
-                                                    ? 'var(--success)'
-                                                    : item.type === 'job' ? 'var(--primary)' : 'var(--warning)',
-                                                padding: '0.125rem 0.25rem',
-                                                borderRadius: '0.25rem',
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                borderLeft: item.type === 'subtask' ? '2px solid var(--warning)' : 'none'
-                                            }}>
-                                                {item.title}
-                                            </Link>
-                                        ))}
-                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                                        {itemsByDate[dateKey]?.map((item, i) => {
+                                            const assignedIds = item.assigned_ids ? item.assigned_ids.split(',') : [];
+                                            const assignedUsers = users.filter(u => assignedIds.includes(String(u.id)));
+
+                                            return (
+                                                <div
+                                                    key={`${item.type}-${item.id}`}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStartItem(e, item)}
+                                                    onDragOver={(e) => e.preventDefault()}
+                                                    onDragEnter={() => setDraggedOverItem(`${item.type}-${item.id}`)}
+                                                    onDragLeave={() => setDraggedOverItem(null)}
+                                                    onDrop={async (e) => {
+                                                        setDraggedOverItem(null);
+                                                        await handleDropOnItem(e, item);
+                                                    }}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        const url = item.type === 'job' ? `/jobs/${item.id}` : `/jobs/${item.job_id}`;
+                                                        router.push(url);
+                                                     }}
+                                                     style={{
+                                                         display: 'inline-flex',
+                                                         alignItems: 'center',
+                                                         gap: '2px',
+                                                         background: draggedOverItem === `${item.type}-${item.id}`
+                                                             ? 'rgba(59, 130, 246, 0.35)'
+                                                             : item.status === 'Complete'
+                                                                 ? 'rgba(16, 185, 129, 0.15)'
+                                                                 : item.type === 'job' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                                         color: item.status === 'Complete'
+                                                             ? 'var(--success)'
+                                                             : item.type === 'job' ? 'var(--primary)' : 'var(--warning)',
+                                                         padding: '0.25rem 0.45rem',
+                                                         borderRadius: '6px',
+                                                         borderLeft: item.type === 'subtask' ? '2.5px solid var(--warning)' : '2.5px solid var(--primary)',
+                                                         cursor: 'pointer',
+                                                         boxShadow: draggedOverItem === `${item.type}-${item.id}` ? '0 0 6px var(--primary)' : 'none',
+                                                         transition: 'all 0.15s',
+                                                         fontSize: '0.7rem',
+                                                         fontWeight: 700,
+                                                         userSelect: 'none'
+                                                     }}
+                                                     title={`${item.type === 'job' ? 'Job' : 'Subtask'}: ${item.title} (${item.status})`}
+                                                 >
+                                                     {assignedUsers.length === 0 ? (
+                                                         <span style={{ opacity: 0.75 }}>UN</span>
+                                                     ) : (
+                                                         assignedUsers.map(u => (
+                                                             <span
+                                                                 key={u.id}
+                                                                 style={{
+                                                                     background: 'rgba(255, 255, 255, 0.08)',
+                                                                     border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                                     borderRadius: '3px',
+                                                                     padding: '1px 3px',
+                                                                     fontSize: '0.65rem'
+                                                                 }}
+                                                             >
+                                                                 {getInitials(u.username)}
+                                                             </span>
+                                                         ))
+                                                     )}
+                                                 </div>
+                                             );
+                                         })}
+                                     </div>
                                 </>
                             )}
                         </div>

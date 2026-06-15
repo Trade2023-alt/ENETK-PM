@@ -9,6 +9,7 @@ import { getTodoItems } from '@/app/actions/todo';
 export default function TodoListClient({ initialTasks, users, currentUserId, userRole }) {
     const [tasks, setTasks] = useState(initialTasks);
     const [filter, setFilter] = useState('active'); // active, completed, all
+    const [typeFilter, setTypeFilter] = useState('all'); // all, jobs, subtasks
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState('date'); // date, priority
     const [selectedUser, setSelectedUser] = useState(currentUserId);
@@ -88,8 +89,14 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                 t.customer.toLowerCase().includes(search.toLowerCase());
             const isComplete = t.status === 'Complete' || t.status === 'Completed';
 
-            if (filter === 'active') return !isComplete && matchesSearch;
-            if (filter === 'completed') return isComplete && matchesSearch;
+            // Status Filter
+            if (filter === 'active' && isComplete) return false;
+            if (filter === 'completed' && !isComplete) return false;
+
+            // Type Filter
+            if (typeFilter === 'jobs' && t.type !== 'Job') return false;
+            if (typeFilter === 'subtasks' && t.type === 'Job') return false;
+
             return matchesSearch;
         })
         .sort((a, b) => {
@@ -184,7 +191,7 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
 
             {/* Controls */}
             <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '300px' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '350px' }}>
                     <input
                         type="text"
                         placeholder="Search tasks or customers..."
@@ -193,10 +200,15 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                         onChange={(e) => setSearch(e.target.value)}
                         style={{ flex: 1 }}
                     />
-                    <select className="input" style={{ width: '150px' }} value={filter} onChange={(e) => setFilter(e.target.value)}>
+                    <select className="input" style={{ width: '130px' }} value={filter} onChange={(e) => setFilter(e.target.value)}>
                         <option value="active">Active</option>
                         <option value="completed">Completed</option>
                         <option value="all">All Items</option>
+                    </select>
+                    <select className="input" style={{ width: '130px' }} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                        <option value="all">All Types</option>
+                        <option value="jobs">Jobs Only</option>
+                        <option value="subtasks">Sub-tasks Only</option>
                     </select>
                 </div>
 
@@ -238,6 +250,7 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                     <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Name</th>
                                     <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customer Name</th>
                                     <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', width: '160px' }}>Job Number</th>
+                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', width: '130px' }}>Due Date</th>
                                     <th style={{ padding: '1rem', width: '50px' }}></th>
                                 </tr>
                             </thead>
@@ -349,6 +362,16 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                                 }}>
                                                     {jobNumber}
                                                 </span>
+                                            </td>
+                                            <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : 'var(--foreground)', fontSize: '0.9rem' }}>
+                                                {task.date ? (() => {
+                                                    try {
+                                                        const d = new Date(task.date + 'T00:00:00');
+                                                        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                                                    } catch {
+                                                        return task.date;
+                                                    }
+                                                })() : '—'}
                                             </td>
                                             <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', textAlign: 'center' }}>
                                                 <button 
