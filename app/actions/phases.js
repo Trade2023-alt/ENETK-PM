@@ -23,7 +23,13 @@ export async function getJobPhases(jobId) {
 
         if (error) {
             // Check if the table does not exist
-            if (error.message && error.message.includes('relation "job_phases" does not exist')) {
+            const isMissing = error.code === 'PGRST205' || 
+                (error.message && (
+                    error.message.includes('relation "job_phases" does not exist') ||
+                    error.message.includes('Could not find the table') ||
+                    error.message.includes('job_phases\' in the schema cache')
+                ));
+            if (isMissing) {
                 console.error('DATABASE ERROR: job_phases table does not exist. Please run the SQL DDL in Supabase.');
                 return { 
                     error: 'missing_table', 

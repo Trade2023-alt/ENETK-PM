@@ -5,6 +5,7 @@ import { updateJobStatus } from '@/app/actions/updateJob';
 import { updateSubTask, deleteSubTask } from '@/app/actions/subtasks';
 import { deleteJob } from '@/app/actions/deleteJob';
 import { getTodoItems } from '@/app/actions/todo';
+import { reassignTaskAction } from '@/app/actions/reassign';
 
 export default function TodoListClient({ initialTasks, users, currentUserId, userRole }) {
     const [tasks, setTasks] = useState(initialTasks);
@@ -17,6 +18,8 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
     const [editingTaskId, setEditingTaskId] = useState(null);
     const [editingTitleVal, setEditingTitleVal] = useState('');
+    const [contextMenu, setContextMenu] = useState(null); // { x, y, task }
+    const [hoveredMenuItem, setHoveredMenuItem] = useState(null);
 
     const loadTasks = async (userId) => {
         setLoading(true);
@@ -30,6 +33,56 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
     useEffect(() => {
         loadTasks(selectedUser);
     }, [selectedUser]);
+
+    useEffect(() => {
+        const handleClose = () => {
+            setContextMenu(null);
+        };
+        window.addEventListener('click', handleClose);
+        return () => window.removeEventListener('click', handleClose);
+    }, []);
+
+    const handleContextMenu = (e, task) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Simple screen boundary check
+        const menuWidth = 160;
+        const menuHeight = 125;
+        let x = e.clientX;
+        let y = e.clientY;
+        
+        if (x + menuWidth > window.innerWidth) {
+            x = window.innerWidth - menuWidth - 10;
+        }
+        if (y + menuHeight > window.innerHeight) {
+            y = window.innerHeight - menuHeight - 10;
+        }
+        
+        setContextMenu({ x, y, task });
+    };
+
+    const handleReassignTask = async (task, targetUserId) => {
+        setContextMenu(null);
+        setLoading(true);
+        try {
+            const itemType = task.type === 'Job' ? 'job' : 'subtask';
+            const res = await reassignTaskAction({
+                itemId: task.originalId,
+                itemType: itemType,
+                userId: targetUserId
+            });
+            if (res.error) throw new Error(res.error);
+            
+            // Reload tasks for the selected user
+            await loadTasks(selectedUser);
+        } catch (err) {
+            console.error('Error reassigning task:', err);
+            alert('Failed to reassign task: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleToggle = async (task) => {
         const newStatus = task.status === 'Complete' || task.status === 'Completed' ? 'In Progress' : 'Complete';
@@ -263,8 +316,12 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                         <tr key={task.id} style={{
                                             borderBottom: '1px solid var(--card-border)',
                                             background: isComplete ? 'rgba(255,255,255,0.01)' : 'transparent',
-                                            transition: 'background 0.2s'
-                                        }} className="grid-row">
+                                            transition: 'background 0.2s',
+                                            cursor: 'context-menu'
+                                        }} 
+                                        className="grid-row"
+                                        onContextMenu={(e) => handleContextMenu(e, task)}
+                                        >
                                             <td style={{ 
                                                 padding: '0.75rem 1rem', 
                                                 verticalAlign: 'middle', 
@@ -403,8 +460,11 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                     gap: '1.5rem',
                                     background: isComplete ? 'rgba(255,255,255,0.02)' : 'transparent',
                                     transition: 'all 0.2s',
-                                    borderLeft: `5px solid ${statusColor}`
-                                }}>
+                                    borderLeft: `5px solid ${statusColor}`,
+                                    cursor: 'context-menu'
+                                }}
+                                onContextMenu={(e) => handleContextMenu(e, task)}
+                                >
                                     <input
                                         type="checkbox"
                                         checked={isComplete}
@@ -504,6 +564,131 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                     </div>
                 )}
             </div>
+
+            {/* Custom Context Menu */}
+            {contextMenu && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: contextMenu.y,
+                        left: contextMenu.x,
+                        background: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                        zIndex: 10000,
+                        padding: '0.25rem 0',
+                        minWidth: '160px'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div
+                        onClick={() => {
+                            setEditingTaskId(contextMenu.task.id);
+                            setEditingTitleVal(contextMenu.task.title);
+                            setContextMenu(null);
+                        }}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#f8fafc',
+                            transition: 'background 0.2s',
+                            fontWeight: 500
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                        ✏️ Edit Name
+                    </div>
+                    <div
+                        onMouseEnter={() => setHoveredMenuItem('reassign')}
+                        onMouseLeave={() => setHoveredMenuItem(null)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            color: '#f8fafc',
+                            background: hoveredMenuItem === 'reassign' ? '#334155' : 'transparent',
+                            transition: 'background 0.2s',
+                            fontWeight: 500,
+                            position: 'relative'
+                        }}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>👤 Reassign To</span>
+                        <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>▶</span>
+
+                        {hoveredMenuItem === 'reassign' && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    left: '100%',
+                                    top: 0,
+                                    background: '#1e293b',
+                                    border: '1px solid #334155',
+                                    borderRadius: '6px',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                                    padding: '0.25rem 0',
+                                    minWidth: '150px',
+                                    zIndex: 10001,
+                                    maxHeight: '200px',
+                                    overflowY: 'auto'
+                                }}
+                            >
+                                {users.map(u => (
+                                    <div
+                                        key={u.id}
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            await handleReassignTask(contextMenu.task, u.id);
+                                        }}
+                                        style={{
+                                            padding: '0.5rem 1rem',
+                                            cursor: 'pointer',
+                                            fontSize: '0.8rem',
+                                            color: '#f8fafc',
+                                            transition: 'background 0.2s',
+                                            fontWeight: 500
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        👤 {u.username}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div
+                        onClick={async () => {
+                            setContextMenu(null);
+                            await handleDelete(contextMenu.task);
+                        }}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#ef4444',
+                            transition: 'background 0.2s',
+                            fontWeight: 500
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                        🗑️ Delete
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -17,7 +17,7 @@ export default async function TodoPage() {
     }
 
     const { tasks, error } = await getTodoItems(userId);
-    const users = userRole === 'admin' ? await getAllUsersForSelect() : [];
+    const users = await getAllUsersForSelect();
 
     if (error) {
         return (
