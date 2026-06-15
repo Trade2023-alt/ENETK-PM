@@ -79,6 +79,7 @@ export default async function JobDetailPage({ params }) {
         const job = {
             ...jobRaw,
             customer_name: jobRaw.customer?.name,
+            customer_id: jobRaw.customer?.id || jobRaw.customer_id,
             contact_name: jobRaw.contact?.name,
             contact_phone: jobRaw.contact?.phone,
             lead_name: jobRaw.lead?.username,
