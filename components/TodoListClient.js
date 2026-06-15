@@ -9,7 +9,7 @@ import { getTodoItems } from '@/app/actions/todo';
 export default function TodoListClient({ initialTasks, users, currentUserId, userRole }) {
     const [tasks, setTasks] = useState(initialTasks);
     const [filter, setFilter] = useState('active'); // active, completed, all
-    const [typeFilter, setTypeFilter] = useState('all'); // all, jobs, subtasks
+    const [typeFilter, setTypeFilter] = useState('subtasks'); // all, jobs, subtasks
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState('date'); // date, priority
     const [selectedUser, setSelectedUser] = useState(currentUserId);
