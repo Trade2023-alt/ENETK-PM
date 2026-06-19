@@ -48,7 +48,9 @@ export default function JobGantt({ jobs, users = [] }) {
                 start,
                 end,
                 progress,
-                custom_class: `job-status-${(job.status || 'scheduled').toLowerCase().replace(/\s+/g, '-')} priority-${(job.priority || 'Normal').toLowerCase()}`,
+                custom_class: job.priority === 'Urgent' 
+                    ? 'priority-urgent' 
+                    : `job-status-${(job.status || 'scheduled').toLowerCase().replace(/\s+/g, '-')}`,
                 job_id: job.id,
                 workers: workerNames.join(', ') || 'Unassigned',
                 customer: job.customer_name || '',
