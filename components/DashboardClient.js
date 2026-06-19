@@ -1,18 +1,27 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import JobCard from '@/components/JobCard';
 import JobGantt from '@/components/JobGantt';
 import Calendar from '@/components/Calendar';
 import ScheduleSpreadsheet from '@/components/ScheduleSpreadsheet';
 import OnCallEditor from '@/components/OnCallEditor';
+import MyWeekView from '@/components/MyWeekView';
+import MonthlyWorkforceView from '@/components/MonthlyWorkforceView';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { updateJobStatus } from '@/app/actions/updateJob';
 import { deleteJob } from '@/app/actions/deleteJob';
 
-export default function DashboardClient({ initialJobs, userRole, users = [], subTasks = [], onCallSchedule = [], currentUser = null }) {
+export default function DashboardClient({ initialJobs, userRole, users = [], customers = [], subTasks = [], onCallSchedule = [], currentUser = null }) {
+    const router = useRouter();
+    const isAdmin = userRole === 'admin' || userRole === 'system_integrator';
     const [grouping, setGrouping] = useState('customer'); // none, customer, status, assigned
-    const [viewMode, setViewMode] = useState('grid'); // grid, cards, gantt
+    const [viewMode, setViewMode] = useState(isAdmin ? 'grid' : 'my-week'); // grid, cards, gantt, calendar, spreadsheet, my-week, workforce
+    // Inline editing state for the grid view
+    const [editingCell, setEditingCell] = useState(null); // { jobId, field }
+    const [savingCell, setSavingCell] = useState(null); // { jobId, field }
+    const [savedCell, setSavedCell] = useState(null); // { jobId, field }
     const [selectedLead, setSelectedLead] = useState('All');
     const [selectedCustomer, setSelectedCustomer] = useState('All');
     const [showHidden, setShowHidden] = useState(false);
@@ -114,12 +123,150 @@ export default function DashboardClient({ initialJobs, userRole, users = [], sub
         }
     };
 
+    // Inline edit: save a single changed field without wiping job assignments.
+    // updateJobStatus deletes all job_assignments unless assigned_user_ids is sent,
+    // so we always re-send the job's existing assignments alongside the changed field.
+    const handleInlineSave = async (job, field, value) => {
+        setEditingCell(null);
+        setSavingCell({ jobId: job.id, field });
+        const formData = new FormData();
+        formData.append('job_id', job.id);
+        formData.append(field, value ?? '');
+
+        const existingAssignedIds = (job.assigned_ids || '').split(',').filter(Boolean);
+        existingAssignedIds.forEach(id => formData.append('assigned_user_ids', id));
+
+        try {
+            await updateJobStatus(formData);
+            setSavingCell(null);
+            setSavedCell({ jobId: job.id, field });
+            router.refresh();
+            setTimeout(() => {
+                setSavedCell(prev => (prev && prev.jobId === job.id && prev.field === field ? null : prev));
+            }, 1500);
+        } catch (e) {
+            console.error('Inline save failed:', e);
+            setSavingCell(null);
+        }
+    };
+
+    useEffect(() => {
+        if (!editingCell) return;
+        const onKey = (e) => { if (e.key === 'Escape') setEditingCell(null); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [editingCell]);
+
     const handleSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
             direction = 'desc';
         }
         setSortConfig({ key, direction });
+    };
+
+    // Renders a grid cell that becomes an inline editor on click.
+    // `field` is the FormData field sent to updateJobStatus; `type` selects the input.
+    const renderEditableCell = (job, field, type, currentValue, display) => {
+        const isEditing = editingCell && editingCell.jobId === job.id && editingCell.field === field;
+        const isSaving = savingCell && savingCell.jobId === job.id && savingCell.field === field;
+        const isSaved = savedCell && savedCell.jobId === job.id && savedCell.field === field;
+
+        const indicator = isSaving
+            ? <span title="Saving…" style={{ marginLeft: '0.4rem', display: 'inline-block', width: '0.85rem', height: '0.85rem', border: '2px solid rgba(255,255,255,0.25)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.6s linear infinite', verticalAlign: 'middle' }} />
+            : isSaved
+                ? <span title="Saved" style={{ marginLeft: '0.4rem', color: '#10b981', fontWeight: 700 }}>✓</span>
+                : null;
+
+        if (!isEditing) {
+            return (
+                <span
+                    onClick={() => setEditingCell({ jobId: job.id, field })}
+                    style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', padding: '0.25rem 0.4rem', transition: 'background 0.15s' }}
+                    className="inline-edit-trigger"
+                    title="Click to edit"
+                >
+                    {display}
+                    {indicator}
+                </span>
+            );
+        }
+
+        const inputStyle = {
+            width: '100%',
+            minWidth: type === 'date' ? '140px' : '120px',
+            background: 'rgba(255,255,255,0.06)',
+            border: 'none',
+            borderBottom: '2px solid var(--primary)',
+            color: 'var(--foreground)',
+            fontSize: '0.88rem',
+            padding: '0.35rem 0.4rem',
+            borderRadius: '4px 4px 0 0',
+            outline: 'none'
+        };
+        const commit = (val) => handleInlineSave(job, field, val);
+
+        if (type === 'text') {
+            return (
+                <input
+                    type="text"
+                    autoFocus
+                    defaultValue={currentValue || ''}
+                    style={inputStyle}
+                    onBlur={(e) => { if (e.target.value !== (currentValue || '')) commit(e.target.value); else setEditingCell(null); }}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); commit(e.target.value); }
+                        if (e.key === 'Escape') setEditingCell(null);
+                    }}
+                />
+            );
+        }
+
+        let options = [];
+        if (type === 'status') options = ['Scheduled', 'In Progress', 'Complete'];
+        else if (type === 'priority') options = ['Normal', 'High', 'Urgent'];
+
+        if (type === 'date') {
+            return (
+                <input
+                    type="date"
+                    autoFocus
+                    defaultValue={currentValue || ''}
+                    style={inputStyle}
+                    onChange={(e) => commit(e.target.value)}
+                    onBlur={() => setEditingCell(null)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setEditingCell(null); }}
+                />
+            );
+        }
+
+        if (type === 'customer') {
+            return (
+                <select autoFocus value={currentValue || ''} style={inputStyle}
+                    onChange={(e) => commit(e.target.value)} onBlur={() => setEditingCell(null)}>
+                    <option value="">— Unassigned —</option>
+                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+            );
+        }
+
+        if (type === 'lead') {
+            return (
+                <select autoFocus value={currentValue || ''} style={inputStyle}
+                    onChange={(e) => commit(e.target.value)} onBlur={() => setEditingCell(null)}>
+                    <option value="">— Unassigned —</option>
+                    {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+                </select>
+            );
+        }
+
+        // status / priority selects
+        return (
+            <select autoFocus value={currentValue || ''} style={inputStyle}
+                onChange={(e) => commit(e.target.value)} onBlur={() => setEditingCell(null)}>
+                {options.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+        );
     };
 
     const renderGridTable = (jobsArray) => {
@@ -143,20 +290,29 @@ export default function DashboardClient({ initialJobs, userRole, users = [], sub
             'Complete': 'var(--success)'
         };
 
+        const th = (label, sortKey, extra = {}) => (
+            <th
+                onClick={sortKey ? () => handleSort(sortKey) : undefined}
+                style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: sortKey ? 'pointer' : 'default', whiteSpace: 'nowrap', ...extra }}
+            >
+                {label}{sortKey ? ` ${sortConfig.key === sortKey ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}` : ''}
+            </th>
+        );
+
         return (
         <div className="card" style={{ padding: 0, overflowX: 'auto', borderLeft: 'none', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
                 <thead>
                     <tr style={{ borderBottom: '1px solid var(--card-border)', background: 'rgba(255, 255, 255, 0.03)' }}>
-                        <th onClick={() => handleSort('jobName')} style={{ padding: '1rem 1rem 1rem 1.5rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>
-                            Job Name {sortConfig.key === 'jobName' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
-                        </th>
-                        <th onClick={() => handleSort('customer_name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}>
-                            Customer Name {sortConfig.key === 'customer_name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
-                        </th>
-                        <th onClick={() => handleSort('jobNumber')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', width: '160px', cursor: 'pointer' }}>
-                            Job Number {sortConfig.key === 'jobNumber' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
-                        </th>
+                        {th('Job Name', 'jobName', { padding: '1rem 1rem 1rem 1.5rem' })}
+                        {th('Customer', 'customer_name')}
+                        {th('Job Number', 'jobNumber', { width: '140px' })}
+                        {th('Status', null)}
+                        {th('Lead', null)}
+                        {th('Priority', null)}
+                        {th('Scheduled', null)}
+                        {th('Due', null)}
+                        <th style={{ padding: '1rem', width: '60px' }}>Actions</th>
                         {userRole === 'admin' && <th style={{ padding: '1rem', width: '50px' }}></th>}
                     </tr>
                 </thead>
@@ -172,23 +328,27 @@ export default function DashboardClient({ initialJobs, userRole, users = [], sub
                                 transition: 'background 0.2s',
                                 opacity: job.is_hidden ? 0.6 : 1
                             }} className="grid-row">
-                                <td style={{ 
-                                    padding: '0.75rem 1rem 0.75rem 1.5rem', 
+                                <td style={{
+                                    padding: '0.4rem 1rem 0.4rem 1.5rem',
                                     verticalAlign: 'middle',
                                     borderLeft: `5px solid ${statusColor}`
                                 }}>
-                                    <Link href={`/jobs/${job.id}`} style={{
-                                        fontWeight: 500,
-                                        fontSize: '0.95rem',
-                                        textDecoration: isComplete ? 'line-through' : 'none',
-                                        color: isComplete ? 'var(--text-muted)' : 'var(--foreground)'
-                                    }}>
-                                        {jobName}
-                                        {job.is_hidden && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Hidden</span>}
-                                    </Link>
+                                    {renderEditableCell(job, 'title', 'text', jobName, (
+                                        <span style={{
+                                            fontWeight: 500,
+                                            fontSize: '0.95rem',
+                                            textDecoration: isComplete ? 'line-through' : 'none',
+                                            color: isComplete ? 'var(--text-muted)' : 'var(--foreground)'
+                                        }}>
+                                            {jobName}
+                                            {job.is_hidden && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Hidden</span>}
+                                        </span>
+                                    ))}
                                 </td>
-                                <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : 'var(--foreground)', fontSize: '0.9rem' }}>
-                                    📍 {job.customer_name || 'N/A'}
+                                <td style={{ padding: '0.4rem 1rem', verticalAlign: 'middle', color: isComplete ? 'var(--text-muted)' : 'var(--foreground)', fontSize: '0.9rem' }}>
+                                    {renderEditableCell(job, 'customer_id', 'customer', job.customer_id, (
+                                        <span>📍 {job.customer_name || 'N/A'}</span>
+                                    ))}
                                 </td>
                                 <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle' }}>
                                     <span style={{
@@ -204,9 +364,37 @@ export default function DashboardClient({ initialJobs, userRole, users = [], sub
                                         {jobNumber}
                                     </span>
                                 </td>
+                                <td style={{ padding: '0.4rem 0.75rem', verticalAlign: 'middle', fontSize: '0.85rem' }}>
+                                    {renderEditableCell(job, 'status', 'status', job.status, (
+                                        <span style={{ color: statusColor, fontWeight: 600 }}>{job.status || '—'}</span>
+                                    ))}
+                                </td>
+                                <td style={{ padding: '0.4rem 0.75rem', verticalAlign: 'middle', fontSize: '0.85rem' }}>
+                                    {renderEditableCell(job, 'lead_id', 'lead', job.lead_id, (
+                                        <span>{job.lead_name || 'Unassigned'}</span>
+                                    ))}
+                                </td>
+                                <td style={{ padding: '0.4rem 0.75rem', verticalAlign: 'middle', fontSize: '0.85rem' }}>
+                                    {renderEditableCell(job, 'priority', 'priority', job.priority, (
+                                        <span>{job.priority || 'Normal'}</span>
+                                    ))}
+                                </td>
+                                <td style={{ padding: '0.4rem 0.75rem', verticalAlign: 'middle', fontSize: '0.85rem' }}>
+                                    {renderEditableCell(job, 'scheduled_date', 'date', job.scheduled_date, (
+                                        <span style={{ color: job.scheduled_date ? 'var(--foreground)' : 'var(--text-muted)' }}>{job.scheduled_date || '—'}</span>
+                                    ))}
+                                </td>
+                                <td style={{ padding: '0.4rem 0.75rem', verticalAlign: 'middle', fontSize: '0.85rem' }}>
+                                    {renderEditableCell(job, 'due_date', 'date', job.due_date, (
+                                        <span style={{ color: job.due_date ? 'var(--foreground)' : 'var(--text-muted)' }}>{job.due_date || '—'}</span>
+                                    ))}
+                                </td>
+                                <td style={{ padding: '0.4rem 0.75rem', verticalAlign: 'middle', textAlign: 'center' }}>
+                                    <Link href={`/jobs/${job.id}`} className="btn" style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', background: 'rgba(255,255,255,0.06)' }}>Open</Link>
+                                </td>
                                 {userRole === 'admin' && (
                                     <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', textAlign: 'center' }}>
-                                        <button 
+                                        <button
                                             onClick={() => handleDeleteJob(job.id)}
                                             style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem' }}
                                             title="Delete Job"
@@ -237,6 +425,10 @@ export default function DashboardClient({ initialJobs, userRole, users = [], sub
 
     return (
         <div>
+            <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
+                .inline-edit-trigger:hover { background: rgba(255,255,255,0.07); }
+            `}</style>
             {/* KPI Metric Ribbon */}
             <div style={{
                 display: 'grid',
@@ -280,7 +472,37 @@ export default function DashboardClient({ initialJobs, userRole, users = [], sub
                 paddingBottom: '0.75rem'
             }}>
                 {/* View Selector (Left) */}
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {!isAdmin && (
+                        <button
+                            onClick={() => setViewMode('my-week')}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                padding: '0.5rem 1.25rem', borderRadius: '0.5rem',
+                                background: viewMode === 'my-week' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
+                                border: viewMode === 'my-week' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
+                                color: viewMode === 'my-week' ? 'var(--primary)' : 'var(--text-muted)',
+                                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
+                            }}
+                        >
+                            <span style={{ fontSize: '1rem' }}>🗓️</span> My Week
+                        </button>
+                    )}
+                    {isAdmin && (
+                        <button
+                            onClick={() => setViewMode('workforce')}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                padding: '0.5rem 1.25rem', borderRadius: '0.5rem',
+                                background: viewMode === 'workforce' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
+                                border: viewMode === 'workforce' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
+                                color: viewMode === 'workforce' ? 'var(--primary)' : 'var(--text-muted)',
+                                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
+                            }}
+                        >
+                            <span style={{ fontSize: '1rem' }}>👥</span> Workforce
+                        </button>
+                    )}
                     <button
                         onClick={() => setViewMode('grid')}
                         style={{
@@ -542,9 +764,17 @@ export default function DashboardClient({ initialJobs, userRole, users = [], sub
                 </div>
             </div>
 
-            {viewMode === 'gantt' ? (
+            {viewMode === 'my-week' ? (
                 <div style={{ marginTop: '0.5rem' }}>
-                    <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={[]} />
+                    <MyWeekView jobs={jobs} subTasks={subTasks} users={users} currentUser={currentUser} onCallSchedule={onCallSchedule} />
+                </div>
+            ) : viewMode === 'workforce' ? (
+                <div style={{ marginTop: '0.5rem' }}>
+                    <MonthlyWorkforceView jobs={jobs} subTasks={subTasks} users={users} />
+                </div>
+            ) : viewMode === 'gantt' ? (
+                <div style={{ marginTop: '0.5rem' }}>
+                    <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={users} />
                     {jobs.filter(j => j.scheduled_date).length === 0 && (
                         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📊</div>

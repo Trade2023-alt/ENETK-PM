@@ -11,6 +11,7 @@ export async function updateJobStatus(formData) {
     const usedHours = formData.get('used_hours');
     const estimatedHours = formData.get('estimated_hours');
     const dueDate = formData.get('due_date');
+    const scheduledDate = formData.get('scheduled_date');
     const description = formData.get('description');
     const leadId = formData.get('lead_id');
     const isHiddenRaw = formData.get('is_hidden');
@@ -49,6 +50,7 @@ export async function updateJobStatus(formData) {
             }
         }
         if (dueDate !== null) updateData.due_date = dueDate === '' ? null : dueDate;
+        if (scheduledDate !== null) updateData.scheduled_date = scheduledDate === '' ? null : scheduledDate;
         if (description !== null) updateData.description = description;
         if (leadId !== null) updateData.lead_id = leadId === '' ? null : leadId;
         if (isHiddenRaw !== null) updateData.is_hidden = isHiddenRaw === 'true';
