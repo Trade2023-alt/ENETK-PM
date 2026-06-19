@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import JobCard from '@/components/JobCard';
 import JobGantt from '@/components/JobGantt';
+import Calendar from '@/components/Calendar';
+import ScheduleSpreadsheet from '@/components/ScheduleSpreadsheet';
+import OnCallEditor from '@/components/OnCallEditor';
 import Link from 'next/link';
 import { updateJobStatus } from '@/app/actions/updateJob';
 import { deleteJob } from '@/app/actions/deleteJob';
 
-export default function DashboardClient({ initialJobs, userRole }) {
+export default function DashboardClient({ initialJobs, userRole, users = [], subTasks = [], onCallSchedule = [], currentUser = null }) {
     const [grouping, setGrouping] = useState('customer'); // none, customer, status, assigned
     const [viewMode, setViewMode] = useState('grid'); // grid, cards, gantt
     const [selectedLead, setSelectedLead] = useState('All');
@@ -335,6 +338,44 @@ export default function DashboardClient({ initialJobs, userRole }) {
                     >
                         <span style={{ fontSize: '1rem' }}>📊</span> Gantt
                     </button>
+                    <button
+                        onClick={() => setViewMode('calendar')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 1.25rem',
+                            borderRadius: '0.5rem',
+                            background: viewMode === 'calendar' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
+                            border: viewMode === 'calendar' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
+                            color: viewMode === 'calendar' ? 'var(--primary)' : 'var(--text-muted)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.9rem'
+                        }}
+                    >
+                        <span style={{ fontSize: '1rem' }}>🗓️</span> Calendar
+                    </button>
+                    <button
+                        onClick={() => setViewMode('spreadsheet')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 1.25rem',
+                            borderRadius: '0.5rem',
+                            background: viewMode === 'spreadsheet' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
+                            border: viewMode === 'spreadsheet' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
+                            color: viewMode === 'spreadsheet' ? 'var(--primary)' : 'var(--text-muted)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.9rem'
+                        }}
+                    >
+                        <span style={{ fontSize: '1rem' }}>🗃️</span> Spreadsheet
+                    </button>
                     <div style={{ 
                         display: 'flex', 
                         flexDirection: 'column', 
@@ -511,6 +552,15 @@ export default function DashboardClient({ initialJobs, userRole }) {
                             <p style={{ fontSize: '0.85rem', marginTop: '0.4rem' }}>Add a scheduled date to your jobs to see them here.</p>
                         </div>
                     )}
+                </div>
+            ) : viewMode === 'calendar' ? (
+                <div style={{ marginTop: '0.5rem' }}>
+                    <OnCallEditor initialSchedule={onCallSchedule} userRole={userRole} />
+                    <Calendar jobs={jobs} subTasks={subTasks} users={users} currentUser={currentUser} />
+                </div>
+            ) : viewMode === 'spreadsheet' ? (
+                <div style={{ marginTop: '0.5rem' }}>
+                    <ScheduleSpreadsheet jobs={jobs} users={users} subTasks={subTasks} />
                 </div>
             ) : (grouping === 'none' || grouping === 'incomplete') ? (
                 viewMode === 'grid' ? (

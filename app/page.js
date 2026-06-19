@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import DashboardClient from '@/components/DashboardClient';
+import { getOnCallScheduleForMonth } from '@/app/actions/oncall';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +106,29 @@ export default async function Home() {
     console.error('Error fetching jobs:', error);
   }
 
+  // Fetch additional data required for Calendar and Spreadsheet unified tabs
+  let users = [];
+  let subTasks = [];
+  let onCallSchedule = [];
+
+  try {
+    const [{ data: usersData }, { data: subTasksRaw }] = await Promise.all([
+      supabase.from('users').select('id, username').order('username'),
+      supabase.from('sub_tasks').select(`*, assignments:sub_task_assignments(user_id)`)
+    ]);
+
+    users = usersData || [];
+    subTasks = (subTasksRaw || []).map(st => ({
+      ...st,
+      assigned_ids: st.assignments?.map(a => a.user_id).join(',')
+    }));
+
+    const today = new Date();
+    onCallSchedule = await getOnCallScheduleForMonth(today.getFullYear(), today.getMonth());
+  } catch (error) {
+    console.error('Error fetching supplementary dashboard data:', error);
+  }
+
   return (
     <div className="container" style={{ paddingBottom: '4rem' }}>
       <Header userRole={userRole} />
@@ -140,13 +164,6 @@ export default async function Home() {
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>View & manage your tasks</div>
           </div>
         </Link>
-        <Link href="/estimate" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #10b981' }}>
-          <div style={{ fontSize: '1.5rem' }}>📏</div>
-          <div>
-            <div style={{ fontWeight: 600 }}>Estimation Pro</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>MTO Forms & Blueprint OCR</div>
-          </div>
-        </Link>
       </div>
       )}
 
@@ -170,7 +187,14 @@ export default async function Home() {
           <Link href="/jobs/new" style={{ color: 'var(--primary)' }}>Create your first job</Link>
         </div>
       ) : (
-        <DashboardClient initialJobs={jobs} userRole={userRole} />
+        <DashboardClient 
+          initialJobs={jobs} 
+          userRole={userRole} 
+          users={users} 
+          subTasks={subTasks} 
+          onCallSchedule={onCallSchedule} 
+          currentUser={userProfile}
+        />
       )}
     </div>
   );
