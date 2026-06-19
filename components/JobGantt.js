@@ -257,7 +257,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                     No scheduled jobs to display. Add scheduled dates to jobs to see them here.
                 </div>
             ) : (
-                <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '70vh' }}>
+                <div style={{ overflowX: 'auto', overflowY: 'auto', resize: 'vertical', minHeight: '250px', maxHeight: '85vh', paddingBottom: '10px' }}>
                     <div style={{ width: `${totalW}px`, minWidth: '100%', position: 'relative', height: `${containerH}px` }}>
 
                         {/* Sticky header row */}
