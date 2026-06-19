@@ -29,7 +29,7 @@ export default function JobForm({ customers, contacts, users, userRole }) {
     return (
         <form action={formAction}>
             {state?.error && (
-                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '0.5rem', marginBottom: '1.5rem', color: '#ef4444', fontSize: '0.875rem' }}>
+                <div className="form-error">
                     {state.error}
                 </div>
             )}
@@ -125,6 +125,7 @@ export default function JobForm({ customers, contacts, users, userRole }) {
                 </div>
             </div>
 
+            <div className="form-section-title" style={{ marginTop: '1.5rem' }}>Scheduling & Priority</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                     <label className="label">Scheduled Date</label>

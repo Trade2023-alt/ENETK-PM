@@ -51,15 +51,7 @@ export default function CustomerForm({ initialData = null }) {
             </button>
 
             {error && (
-                <div style={{
-                    padding: '1rem',
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
-                    borderRadius: '4px',
-                    marginBottom: '1rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid rgba(239, 68, 68, 0.2)'
-                }}>
+                <div className="form-error">
                     <strong>Error:</strong> {error}
                 </div>
             )}
@@ -85,9 +77,9 @@ export default function CustomerForm({ initialData = null }) {
                 </div>
             </div>
 
-            <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: '1.5rem', marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Customer Login Access</h3>
-                
+            <div className="form-section" style={{ marginBottom: '1.5rem' }}>
+                <div className="form-section-title">Customer Login Access</div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
                         <label className="label">Username</label>

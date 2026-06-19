@@ -93,7 +93,7 @@ export default async function GanttPage() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                     <Link href="/calendar" className="btn" style={{ fontSize: '0.82rem' }}>🗓️ Calendar</Link>
-                    <Link href="/schedule" className="btn" style={{ fontSize: '0.82rem' }}>📅 Schedule</Link>
+                    <Link href="/schedule/v2" className="btn" style={{ fontSize: '0.82rem' }}>🗃️ Schedule</Link>
                     <Link href="/jobs/new" className="btn btn-primary">+ New Job</Link>
                 </div>
             </div>

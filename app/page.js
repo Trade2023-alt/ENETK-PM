@@ -133,11 +133,9 @@ export default async function Home() {
     <div className="container" style={{ paddingBottom: '4rem' }}>
       <Header userRole={userRole} />
 
-      <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Welcome, {userProfile?.username || 'User'}!</h1>
-          <p style={{ color: 'var(--text-muted)' }}>{userProfile?.company || 'ENETK'} Project Management Dashboard</p>
-        </div>
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Welcome, {userProfile?.username || 'User'}!</h1>
+        <p className="page-subtitle">{userProfile?.company || 'ENETK'} Project Management Dashboard</p>
       </div>
 
       {/* Main Actions Panel Grid */}
@@ -167,11 +165,11 @@ export default async function Home() {
       </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.5rem' }}>Upcoming Jobs</h2>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+      <div className="page-header">
+        <h2 className="page-title">Upcoming Jobs</h2>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
           {userRole !== 'customer' && (
-          <Link href="/todo/bulk" className="btn" style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <Link href="/todo/bulk" className="btn btn-secondary">
             📋 Bulk Add Tasks
           </Link>
           )}
@@ -182,9 +180,10 @@ export default async function Home() {
       </div>
 
       {jobs.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>No upcoming jobs scheduled.</p>
-          <Link href="/jobs/new" style={{ color: 'var(--primary)' }}>Create your first job</Link>
+        <div className="card empty-state">
+          <div className="empty-icon">📋</div>
+          <p style={{ marginBottom: '1rem' }}>No upcoming jobs scheduled.</p>
+          <Link href="/jobs/new" className="text-primary" style={{ fontWeight: 600 }}>Create your first job →</Link>
         </div>
       ) : (
         <DashboardClient 

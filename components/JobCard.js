@@ -26,10 +26,10 @@ export default function JobCard({ job, userRole, onDelete }) {
         }
     };
 
-    const statusColors = {
-        'Scheduled': 'var(--primary)',
-        'In Progress': 'var(--warning)',
-        'Complete': 'var(--success)'
+    const statusBadgeClass = {
+        'Scheduled': 'badge-danger',
+        'In Progress': 'badge-warning',
+        'Complete': 'badge-success'
     };
 
     const formatDate = (dateStr) => {
@@ -63,13 +63,7 @@ export default function JobCard({ job, userRole, onDelete }) {
                     </h3>
                 )}
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    <span style={{
-                        padding: '0.125rem 0.375rem',
-                        borderRadius: '1rem',
-                        background: `rgba(0,0,0,0.2)`,
-                        color: statusColors[job.status] || 'var(--text-muted)',
-                        border: `1px solid ${statusColors[job.status] || 'var(--card-border)'}`
-                    }}>
+                    <span className={`badge ${statusBadgeClass[job.status] || ''}`}>
                         {job.status}
                     </span>
                 </div>
