@@ -27,22 +27,23 @@ function daysInMonth(year, month) {
     return new Date(year, month + 1, 0).getDate();
 }
 
-// Inclusive range of ISO dates between scheduled_date and due_date (capped to the visible month).
-function jobDateRange(job, monthStartISO, monthEndISO) {
-    const start = job.scheduled_date;
-    if (!start) return [];
-    const end = job.due_date && job.due_date >= start ? job.due_date : start;
-    const from = start < monthStartISO ? monthStartISO : start;
-    const to = end > monthEndISO ? monthEndISO : end;
-    if (from > to) return [];
-    const out = [];
-    let cur = new Date(from + 'T00:00:00');
-    const last = new Date(to + 'T00:00:00');
-    while (cur <= last) {
-        out.push(toISODate(cur));
-        cur.setDate(cur.getDate() + 1);
+// Inclusive full range of ISO dates for an item (including additional intermittent dates).
+function getFullScheduledDates(item) {
+    const dates = new Set();
+    const start = item.scheduled_date || item.start_date;
+    const end = item.due_date || start;
+    if (start && end) {
+        let cur = new Date(start + 'T00:00:00');
+        const last = new Date(end + 'T00:00:00');
+        while (cur <= last) {
+            dates.add(toISODate(cur));
+            cur.setDate(cur.getDate() + 1);
+        }
     }
-    return out;
+    if (Array.isArray(item.additional_dates)) {
+        item.additional_dates.forEach(d => { if (d) dates.add(d); });
+    }
+    return Array.from(dates);
 }
 
 export default function MonthlyWorkforceView({ jobs = [], subTasks = [], users = [] }) {
@@ -61,10 +62,10 @@ export default function MonthlyWorkforceView({ jobs = [], subTasks = [], users =
         [year, month, numDays]
     );
 
-    // assignmentsByUser[userId][iso] = [{ jobId, title, status }]
+    // assignmentsByUser[userId][iso] = [{ jobId, title, status, hours }]
     const { assignmentsByUser, dayCellEntries } = useMemo(() => {
         const byUser = {};
-        const byDay = {}; // iso -> [{ userId, username, jobId, title, status }]
+        const byDay = {}; // iso -> [{ userId, username, jobId, title, status, hours }]
         users.forEach(u => { byUser[u.id] = {}; });
         dates.forEach(iso => { byDay[iso] = []; });
 
@@ -75,27 +76,31 @@ export default function MonthlyWorkforceView({ jobs = [], subTasks = [], users =
             if (byDay[iso]) byDay[iso].push({ userId, ...entry });
         };
 
-        jobs.forEach(job => {
-            const ids = (job.assigned_ids || '').split(',').filter(Boolean);
+        const processItem = (item, isSubtask) => {
+            const ids = (item.assigned_ids || '').split(',').filter(Boolean);
             if (ids.length === 0) return;
-            const range = jobDateRange(job, monthStartISO, monthEndISO);
-            range.forEach(iso => {
+
+            const allDates = getFullScheduledDates(item);
+            if (allDates.length === 0) return;
+
+            const estHours = item.estimated_hours || 0;
+            const hoursPerPersonPerDay = estHours / (ids.length * allDates.length);
+
+            const visibleDates = allDates.filter(iso => iso >= monthStartISO && iso <= monthEndISO);
+            visibleDates.forEach(iso => {
                 ids.forEach(uid => place(uid, iso, {
-                    jobId: job.id, title: job.title || 'Untitled', status: job.status, type: 'job',
+                    jobId: isSubtask ? item.job_id : item.id,
+                    title: item.title || (isSubtask ? 'Sub-task' : 'Untitled'),
+                    status: item.status,
+                    type: isSubtask ? 'subtask' : 'job',
+                    hours: hoursPerPersonPerDay,
                     username: (users.find(u => String(u.id) === String(uid)) || {}).username
                 }));
             });
-        });
+        };
 
-        subTasks.forEach(st => {
-            const iso = st.due_date;
-            if (!iso || iso < monthStartISO || iso > monthEndISO) return;
-            const ids = (st.assigned_ids || '').split(',').filter(Boolean);
-            ids.forEach(uid => place(uid, iso, {
-                jobId: st.job_id, title: st.title || 'Sub-task', status: st.status, type: 'subtask',
-                username: (users.find(u => String(u.id) === String(uid)) || {}).username
-            }));
-        });
+        jobs.forEach(job => processItem(job, false));
+        subTasks.forEach(st => processItem(st, true));
 
         return { assignmentsByUser: byUser, dayCellEntries: byDay };
     }, [jobs, subTasks, users, dates, monthStartISO, monthEndISO]);
@@ -238,8 +243,82 @@ export default function MonthlyWorkforceView({ jobs = [], subTasks = [], users =
                     </tbody>
                 </table>
             </div>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem', marginBottom: '2rem' }}>
                 Each cell shows the number of jobs/tasks a person is on that day. Amber = overloaded (3+). Click any cell or date header for details.
+            </p>
+
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.75rem', paddingLeft: '0.5rem' }}>⏱️ Estimated Hours</h3>
+            <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: `${160 + numDays * 30}px` }}>
+                    <thead>
+                        <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--card-border)' }}>
+                            <th style={{ position: 'sticky', left: 0, zIndex: 2, background: '#1a1a1a', padding: '0.5rem 0.75rem', textAlign: 'left', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '150px' }}>Team Member</th>
+                            {dates.map(iso => {
+                                const d = new Date(iso + 'T00:00:00');
+                                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                const isToday = iso === todayISO;
+                                return (
+                                    <th key={iso} title={iso} style={{
+                                        padding: '0.35rem 0', textAlign: 'center', fontSize: '0.62rem',
+                                        color: isToday ? 'var(--primary)' : isWeekend ? 'rgba(255,255,255,0.3)' : 'var(--text-muted)',
+                                        fontWeight: isToday ? 800 : 600, minWidth: '30px',
+                                        cursor: 'pointer'
+                                    }} onClick={() => openDay(iso)}>
+                                        <div>{d.getDate()}</div>
+                                        <div style={{ fontSize: '0.55rem' }}>{['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()]}</div>
+                                    </th>
+                                );
+                            })}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users.map(u => {
+                            const byDate = assignmentsByUser[u.id] || {};
+                            const color = colorForUser(u.id);
+                            return (
+                                <tr key={u.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                                    <td style={{ position: 'sticky', left: 0, zIndex: 1, background: '#1a1a1a', padding: '0.4rem 0.75rem', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }} />
+                                            {u.username}
+                                        </span>
+                                    </td>
+                                    {dates.map(iso => {
+                                        const entries = byDate[iso] || [];
+                                        const d = new Date(iso + 'T00:00:00');
+                                        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                                        
+                                        const totalHours = entries.reduce((sum, e) => sum + (e.hours || 0), 0);
+                                        const displayHours = Math.round(totalHours * 10) / 10;
+                                        const overloaded = totalHours > 8; // > 8 hours is considered overloaded
+                                        
+                                        return (
+                                            <td key={iso} onClick={() => openDay(iso)} title={entries.map(e => `${e.title} (${Math.round(e.hours*10)/10}h)`).join(', ')} style={{
+                                                textAlign: 'center', padding: '2px', cursor: entries.length ? 'pointer' : 'default',
+                                                background: isWeekend ? 'rgba(255,255,255,0.015)' : 'transparent',
+                                                borderLeft: '1px solid rgba(255,255,255,0.04)'
+                                            }}>
+                                                {displayHours > 0 && (
+                                                    <span style={{
+                                                        display: 'inline-block', minWidth: '20px', height: '18px', lineHeight: '18px',
+                                                        borderRadius: '4px', fontSize: '0.62rem', fontWeight: 700,
+                                                        background: overloaded ? '#ef4444' : color, color: '#fff',
+                                                        padding: '0 0.15rem'
+                                                    }}>
+                                                        {displayHours}
+                                                    </span>
+                                                )}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                Each cell shows the total estimated hours per person per day. Red = overloaded (&gt; 8 hours). Click any cell for details.
             </p>
 
             {/* Day detail modal */}
