@@ -317,6 +317,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
 
     const [monthOffset, setMonthOffset] = useState(0);
     const [weekOffset, setWeekOffset] = useState(0);
+    const [showTasks, setShowTasks] = useState(true);
     const [showSubTasks, setShowSubTasks] = useState(true);
     const [showOnCall, setShowOnCall] = useState(true);
     const [filterUser, setFilterUser] = useState('');
@@ -384,13 +385,15 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
     // Group by date
     const itemsByDate = useMemo(() => {
         const map = {};
-        filteredJobs.forEach(job => {
-            if (job.scheduled_date) {
-                const dateKey = new Date(job.scheduled_date).toISOString().split('T')[0];
-                if (!map[dateKey]) map[dateKey] = [];
-                map[dateKey].push({ ...job, type: 'job' });
-            }
-        });
+        if (showTasks) {
+            filteredJobs.forEach(job => {
+                if (job.scheduled_date) {
+                    const dateKey = new Date(job.scheduled_date).toISOString().split('T')[0];
+                    if (!map[dateKey]) map[dateKey] = [];
+                    map[dateKey].push({ ...job, type: 'job' });
+                }
+            });
+        }
         if (showSubTasks) {
             filteredSubTasks.forEach(task => {
                 if (task.due_date) {
@@ -401,7 +404,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
             });
         }
         return map;
-    }, [filteredJobs, filteredSubTasks, showSubTasks]);
+    }, [filteredJobs, filteredSubTasks, showTasks, showSubTasks]);
 
     // D&D handlers
     const handleDragStartItem = (e, item) => {
@@ -918,9 +921,13 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                         </select>
 
                         {/* Toggles */}
+                        <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#fda4af', userSelect: 'none' }}>
+                            <input type="checkbox" checked={showTasks} onChange={(e) => setShowTasks(e.target.checked)} />
+                            🔧 Tasks
+                        </label>
                         <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', userSelect: 'none' }}>
                             <input type="checkbox" checked={showSubTasks} onChange={(e) => setShowSubTasks(e.target.checked)} />
-                            Sub-tasks
+                            📌 Sub-tasks
                         </label>
                         <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ef4444', userSelect: 'none' }}>
                             <input type="checkbox" checked={showOnCall} onChange={(e) => setShowOnCall(e.target.checked)} />
