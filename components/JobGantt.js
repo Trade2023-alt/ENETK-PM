@@ -43,14 +43,11 @@ const ROW_H = 44;
 const HEADER_H = 32;
 
 export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
-    const [zoom, setZoom] = useState('Week');
-    const [filterStatus, setFilterStatus] = useState('All');
+    const zoom = 'Week'; // fixed zoom — controls removed per user request
 
     const px = PX[zoom];
 
-    const filtered = filterStatus === 'All'
-        ? jobs.filter(j => j.scheduled_date)
-        : jobs.filter(j => j.scheduled_date && j.status === filterStatus);
+    const filtered = jobs.filter(j => j.scheduled_date);
 
     // Compute timeline bounds
     const { rangeStart, totalDays } = useMemo(() => {
@@ -113,24 +110,10 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
 
     return (
         <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid var(--card-border)', overflow: 'hidden' }}>
-            {/* Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--card-border)', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)' }}>
+            {/* Header — no buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.02)' }}>
                 <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>📊 Gantt Timeline</span>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.78rem', background: 'var(--input-bg)', color: 'var(--foreground)', border: '1px solid var(--input-border)', borderRadius: '6px' }}>
-                    {['All','Scheduled','In Progress','Complete'].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid var(--card-border)', padding: '2px', gap: '2px' }}>
-                    {['Day','Week','Month'].map(z => (
-                        <button key={z} onClick={() => setZoom(z)} style={{
-                            border: 'none', padding: '0.3rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
-                            background: zoom === z ? 'var(--primary)' : 'transparent',
-                            color: zoom === z ? '#fff' : 'var(--text-muted)',
-                            transition: 'all 0.15s',
-                        }}>{z}</button>
-                    ))}
-                </div>
-                <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
                     {filtered.length} job{filtered.length !== 1 ? 's' : ''}
                     {milestones.length > 0 ? ` · ${milestones.length} milestone${milestones.length !== 1 ? 's' : ''}` : ''}
                 </span>
