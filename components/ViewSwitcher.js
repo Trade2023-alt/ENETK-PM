@@ -14,11 +14,11 @@ export default function ViewSwitcher() {
         display: 'flex',
         alignItems: 'center',
         gap: '0.5rem',
-        padding: '0.35rem 1rem',
-        borderRadius: '0.5rem',
-        background: viewMode === view ? 'rgba(159, 18, 57, 0.25)' : 'transparent',
-        border: viewMode === view ? '1px solid rgba(159, 18, 57, 0.5)' : '1px solid transparent',
-        color: viewMode === view ? 'var(--primary)' : 'var(--text-muted)',
+        padding: '0.4rem 0.8rem',
+        borderRadius: '8px',
+        background: viewMode === view ? 'rgba(159, 18, 57, 0.8)' : 'transparent',
+        border: 'none',
+        color: viewMode === view ? '#ffffff' : 'var(--text-muted)',
         fontWeight: 600,
         cursor: 'pointer',
         transition: 'all 0.2s',
@@ -27,7 +27,16 @@ export default function ViewSwitcher() {
     });
 
     return (
-        <div className="hidden md:flex" style={{ gap: '0.25rem', alignItems: 'center' }}>
+        <div style={{ 
+            display: 'flex', 
+            flexDirection: 'row', 
+            gap: '0.25rem', 
+            alignItems: 'center',
+            background: 'rgba(0, 0, 0, 0.25)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            padding: '0.25rem',
+            borderRadius: '12px'
+        }}>
             <Link href="/?view=grid" style={viewButton('grid')}><span style={{ fontSize: '1rem' }}>田</span> Grid</Link>
             <Link href="/?view=cards" style={viewButton('cards')}><span style={{ fontSize: '1rem' }}>📋</span> Cards</Link>
             <Link href="/?view=gantt" style={viewButton('gantt')}><span style={{ fontSize: '1rem' }}>📊</span> Gantt</Link>
