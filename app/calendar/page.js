@@ -1,0 +1,104 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import Header from '@/components/Header';
+import Calendar from '@/components/Calendar';
+import OnCallEditor from '@/components/OnCallEditor';
+import Link from 'next/link';
+import { getOnCallScheduleForMonth } from '@/app/actions/oncall';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata = {
+    title: 'Calendar | ENETK PM',
+    description: 'Full-screen monthly calendar for ENETK project management',
+};
+
+export default async function CalendarPage() {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    const userRole = cookieStore.get('user_role')?.value;
+
+    if (!userId) redirect('/login');
+
+    // Fetch jobs with assignments
+    const { data: jobsRaw } = await supabase
+        .from('jobs')
+        .select(`
+            *,
+            assignments:job_assignments(user_id)
+        `);
+
+    // Fetch sub-tasks with assignments
+    const { data: subTasksRaw } = await supabase
+        .from('sub_tasks')
+        .select(`
+            *,
+            assignments:sub_task_assignments(user_id)
+        `);
+
+    // Fetch users
+    const { data: users } = await supabase
+        .from('users')
+        .select('id, username')
+        .order('username');
+
+    // Fetch on-call schedule for current month
+    const today = new Date();
+    const onCallSchedule = await getOnCallScheduleForMonth(today.getFullYear(), today.getMonth());
+
+    // Transform assigned_ids
+    const jobs = (jobsRaw || []).map(job => ({
+        ...job,
+        assigned_ids: job.assignments?.map(a => a.user_id).join(',')
+    }));
+
+    const subTasks = (subTasksRaw || []).map(st => ({
+        ...st,
+        assigned_ids: st.assignments?.map(a => a.user_id).join(',')
+    }));
+
+    return (
+        <div className="container" style={{ paddingBottom: '4rem' }}>
+            <Header userRole={userRole} />
+
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+            }}>
+                <div>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+                        🗓️ Calendar
+                    </h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        Full-screen monthly calendar · Drag &amp; drop to reschedule
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <Link href="/schedule" className="btn" style={{ fontSize: '0.85rem' }}>
+                        📅 Schedule
+                    </Link>
+                    <Link href="/schedule/v2" className="btn" style={{ fontSize: '0.85rem' }}>
+                        📊 Spreadsheet
+                    </Link>
+                    <Link href="/jobs/new" className="btn btn-primary">
+                        + Add Job
+                    </Link>
+                </div>
+            </div>
+
+            {/* On-Call Editor */}
+            <OnCallEditor initialSchedule={onCallSchedule} userRole={userRole} />
+
+            {/* Full Calendar */}
+            <Calendar
+                jobs={jobs}
+                subTasks={subTasks}
+                users={users || []}
+                onCallSchedule={onCallSchedule}
+            />
+        </div>
+    );
+}

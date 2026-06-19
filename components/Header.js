@@ -135,6 +135,8 @@ export default function Header({ userRole }) {
                         {userRole !== 'customer' && <Link href="/pipeline" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📊 Pipeline</Link>}
                         {userRole !== 'customer' && <Link href="/customers" style={navButtonStyle} onClick={() => setMenuOpen(false)}>👥 Clients</Link>}
                         {userRole !== 'customer' && <Link href="/schedule" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📅 Schedule</Link>}
+                        {userRole !== 'customer' && <Link href="/schedule/v2" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📊 Schedule V2</Link>}
+                        {userRole !== 'customer' && <Link href="/calendar" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🗓️ Calendar</Link>}
                         {userRole !== 'customer' && <Link href="/inventory" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📦 Stock</Link>}
                         {userRole !== 'customer' && <Link href="/quotes" style={navButtonStyle} onClick={() => setMenuOpen(false)}>💰 Quotes</Link>}
                         {userRole !== 'customer' && <Link href="/estimate" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📏 Estimating</Link>}
