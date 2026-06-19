@@ -471,6 +471,8 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                 borderBottom: '1px solid var(--card-border)',
                 paddingBottom: '0.75rem'
             }}>
+                {/* View Selector (Left) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'nowrap', overflowX: 'auto' }}>
                 {/* View Selector — compact horizontal pill strip */}
                 <div style={{
                     display: 'inline-flex',
@@ -487,12 +489,12 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                 }}>
                     {([
                         !isAdmin ? { mode: 'my-week',     icon: '🗓️', label: 'My Week'     } : null,
-                        isAdmin  ? { mode: 'workforce',   icon: '👥', label: 'Workforce'   } : null,
                         { mode: 'grid',        icon: '⊞',  label: 'Grid'        },
                         { mode: 'cards',       icon: '📋', label: 'Cards'       },
                         { mode: 'gantt',       icon: '📊', label: 'Gantt'       },
                         { mode: 'calendar',    icon: '📅', label: 'Calendar'    },
                         { mode: 'spreadsheet', icon: '🗃️', label: 'Schedule'    },
+                        isAdmin  ? { mode: 'workforce',   icon: '👥', label: 'Workforce'   } : null,
                     ].filter(Boolean)).map(({ mode, icon, label }) => {
                         const active = viewMode === mode;
                         return (
@@ -522,10 +524,10 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                         );
                     })}
                 </div>
-                    <div style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
                         gap: '0.2rem',
                         marginLeft: '1rem'
                     }}>
