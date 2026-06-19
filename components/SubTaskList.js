@@ -30,6 +30,39 @@ function groupNotesBySubTask(notes = []) {
     return grouped;
 }
 
+function MultiDatePicker({ name, initialDates = [] }) {
+    const [dates, setDates] = useState(initialDates);
+    const [input, setInput] = useState('');
+
+    const addDate = () => {
+        if (input && !dates.includes(input)) {
+            setDates([...dates, input].sort());
+            setInput('');
+        }
+    };
+
+    const removeDate = (d) => setDates(dates.filter(x => x !== d));
+
+    return (
+        <div style={{ marginTop: '0.5rem', background: 'rgba(0,0,0,0.1)', padding: '0.75rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <label style={{ fontSize: '0.75rem', color: '#a78bfa' }}>◆ Intermittent Dates</label>
+            <input type="hidden" name={name} value={JSON.stringify(dates)} />
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+                <input type="date" className="input" style={{ padding: '0.25rem', fontSize: '0.75rem' }} value={input} onChange={e => setInput(e.target.value)} />
+                <button type="button" className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#a78bfa', color: '#1a0508' }} onClick={addDate}>Add</button>
+            </div>
+            <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                {dates.map(d => (
+                    <div key={d} style={{ display: 'flex', alignItems: 'center', background: 'rgba(167,139,250,0.1)', color: '#d8b4fe', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.7rem', gap: '0.2rem' }}>
+                        {new Date(d).toLocaleDateString()}
+                        <button type="button" onClick={() => removeDate(d)} style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', fontSize: '0.75rem' }}>&times;</button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNotes = [] }) {
     const [isAdding, setIsAdding] = useState(false);
     const [editingTaskId, setEditingTaskId] = useState(null);
@@ -107,7 +140,10 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
                         </label>
                     ))}
                 </div>
-                <input name="due_date" type="date" className="input" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <input name="start_date" type="date" className="input" title="Start Date" />
+                    <input name="due_date" type="date" className="input" title="End Date" />
+                </div>
                 <select name="priority" className="input" defaultValue="Normal">
                     <option value="Low">Low</option>
                     <option value="Normal">Normal</option>
@@ -115,6 +151,7 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
                     <option value="Urgent">Urgent</option>
                 </select>
             </div>
+            <MultiDatePicker name="additional_dates" />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ width: '150px' }}>
                     <input name="estimated_hours" type="number" step="0.5" placeholder="Est. Hours" className="input" />
@@ -145,7 +182,10 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) 1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                 <input name="title" defaultValue={task.title} className="input" required placeholder="Task Title" />
-                                <input name="due_date" type="date" className="input" defaultValue={task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''} />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <input name="start_date" type="date" className="input" defaultValue={task.start_date ? new Date(task.start_date).toISOString().split('T')[0] : ''} title="Start Date" style={{ padding: '0.25rem', fontSize: '0.75rem' }} />
+                                    <input name="due_date" type="date" className="input" defaultValue={task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''} title="End Date" style={{ padding: '0.25rem', fontSize: '0.75rem' }} />
+                                </div>
                                 <input name="estimated_hours" type="number" step="0.5" className="input" defaultValue={task.estimated_hours} placeholder="Est. Hrs" />
                                 <select name="priority" className="input" defaultValue={task.priority || 'Normal'}>
                                     <option value="Low">Low</option>
@@ -176,7 +216,9 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
                                 })}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <MultiDatePicker name="additional_dates" initialDates={task.additional_dates || []} />
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                 <div style={{ flex: 1, display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                     <div>
                                         <label style={{ fontSize: '0.75rem' }}>Add Hrs:</label>

@@ -9,9 +9,20 @@ export async function createSubTask(formData) {
     const title = formData.get('title');
     const assignedUserIds = formData.getAll('assigned_user_ids');
     const dueDate = formData.get('due_date');
+    const startDate = formData.get('start_date');
     const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
     const priority = formData.get('priority') || 'Normal';
     const parentIdRaw = formData.get('parent_id');
+    
+    let additionalDates = [];
+    try {
+        const additionalDatesStr = formData.get('additional_dates');
+        if (additionalDatesStr) {
+            additionalDates = JSON.parse(additionalDatesStr);
+        }
+    } catch (e) {
+        console.error("Failed to parse additional_dates:", e);
+    }
     const parentId = parentIdRaw ? parseInt(parentIdRaw, 10) : null;
 
     if (!jobId || !title) {
@@ -22,7 +33,9 @@ export async function createSubTask(formData) {
         const taskToInsert = {
             job_id: jobId,
             title,
+            start_date: startDate === '' ? null : startDate,
             due_date: dueDate === '' ? null : dueDate,
+            additional_dates: additionalDates,
             estimated_hours: estimatedHours,
             priority,
             parent_id: parentId
@@ -99,9 +112,20 @@ export async function updateSubTask(formData) {
             // Full Update
             const priority = formData.get('priority');
             const dueDate = formData.get('due_date');
+            const startDate = formData.get('start_date');
             const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
             const rawUsedHours = formData.get('used_hours');
             const assignedUserIds = formData.getAll('assigned_user_ids');
+            
+            let additionalDates = [];
+            try {
+                const additionalDatesStr = formData.get('additional_dates');
+                if (additionalDatesStr) {
+                    additionalDates = JSON.parse(additionalDatesStr);
+                }
+            } catch (e) {
+                console.error("Failed to parse additional_dates:", e);
+            }
 
             // Fetch existing assignments
             const { data: existingAssignments } = await supabase
@@ -115,7 +139,9 @@ export async function updateSubTask(formData) {
             const updateFields = {
                 title,
                 priority,
+                start_date: startDate === '' ? null : startDate,
                 due_date: dueDate === '' ? null : dueDate,
+                additional_dates: additionalDates,
                 estimated_hours: estimatedHours,
                 updated_at: new Date().toISOString()
             };

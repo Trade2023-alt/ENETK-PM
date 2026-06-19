@@ -17,6 +17,16 @@ export async function createJob(prevState, formData) {
     const estimatedHours = parseFloat(formData.get('estimated_hours') || '0');
     const dueDate = formData.get('due_date');
     const priority = formData.get('priority') || 'Normal';
+    
+    let additionalDates = [];
+    try {
+        const additionalDatesStr = formData.get('additional_dates');
+        if (additionalDatesStr) {
+            additionalDates = JSON.parse(additionalDatesStr);
+        }
+    } catch (e) {
+        console.error("Failed to parse additional_dates:", e);
+    }
 
     if (!title || !customerId || assignedUserIds.length === 0 || !scheduledDate || !dueDate) {
         return { error: 'Missing required fields. Please ensure Title, Customer, Team, Schedule, and Due Date are set.' };
@@ -35,6 +45,7 @@ export async function createJob(prevState, formData) {
             scheduled_date: scheduledDate,
             estimated_hours: estimatedHours,
             due_date: dueDate === '' ? null : dueDate,
+            additional_dates: additionalDates,
             status: 'Scheduled',
             priority
         };

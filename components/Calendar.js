@@ -385,21 +385,33 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
     // Group by date
     const itemsByDate = useMemo(() => {
         const map = {};
+        
+        const addToMap = (dateStr, item) => {
+            if (!dateStr) return;
+            const dateKey = new Date(dateStr).toISOString().split('T')[0];
+            if (!map[dateKey]) map[dateKey] = [];
+            // Only add if not already in this day (prevent duplicates if start_date === due_date)
+            if (!map[dateKey].some(i => i.id === item.id && i.type === item.type)) {
+                map[dateKey].push(item);
+            }
+        };
+
         if (showTasks) {
             filteredJobs.forEach(job => {
-                if (job.scheduled_date) {
-                    const dateKey = new Date(job.scheduled_date).toISOString().split('T')[0];
-                    if (!map[dateKey]) map[dateKey] = [];
-                    map[dateKey].push({ ...job, type: 'job' });
+                const item = { ...job, type: 'job' };
+                if (job.scheduled_date) addToMap(job.scheduled_date, item);
+                if (Array.isArray(job.additional_dates)) {
+                    job.additional_dates.forEach(d => addToMap(d, item));
                 }
             });
         }
         if (showSubTasks) {
             filteredSubTasks.forEach(task => {
-                if (task.due_date) {
-                    const dateKey = new Date(task.due_date).toISOString().split('T')[0];
-                    if (!map[dateKey]) map[dateKey] = [];
-                    map[dateKey].push({ ...task, type: 'subtask' });
+                const item = { ...task, type: 'subtask' };
+                if (task.start_date) addToMap(task.start_date, item);
+                if (task.due_date) addToMap(task.due_date, item);
+                if (Array.isArray(task.additional_dates)) {
+                    task.additional_dates.forEach(d => addToMap(d, item));
                 }
             });
         }

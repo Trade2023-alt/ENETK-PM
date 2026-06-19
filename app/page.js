@@ -66,7 +66,7 @@ export default async function Home({ searchParams }) {
                     user_id,
                     user:users(username)
                 ),
-                sub_tasks(used_hours, estimated_hours, completion_percent, status)
+                sub_tasks(*)
             `)
       .order('scheduled_date', { ascending: true });
 

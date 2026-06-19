@@ -44,6 +44,16 @@ const HEADER_H = 32;
 
 export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
     const zoom = 'Week'; // fixed zoom — controls removed per user request
+    const [expandedJobs, setExpandedJobs] = useState(new Set());
+
+    const toggleExpand = (jobId) => {
+        setExpandedJobs(prev => {
+            const next = new Set(prev);
+            if (next.has(jobId)) next.delete(jobId);
+            else next.add(jobId);
+            return next;
+        });
+    };
 
     const px = PX[zoom];
 
@@ -56,6 +66,27 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
             const s = parseLocalDate(j.scheduled_date);
             const e = parseLocalDate(j.due_date) || s;
             if (s) dates.push(s.getTime(), (e || s).getTime());
+            
+            if (Array.isArray(j.additional_dates)) {
+                j.additional_dates.forEach(d => {
+                    const pd = parseLocalDate(d);
+                    if (pd) dates.push(pd.getTime());
+                });
+            }
+
+            if (Array.isArray(j.sub_tasks)) {
+                j.sub_tasks.forEach(st => {
+                    const sts = parseLocalDate(st.start_date);
+                    const ste = parseLocalDate(st.due_date) || sts;
+                    if (sts) dates.push(sts.getTime(), (ste || sts).getTime());
+                    if (Array.isArray(st.additional_dates)) {
+                        st.additional_dates.forEach(d => {
+                            const pd = parseLocalDate(d);
+                            if (pd) dates.push(pd.getTime());
+                        });
+                    }
+                });
+            }
         });
         milestones.forEach(m => {
             const d = parseLocalDate(m.end_date || m.start_date);
@@ -191,7 +222,8 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                             )}
 
                             {/* Job rows */}
-                            {filtered.map((job, idx) => {
+                            {filtered.flatMap((job, idx) => {
+                                const rows = [];
                                 const s = parseLocalDate(job.scheduled_date);
                                 const e = parseLocalDate(job.due_date) || s;
                                 const eAdj = e < s ? s : e;
@@ -202,40 +234,129 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                 const assignedIds = (job.assigned_ids || '').split(',').filter(Boolean);
                                 const workerNames = assignedIds.map(id => users.find(u => String(u.id) === String(id))?.username || '').filter(Boolean);
                                 const bg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)';
+                                const isExpanded = expandedJobs.has(job.id);
+                                const hasSubTasks = Array.isArray(job.sub_tasks) && job.sub_tasks.length > 0;
 
-                                return (
+                                // Main Job Row
+                                rows.push(
                                     <div key={job.id} style={{ display: 'flex', height: `${ROW_H}px`, borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', background: bg }}>
                                         {/* Label */}
                                         <div style={{ position: 'sticky', left: 0, zIndex: 1, background: bg === 'transparent' ? '#1a0508' : '#210a0e', width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem', borderRight: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                            <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
-                                            </Link>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                {hasSubTasks && (
+                                                    <button onClick={() => toggleExpand(job.id)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.65rem', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>
+                                                        {isExpanded ? '−' : '+'}
+                                                    </button>
+                                                )}
+                                                <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
+                                                </Link>
+                                            </div>
                                             {workerNames.length > 0 && (
-                                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginLeft: hasSubTasks ? '1.5rem' : 0 }}>
                                                     👤 {workerNames.join(', ')}
                                                 </div>
                                             )}
                                         </div>
                                         {/* Bar */}
                                         <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H}px`, flexShrink: 0 }}>
+                                            {/* Tick-marked span bar */}
                                             <div title={`${job.title} | ${job.status} | ${toDateStr(s)} → ${toDateStr(eAdj)}${job.customer_name ? ' | ' + job.customer_name : ''}`}
                                                 style={{
-                                                    position: 'absolute', left: `${left}px`, top: '9px',
-                                                    width: `${width}px`, height: '26px',
-                                                    background: color, borderRadius: '4px', overflow: 'hidden',
+                                                    position: 'absolute', left: `${left}px`, top: '16px',
+                                                    width: `${width}px`, height: '12px',
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    borderLeft: `3px solid ${color}`,
+                                                    borderRight: `3px solid ${color}`,
+                                                    borderTop: `1px solid rgba(255,255,255,0.2)`,
+                                                    borderBottom: `1px solid rgba(255,255,255,0.2)`,
+                                                    borderRadius: '2px', overflow: 'hidden',
                                                     cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
                                                 }}>
                                                 {/* Progress fill */}
                                                 {progress > 0 && (
-                                                    <div style={{ position: 'absolute', inset: 0, width: `${progress}%`, background: 'rgba(255,255,255,0.2)', borderRadius: '4px 0 0 4px' }} />
+                                                    <div style={{ position: 'absolute', inset: 0, width: `${progress}%`, background: color, opacity: 0.6 }} />
                                                 )}
-                                                <span style={{ position: 'relative', fontSize: '0.65rem', color: '#fff', fontWeight: 700, padding: '0 0.4rem', lineHeight: '26px', whiteSpace: 'nowrap', overflow: 'hidden', display: 'block', textOverflow: 'ellipsis' }}>
-                                                    {job.title}
-                                                </span>
                                             </div>
+                                            <span style={{ position: 'absolute', left: `${left + width + 8}px`, top: '14px', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+                                                {job.title}
+                                            </span>
+                                            
+                                            {/* Intermittent Dates */}
+                                            {Array.isArray(job.additional_dates) && job.additional_dates.map(dStr => {
+                                                const d = parseLocalDate(dStr);
+                                                if (!d) return null;
+                                                const dLeft = diffDays(d, rangeStart) * px;
+                                                return (
+                                                    <div key={dStr} title={`Scheduled: ${dStr}`} style={{
+                                                        position: 'absolute', left: `${dLeft + (px/2) - 6}px`, top: '16px',
+                                                        width: '12px', height: '12px', background: '#a78bfa', transform: 'rotate(45deg)', borderRadius: '2px',
+                                                        boxShadow: '0 0 0 1px rgba(0,0,0,0.5)', zIndex: 2
+                                                    }} />
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 );
+
+                                // Sub-Task Rows
+                                if (isExpanded && hasSubTasks) {
+                                    job.sub_tasks.forEach((st, stIdx) => {
+                                        const sts = parseLocalDate(st.start_date);
+                                        const ste = parseLocalDate(st.due_date) || sts;
+                                        if (!sts && (!st.additional_dates || st.additional_dates.length === 0)) return; // Skip if no dates at all
+                                        
+                                        const steAdj = sts && ste < sts ? sts : ste;
+                                        const stLeft = sts ? diffDays(sts, rangeStart) * px : 0;
+                                        const stWidth = sts ? Math.max((diffDays(steAdj, sts) + 1) * px, px) : 0;
+                                        const stColor = STATUS_COLOR[st.status] || '#6b7280';
+                                        const stProgress = st.status === 'Complete' ? 100 : st.status === 'In Progress' ? 50 : 0;
+                                        const stBg = 'rgba(0,0,0,0.2)'; // Darker bg to distinguish sub-tasks
+
+                                        rows.push(
+                                            <div key={`st-${st.id}`} style={{ display: 'flex', height: `${ROW_H - 8}px`, borderBottom: '1px solid rgba(255,255,255,0.02)', alignItems: 'center', background: stBg }}>
+                                                {/* Label */}
+                                                <div style={{ position: 'sticky', left: 0, zIndex: 1, background: '#110305', width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem 0 2rem', borderRight: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <div style={{ fontSize: '0.65rem', fontWeight: 500, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        ↳ {st.title || 'Untitled'}
+                                                    </div>
+                                                </div>
+                                                {/* Bar */}
+                                                <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H - 8}px`, flexShrink: 0 }}>
+                                                    {sts && (
+                                                        <div title={`${st.title} | ${st.status}`}
+                                                            style={{
+                                                                position: 'absolute', left: `${stLeft}px`, top: '8px',
+                                                                width: `${stWidth}px`, height: '20px',
+                                                                background: stColor, borderRadius: '4px', overflow: 'hidden',
+                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.4)', opacity: 0.85
+                                                            }}>
+                                                            {stProgress > 0 && (
+                                                                <div style={{ position: 'absolute', inset: 0, width: `${stProgress}%`, background: 'rgba(255,255,255,0.2)', borderRadius: '4px 0 0 4px' }} />
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Sub-task Intermittent Dates */}
+                                                    {Array.isArray(st.additional_dates) && st.additional_dates.map(dStr => {
+                                                        const d = parseLocalDate(dStr);
+                                                        if (!d) return null;
+                                                        const dLeft = diffDays(d, rangeStart) * px;
+                                                        return (
+                                                            <div key={`st-d-${dStr}`} title={`Scheduled: ${dStr}`} style={{
+                                                                position: 'absolute', left: `${dLeft + (px/2) - 5}px`, top: '13px',
+                                                                width: '10px', height: '10px', background: '#d8b4fe', transform: 'rotate(45deg)', borderRadius: '1px',
+                                                                boxShadow: '0 0 0 1px rgba(0,0,0,0.5)', zIndex: 2
+                                                            }} />
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                }
+
+                                return rows;
                             })}
                         </div>
                     </div>

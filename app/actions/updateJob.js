@@ -58,6 +58,16 @@ export async function updateJobStatus(formData) {
         if (title !== null) updateData.title = title;
         if (customerId !== null) updateData.customer_id = customerId === '' ? null : customerId;
 
+        const additionalDatesStr = formData.get('additional_dates');
+        if (additionalDatesStr !== null) {
+            try {
+                updateData.additional_dates = JSON.parse(additionalDatesStr);
+            } catch (e) {
+                console.error("Failed to parse additional_dates:", e);
+                updateData.additional_dates = [];
+            }
+        }
+
         updateData.updated_at = new Date().toISOString();
 
         if (Object.keys(updateData).length > 0) {

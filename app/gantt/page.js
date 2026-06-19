@@ -29,7 +29,8 @@ export default async function GanttPage() {
             assignments:job_assignments(
                 user_id,
                 user:users(username)
-            )
+            ),
+            sub_tasks(*)
         `)
         .order('scheduled_date', { ascending: true });
 
