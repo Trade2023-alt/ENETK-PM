@@ -1,7 +1,9 @@
 'use client'
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 const DAY_MS = 86400000;
 
@@ -45,6 +47,9 @@ const HEADER_H = 32;
 export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
     const zoom = 'Week'; // fixed zoom — controls removed per user request
     const [expandedJobs, setExpandedJobs] = useState(new Set());
+    const router = useRouter();
+    const [dragState, setDragState] = useState(null); 
+    // dragState format: { id, type: 'move'|'resize-left'|'resize-right', startX, initialStart, initialEnd, itemType: 'job'|'subtask' }
 
     const toggleExpand = (jobId) => {
         setExpandedJobs(prev => {
@@ -56,6 +61,103 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
     };
 
     const px = PX[zoom];
+
+    // --- Drag and Drop Logic ---
+    const handleMouseDown = (e, item, type, itemType) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const initialStart = itemType === 'job' ? item.scheduled_date : item.start_date;
+        const initialEnd = item.due_date || initialStart;
+
+        setDragState({
+            id: item.id,
+            type, // 'move', 'resize-left', 'resize-right'
+            startX: e.clientX,
+            initialStart,
+            initialEnd,
+            itemType
+        });
+    };
+
+    useEffect(() => {
+        if (!dragState) return;
+
+        const handleMouseMove = (e) => {
+            const deltaX = e.clientX - dragState.startX;
+            const deltaDays = Math.round(deltaX / px);
+            
+            // Determine new visual dates (optimistic)
+            const sDate = parseLocalDate(dragState.initialStart);
+            const eDate = parseLocalDate(dragState.initialEnd);
+            if (!sDate || !eDate) return;
+
+            let newStart = sDate;
+            let newEnd = eDate;
+
+            if (dragState.type === 'move') {
+                newStart = addDays(sDate, deltaDays);
+                newEnd = addDays(eDate, deltaDays);
+            } else if (dragState.type === 'resize-left') {
+                newStart = addDays(sDate, deltaDays);
+                if (newStart > newEnd) newStart = newEnd;
+            } else if (dragState.type === 'resize-right') {
+                newEnd = addDays(eDate, deltaDays);
+                if (newEnd < newStart) newEnd = newStart;
+            }
+
+            setDragState(prev => ({
+                ...prev,
+                currentStart: toDateStr(newStart),
+                currentEnd: toDateStr(newEnd)
+            }));
+        };
+
+        const handleMouseUp = async (e) => {
+            const deltaX = e.clientX - dragState.startX;
+            const deltaDays = Math.round(deltaX / px);
+            
+            if (deltaDays !== 0) {
+                const sDate = parseLocalDate(dragState.initialStart);
+                const eDate = parseLocalDate(dragState.initialEnd);
+                if (sDate && eDate) {
+                    let newStart = sDate;
+                    let newEnd = eDate;
+
+                    if (dragState.type === 'move') {
+                        newStart = addDays(sDate, deltaDays);
+                        newEnd = addDays(eDate, deltaDays);
+                    } else if (dragState.type === 'resize-left') {
+                        newStart = addDays(sDate, deltaDays);
+                        if (newStart > newEnd) newStart = newEnd;
+                    } else if (dragState.type === 'resize-right') {
+                        newEnd = addDays(eDate, deltaDays);
+                        if (newEnd < newStart) newEnd = newStart;
+                    }
+
+                    const startStr = toDateStr(newStart);
+                    const endStr = toDateStr(newEnd);
+
+                    if (dragState.itemType === 'job') {
+                        await supabase.from('jobs').update({ scheduled_date: startStr, due_date: endStr }).eq('id', dragState.id);
+                    } else {
+                        await supabase.from('sub_tasks').update({ start_date: startStr, due_date: endStr }).eq('id', dragState.id);
+                    }
+                    router.refresh();
+                }
+            }
+            setDragState(null);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [dragState, px, router]);
+    // ---------------------------
 
     const filtered = jobs.filter(j => j.scheduled_date);
 
@@ -224,8 +326,11 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                             {/* Job rows */}
                             {filtered.flatMap((job, idx) => {
                                 const rows = [];
-                                const s = parseLocalDate(job.scheduled_date);
-                                const e = parseLocalDate(job.due_date) || s;
+                                
+                                const isDraggedJob = dragState && dragState.id === job.id && dragState.itemType === 'job';
+                                const s = isDraggedJob && dragState.currentStart ? parseLocalDate(dragState.currentStart) : parseLocalDate(job.scheduled_date);
+                                const e = isDraggedJob && dragState.currentEnd ? parseLocalDate(dragState.currentEnd) : (parseLocalDate(job.due_date) || s);
+                                
                                 const eAdj = e < s ? s : e;
                                 const left = diffDays(s, rangeStart) * px;
                                 const width = Math.max((diffDays(eAdj, s) + 1) * px, px);
@@ -262,6 +367,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                         <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H}px`, flexShrink: 0 }}>
                                             {/* Tick-marked span bar */}
                                             <div title={`${job.title} | ${job.status} | ${toDateStr(s)} → ${toDateStr(eAdj)}${job.customer_name ? ' | ' + job.customer_name : ''}`}
+                                                onMouseDown={(e) => handleMouseDown(e, job, 'move', 'job')}
                                                 style={{
                                                     position: 'absolute', left: `${left}px`, top: '16px',
                                                     width: `${width}px`, height: '12px',
@@ -271,11 +377,17 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                                     borderTop: `1px solid rgba(255,255,255,0.2)`,
                                                     borderBottom: `1px solid rgba(255,255,255,0.2)`,
                                                     borderRadius: '2px', overflow: 'hidden',
-                                                    cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                                                    cursor: 'grab', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                                                    opacity: isDraggedJob ? 0.7 : 1
                                                 }}>
+                                                {/* Left handle */}
+                                                <div onMouseDown={(e) => handleMouseDown(e, job, 'resize-left', 'job')} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '8px', cursor: 'ew-resize', zIndex: 10, background: 'rgba(255,255,255,0.01)' }} />
+                                                {/* Right handle */}
+                                                <div onMouseDown={(e) => handleMouseDown(e, job, 'resize-right', 'job')} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '8px', cursor: 'ew-resize', zIndex: 10, background: 'rgba(255,255,255,0.01)' }} />
+                                                
                                                 {/* Progress fill */}
                                                 {progress > 0 && (
-                                                    <div style={{ position: 'absolute', inset: 0, width: `${progress}%`, background: color, opacity: 0.6 }} />
+                                                    <div style={{ position: 'absolute', inset: 0, width: `${progress}%`, background: color, opacity: 0.6, pointerEvents: 'none' }} />
                                                 )}
                                             </div>
                                             <span style={{ position: 'absolute', left: `${left + width + 8}px`, top: '14px', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
@@ -302,8 +414,11 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                 // Sub-Task Rows
                                 if (isExpanded && hasSubTasks) {
                                     job.sub_tasks.forEach((st, stIdx) => {
-                                        const sts = parseLocalDate(st.start_date);
-                                        const ste = parseLocalDate(st.due_date) || sts;
+                                        const isDraggedSt = dragState && dragState.id === st.id && dragState.itemType === 'subtask';
+                                        
+                                        const sts = isDraggedSt && dragState.currentStart ? parseLocalDate(dragState.currentStart) : parseLocalDate(st.start_date);
+                                        const ste = isDraggedSt && dragState.currentEnd ? parseLocalDate(dragState.currentEnd) : (parseLocalDate(st.due_date) || sts);
+                                        
                                         if (!sts && (!st.additional_dates || st.additional_dates.length === 0)) return; // Skip if no dates at all
                                         
                                         const steAdj = sts && ste < sts ? sts : ste;
@@ -325,14 +440,21 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                                 <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H - 8}px`, flexShrink: 0 }}>
                                                     {sts && (
                                                         <div title={`${st.title} | ${st.status}`}
+                                                            onMouseDown={(e) => handleMouseDown(e, st, 'move', 'subtask')}
                                                             style={{
                                                                 position: 'absolute', left: `${stLeft}px`, top: '8px',
                                                                 width: `${stWidth}px`, height: '20px',
                                                                 background: stColor, borderRadius: '4px', overflow: 'hidden',
-                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.4)', opacity: 0.85
+                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.4)', opacity: isDraggedSt ? 0.6 : 0.85,
+                                                                cursor: 'grab'
                                                             }}>
+                                                            {/* Left handle */}
+                                                            <div onMouseDown={(e) => handleMouseDown(e, st, 'resize-left', 'subtask')} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '6px', cursor: 'ew-resize', zIndex: 10, background: 'rgba(255,255,255,0.01)' }} />
+                                                            {/* Right handle */}
+                                                            <div onMouseDown={(e) => handleMouseDown(e, st, 'resize-right', 'subtask')} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '6px', cursor: 'ew-resize', zIndex: 10, background: 'rgba(255,255,255,0.01)' }} />
+
                                                             {stProgress > 0 && (
-                                                                <div style={{ position: 'absolute', inset: 0, width: `${stProgress}%`, background: 'rgba(255,255,255,0.2)', borderRadius: '4px 0 0 4px' }} />
+                                                                <div style={{ position: 'absolute', inset: 0, width: `${stProgress}%`, background: 'rgba(255,255,255,0.2)', borderRadius: '4px 0 0 4px', pointerEvents: 'none' }} />
                                                             )}
                                                         </div>
                                                     )}
