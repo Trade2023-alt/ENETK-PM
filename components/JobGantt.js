@@ -244,7 +244,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                         <div style={{ position: 'sticky', left: 0, zIndex: 1, background: bg === 'transparent' ? '#1a0508' : '#210a0e', width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem', borderRight: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                 {hasSubTasks && (
-                                                    <button onClick={() => toggleExpand(job.id)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.65rem', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>
+                                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleExpand(job.id); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.65rem', padding: '0.1rem 0.3rem', borderRadius: '4px', zIndex: 10 }}>
                                                         {isExpanded ? '−' : '+'}
                                                     </button>
                                                 )}
