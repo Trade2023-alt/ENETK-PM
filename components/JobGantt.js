@@ -134,7 +134,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                             background: '#161b22', borderBottom: '1px solid rgba(255,255,255,0.1)',
                             width: `${totalW}px`,
                         }}>
-                            <div style={{ width: `${LABEL_W}px`, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.1)', padding: '0 0.75rem', display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            <div style={{ position: 'sticky', left: 0, zIndex: 11, background: '#161b22', width: `${LABEL_W}px`, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.1)', padding: '0 0.75rem', display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 JOB / TASK
                             </div>
                             <div style={{ position: 'relative', width: `${timelineW}px`, height: `${HEADER_H}px`, flexShrink: 0, overflow: 'hidden' }}>
@@ -170,7 +170,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                             {/* Milestones row */}
                             {milestones.length > 0 && (
                                 <div style={{ display: 'flex', height: `${ROW_H}px`, borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', background: 'rgba(167,139,250,0.03)' }}>
-                                    <div style={{ width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem', borderRight: '1px solid rgba(255,255,255,0.07)', fontSize: '0.7rem', fontWeight: 700, color: '#a78bfa', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                    <div style={{ position: 'sticky', left: 0, zIndex: 1, background: '#1a0508', width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem', borderRight: '1px solid rgba(255,255,255,0.07)', fontSize: '0.7rem', fontWeight: 700, color: '#a78bfa', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center' }}>
                                         ◆ Milestones
                                     </div>
                                     <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H}px`, flexShrink: 0 }}>
@@ -206,7 +206,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                 return (
                                     <div key={job.id} style={{ display: 'flex', height: `${ROW_H}px`, borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', background: bg }}>
                                         {/* Label */}
-                                        <div style={{ width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem', borderRight: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                                        <div style={{ position: 'sticky', left: 0, zIndex: 1, background: bg === 'transparent' ? '#1a0508' : '#210a0e', width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem', borderRight: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                             <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                 {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
                                             </Link>
