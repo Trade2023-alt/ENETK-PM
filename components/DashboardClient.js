@@ -467,137 +467,61 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
                 flexWrap: 'wrap',
-                gap: '1rem',
+                gap: '0.75rem',
                 borderBottom: '1px solid var(--card-border)',
                 paddingBottom: '0.75rem'
             }}>
-                {/* View Selector (Left) */}
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {!isAdmin && (
-                        <button
-                            onClick={() => setViewMode('my-week')}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.5rem 1.25rem', borderRadius: '0.5rem',
-                                background: viewMode === 'my-week' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
-                                border: viewMode === 'my-week' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
-                                color: viewMode === 'my-week' ? 'var(--primary)' : 'var(--text-muted)',
-                                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
-                            }}
-                        >
-                            <span style={{ fontSize: '1rem' }}>🗓️</span> My Week
-                        </button>
-                    )}
-                    {isAdmin && (
-                        <button
-                            onClick={() => setViewMode('workforce')}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                padding: '0.5rem 1.25rem', borderRadius: '0.5rem',
-                                background: viewMode === 'workforce' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
-                                border: viewMode === 'workforce' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
-                                color: viewMode === 'workforce' ? 'var(--primary)' : 'var(--text-muted)',
-                                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem'
-                            }}
-                        >
-                            <span style={{ fontSize: '1rem' }}>👥</span> Workforce
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setViewMode('grid')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 1.25rem',
-                            borderRadius: '0.5rem',
-                            background: viewMode === 'grid' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
-                            border: viewMode === 'grid' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
-                            color: viewMode === 'grid' ? 'var(--primary)' : 'var(--text-muted)',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        <span style={{ fontSize: '1rem' }}>田</span> Grid
-                    </button>
-                    <button
-                        onClick={() => setViewMode('cards')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 1.25rem',
-                            borderRadius: '0.5rem',
-                            background: viewMode === 'cards' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
-                            border: viewMode === 'cards' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
-                            color: viewMode === 'cards' ? 'var(--primary)' : 'var(--text-muted)',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        <span style={{ fontSize: '1rem' }}>📋</span> Cards
-                    </button>
-                    <button
-                        onClick={() => setViewMode('gantt')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 1.25rem',
-                            borderRadius: '0.5rem',
-                            background: viewMode === 'gantt' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
-                            border: viewMode === 'gantt' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
-                            color: viewMode === 'gantt' ? 'var(--primary)' : 'var(--text-muted)',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        <span style={{ fontSize: '1rem' }}>📊</span> Gantt
-                    </button>
-                    <button
-                        onClick={() => setViewMode('calendar')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 1.25rem',
-                            borderRadius: '0.5rem',
-                            background: viewMode === 'calendar' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
-                            border: viewMode === 'calendar' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
-                            color: viewMode === 'calendar' ? 'var(--primary)' : 'var(--text-muted)',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        <span style={{ fontSize: '1rem' }}>🗓️</span> Calendar
-                    </button>
-                    <button
-                        onClick={() => setViewMode('spreadsheet')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 1.25rem',
-                            borderRadius: '0.5rem',
-                            background: viewMode === 'spreadsheet' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
-                            border: viewMode === 'spreadsheet' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
-                            color: viewMode === 'spreadsheet' ? 'var(--primary)' : 'var(--text-muted)',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        <span style={{ fontSize: '1rem' }}>🗃️</span> Spreadsheet
-                    </button>
+                {/* View Selector — compact horizontal pill strip */}
+                <div style={{
+                    display: 'inline-flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--card-border)',
+                    borderRadius: '10px',
+                    padding: '3px',
+                    gap: '2px',
+                    flexShrink: 0,
+                    flexWrap: 'nowrap',
+                    overflowX: 'auto',
+                }}>
+                    {([
+                        !isAdmin ? { mode: 'my-week',     icon: '🗓️', label: 'My Week'     } : null,
+                        isAdmin  ? { mode: 'workforce',   icon: '👥', label: 'Workforce'   } : null,
+                        { mode: 'grid',        icon: '⊞',  label: 'Grid'        },
+                        { mode: 'cards',       icon: '📋', label: 'Cards'       },
+                        { mode: 'gantt',       icon: '📊', label: 'Gantt'       },
+                        { mode: 'calendar',    icon: '📅', label: 'Calendar'    },
+                        { mode: 'spreadsheet', icon: '🗃️', label: 'Schedule'    },
+                    ].filter(Boolean)).map(({ mode, icon, label }) => {
+                        const active = viewMode === mode;
+                        return (
+                            <button
+                                key={mode}
+                                onClick={() => setViewMode(mode)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem',
+                                    padding: '0.35rem 0.75rem',
+                                    borderRadius: '7px',
+                                    border: 'none',
+                                    background: active ? 'var(--primary)' : 'transparent',
+                                    color: active ? '#fff' : 'var(--text-muted)',
+                                    fontWeight: active ? 700 : 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s',
+                                    fontSize: '0.78rem',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <span style={{ fontSize: '0.85rem', lineHeight: 1 }}>{icon}</span>
+                                {label}
+                            </button>
+                        );
+                    })}
+                </div>
                     <div style={{ 
                         display: 'flex', 
                         flexDirection: 'column', 
