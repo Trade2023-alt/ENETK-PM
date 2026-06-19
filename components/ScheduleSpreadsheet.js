@@ -100,7 +100,7 @@ function SortArrow({ field, sort }) {
 
 // ─── Spreadsheet Table ───────────────────────────────────────────────────────
 
-function SpreadsheetTable({ rows, type, users, sort, onSort }) {
+function SpreadsheetTable({ rows, type, users, sort, onSort, onJobSelect }) {
     if (rows.length === 0) {
         return (
             <div style={{
@@ -209,19 +209,31 @@ function SpreadsheetTable({ rows, type, users, sort, onSort }) {
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                onClick={() => window.location.href = href}
+                                onClick={(e) => {
+                                    if (type === 'job' && onJobSelect) {
+                                        onJobSelect(row.id);
+                                    } else {
+                                        window.location.href = href;
+                                    }
+                                }}
                             >
                                 <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: '0.65rem', textAlign: 'center' }}>
                                     {idx + 1}
                                 </td>
                                 <td style={{ ...tdStyle, fontWeight: 600, maxWidth: '220px' }}>
-                                    <Link
-                                        href={href}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ color: 'var(--foreground)', textDecoration: 'none' }}
-                                    >
-                                        {row.title}
-                                    </Link>
+                                    {type === 'job' && onJobSelect ? (
+                                        <button onClick={(e) => { e.stopPropagation(); onJobSelect(row.id); }} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--foreground)', textDecoration: 'none', cursor: 'pointer', fontWeight: 600, textAlign: 'left' }}>
+                                            {row.title}
+                                        </button>
+                                    ) : (
+                                        <Link
+                                            href={href}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ color: 'var(--foreground)', textDecoration: 'none' }}
+                                        >
+                                            {row.title}
+                                        </Link>
+                                    )}
                                 </td>
                                 {type === 'job' && (
                                     <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
@@ -262,7 +274,7 @@ function SpreadsheetTable({ rows, type, users, sort, onSort }) {
 
 // ─── By-Person Section ───────────────────────────────────────────────────────
 
-function ByPersonSection({ jobs, subTasks, users }) {
+function ByPersonSection({ jobs, subTasks, users, onJobSelect }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {users.map(user => {
@@ -382,12 +394,24 @@ function ByPersonSection({ jobs, subTasks, users }) {
                                                     style={{ borderLeft: `3px solid ${sc.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
                                                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                                                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                    onClick={() => window.location.href = `/jobs/${job.id}`}
+                                                    onClick={(e) => {
+                                                        if (onJobSelect) {
+                                                            onJobSelect(job.id);
+                                                        } else {
+                                                            window.location.href = `/jobs/${job.id}`;
+                                                        }
+                                                    }}
                                                 >
                                                     <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                                        <Link href={`/jobs/${job.id}`} onClick={e => e.stopPropagation()} style={{ color: 'var(--foreground)', textDecoration: 'none' }}>
-                                                            {job.title}
-                                                        </Link>
+                                                        {onJobSelect ? (
+                                                            <button onClick={(e) => { e.stopPropagation(); onJobSelect(job.id); }} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--foreground)', textDecoration: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                                                {job.title}
+                                                            </button>
+                                                        ) : (
+                                                            <Link href={`/jobs/${job.id}`} onClick={e => e.stopPropagation()} style={{ color: 'var(--foreground)', textDecoration: 'none' }}>
+                                                                {job.title}
+                                                            </Link>
+                                                        )}
                                                     </td>
                                                     <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                                         <StatusBadge status={job.status} />
@@ -427,7 +451,7 @@ const TABS = [
     { id: 'subtasks', label: '🔩 Sub-Tasks', emoji: '🔩' },
 ];
 
-export default function ScheduleSpreadsheet({ jobs, subTasks, users }) {
+export default function ScheduleSpreadsheet({ jobs, subTasks, users, onJobSelect }) {
     const [activeTab, setActiveTab] = useState('all');
     const [search, setSearch] = useState('');
     const [filterUser, setFilterUser] = useState('');
@@ -664,16 +688,16 @@ export default function ScheduleSpreadsheet({ jobs, subTasks, users }) {
                 {/* Tab Content */}
                 <div style={{ minHeight: '400px' }}>
                     {activeTab === 'all' && (
-                        <SpreadsheetTable rows={filteredJobs} type="job" users={users} sort={sort} onSort={handleSort} />
+                        <SpreadsheetTable rows={filteredJobs} type="job" users={users} sort={sort} onSort={handleSort} onJobSelect={onJobSelect} />
                     )}
                     {activeTab === 'active' && (
-                        <SpreadsheetTable rows={activeJobs} type="job" users={users} sort={sort} onSort={handleSort} />
+                        <SpreadsheetTable rows={activeJobs} type="job" users={users} sort={sort} onSort={handleSort} onJobSelect={onJobSelect} />
                     )}
                     {activeTab === 'completed' && (
-                        <SpreadsheetTable rows={completedJobs} type="job" users={users} sort={sort} onSort={handleSort} />
+                        <SpreadsheetTable rows={completedJobs} type="job" users={users} sort={sort} onSort={handleSort} onJobSelect={onJobSelect} />
                     )}
                     {activeTab === 'subtasks' && (
-                        <SpreadsheetTable rows={filteredSubTasks} type="subtask" users={users} sort={sort} onSort={handleSort} />
+                        <SpreadsheetTable rows={filteredSubTasks} type="subtask" users={users} sort={sort} onSort={handleSort} onJobSelect={onJobSelect} />
                     )}
                     {activeTab === 'by-person' && (
                         <div style={{ padding: '1rem' }}>
@@ -685,6 +709,7 @@ export default function ScheduleSpreadsheet({ jobs, subTasks, users }) {
                                     ? subTasks.filter(t => t.assigned_ids && t.assigned_ids.split(',').includes(filterUser))
                                     : subTasks}
                                 users={filterUser ? users.filter(u => String(u.id) === filterUser) : users}
+                                onJobSelect={onJobSelect}
                             />
                         </div>
                     )}

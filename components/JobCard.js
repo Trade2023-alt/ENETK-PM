@@ -1,11 +1,10 @@
 'use client'
 
-import Link from 'next/link';
 import MarkCompleteButton from './MarkCompleteButton';
 import { useState, useEffect } from 'react';
 import { updateJobStatus } from '@/app/actions/updateJob';
 
-export default function JobCard({ job, userRole, onDelete }) {
+export default function JobCard({ job, userRole, onDelete, onClick }) {
     const [mounted, setMounted] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleVal, setTitleVal] = useState(job.title || '');
@@ -41,77 +40,79 @@ export default function JobCard({ job, userRole, onDelete }) {
         }
     };
 
-    const statusClass = job.status === 'Complete' ? 'job-card-complete' : job.status === 'In Progress' ? 'job-card-in-progress' : 'job-card-scheduled';
+    const isHidden = job.is_hidden;
 
     return (
-        <div className={`card card-condensed ${statusClass}`}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.25rem' }}>
-                {isEditingTitle ? (
+        <div className="card" style={{ 
+            opacity: isHidden ? 0.6 : 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100%',
+            cursor: onClick ? 'pointer' : 'default'
+        }}
+        onClick={(e) => {
+            if (onClick && !e.target.closest('button') && !e.target.closest('input')) {
+                onClick();
+            }
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <span className={`badge ${statusBadgeClass[job.status] || 'badge-success'}`}>{job.status}</span>
+                <span className="badge" style={{ background: 'transparent', color: 'var(--text-muted)' }}>{job.priority || 'Normal'}</span>
+            </div>
+            
+            {isEditingTitle ? (
+                <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.5rem' }}>
                     <input 
                         type="text" 
-                        value={titleVal}
+                        value={titleVal} 
                         onChange={(e) => setTitleVal(e.target.value)}
+                        className="input"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '1rem', height: 'auto' }}
+                        autoFocus
                         onBlur={handleTitleSave}
                         onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
-                        autoFocus
-                        style={{ fontSize: '1.17em', fontWeight: 'bold', width: '100%', background: 'var(--card-bg)', color: 'var(--foreground)', border: '1px solid var(--primary)', borderRadius: '4px', padding: '0.1rem 0.25rem', outline: 'none' }}
                     />
-                ) : (
-                    <h3 onClick={() => setIsEditingTitle(true)} style={{ color: 'var(--foreground)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, marginRight: '0.5rem' }} title="Click to edit title">
-                        {job.title || 'Untitled Job'}
-                        <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>✏️</span>
-                    </h3>
-                )}
-                <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    <span className={`badge ${statusBadgeClass[job.status] || ''}`}>
-                        {job.status}
-                    </span>
                 </div>
-            </div>
-
-            <p style={{ color: 'var(--text-muted)' }}>
-                {job.description}
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', color: 'var(--text-muted)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>📅 {formatDate(job.scheduled_date)}</span>
-                    <span>📍 {job.customer_address}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>👤 {job.customer_name}</span>
-                    <span>👑 Lead: <strong style={{ color: 'var(--primary)' }}>{job.lead_name || 'Unassigned'}</strong></span>
-                </div>
+            ) : (
+                <h3 
+                    style={{ fontSize: '1.125rem', marginBottom: '0.25rem', cursor: 'text' }}
+                    onDoubleClick={() => setIsEditingTitle(true)}
+                >
+                    {job.title}
+                </h3>
+            )}
+            
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', flexGrow: 1 }}>
+                {job.customer_name && <div style={{ marginBottom: '0.25rem' }}>🏢 {job.customer_name}</div>}
+                {job.job_number && <div style={{ marginBottom: '0.25rem' }}>#️⃣ {job.job_number}</div>}
+                {job.due_date && <div style={{ color: 'var(--warning)', marginBottom: '0.25rem' }}>📅 Due: {formatDate(job.due_date)}</div>}
                 
-                {/* Job Completion Progress Bar */}
                 {(() => {
-                    const subTasks = job.sub_tasks || [];
-                    const pct = subTasks.length > 0
-                        ? Math.round(subTasks.reduce((sum, st) => sum + (st.completion_percent || 0), 0) / subTasks.length)
-                        : (job.status === 'Complete' ? 100 : (job.status === 'In Progress' ? 50 : 0));
+                    let totalVal = 0;
+                    if (job.completion_percent !== undefined && job.completion_percent !== null) {
+                        totalVal = job.completion_percent;
+                    } else if (job.status === 'Complete') {
+                        totalVal = 100;
+                    } else if (job.status === 'In Progress') {
+                        totalVal = 50;
+                    }
+
                     return (
-                        <div style={{ margin: '0.35rem 0' }}>
+                        <div style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.2rem' }}>
-                                <span>Completion</span>
-                                <span style={{ fontWeight: 600, color: 'var(--success)' }}>{pct}%</span>
+                                <span>Progress</span>
+                                <span>{totalVal}%</span>
                             </div>
-                            <div style={{ width: '100%', background: 'rgba(255, 255, 255, 0.08)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                                <div style={{ width: `${pct}%`, background: 'var(--success)', height: '100%', transition: 'width 0.4s ease' }} />
+                            <div style={{ width: '100%', background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${totalVal}%`, background: 'var(--success)', height: '100%' }} />
                             </div>
                         </div>
                     );
                 })()}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '140px' }}>
-                        👥 {job.assigned_users || 'Unassigned'}
-                    </span>
-                    <span>⏱️ {job.actual_hours || 0} / {job.estimated_hours || 0} hrs</span>
-                </div>
             </div>
 
             <div style={{
-                marginTop: '0.75rem',
+                marginTop: 'auto',
                 paddingTop: '0.5rem',
                 borderTop: '1px solid var(--card-border)',
                 display: 'flex',
@@ -119,12 +120,23 @@ export default function JobCard({ job, userRole, onDelete }) {
                 alignItems: 'center'
             }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <Link href={`/jobs/${job.id}`} style={{
-                        color: 'var(--primary)',
-                        fontWeight: 500
-                    }}>
-                        View Details →
-                    </Link>
+                    {onClick ? (
+                        <button onClick={onClick} style={{
+                            background: 'none', border: 'none', padding: 0,
+                            color: 'var(--primary)',
+                            fontWeight: 500,
+                            cursor: 'pointer'
+                        }}>
+                            View Details →
+                        </button>
+                    ) : (
+                        <a href={`/jobs/${job.id}`} style={{
+                            color: 'var(--primary)',
+                            fontWeight: 500
+                        }}>
+                            View Details →
+                        </a>
+                    )}
                     {userRole === 'admin' && (
                         <button 
                             onClick={onDelete}

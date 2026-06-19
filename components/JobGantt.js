@@ -44,7 +44,7 @@ const LABEL_W = 200;
 const ROW_H = 44;
 const HEADER_H = 32;
 
-export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
+export default function JobGantt({ jobs = [], users = [], milestones = [], onJobSelect }) {
     const zoom = 'Week'; // fixed zoom — controls removed per user request
     const [expandedJobs, setExpandedJobs] = useState(new Set());
     const router = useRouter();
@@ -353,9 +353,15 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                                         {isExpanded ? '−' : '+'}
                                                     </button>
                                                 )}
-                                                <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
-                                                </Link>
+                                                {onJobSelect ? (
+                                                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onJobSelect(job.id); }} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>
+                                                        {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
+                                                    </button>
+                                                ) : (
+                                                    <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
+                                                    </Link>
+                                                )}
                                             </div>
                                             {workerNames.length > 0 && (
                                                 <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginLeft: hasSubTasks ? '1.5rem' : 0 }}>
@@ -433,7 +439,13 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                                                 {/* Label */}
                                                 <div style={{ position: 'sticky', left: 0, zIndex: 1, background: '#110305', width: `${LABEL_W}px`, flexShrink: 0, padding: '0 0.75rem 0 2rem', borderRight: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                                     <div style={{ fontSize: '0.65rem', fontWeight: 500, color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        ↳ {st.title || 'Untitled'}
+                                                        {onJobSelect ? (
+                                                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onJobSelect(job.id); }} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: 'inherit', cursor: 'pointer' }}>
+                                                                ↳ {st.title || 'Untitled'}
+                                                            </button>
+                                                        ) : (
+                                                            <>↳ {st.title || 'Untitled'}</>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 {/* Bar */}

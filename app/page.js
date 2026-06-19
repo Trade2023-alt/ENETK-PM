@@ -155,13 +155,7 @@ export default async function Home({ searchParams }) {
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Manage Lead Pipeline</div>
           </div>
         </Link>
-        <Link href="/quotes" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #ef4444' }}>
-          <div style={{ fontSize: '1.5rem' }}>📄</div>
-          <div>
-            <div style={{ fontWeight: 600 }}>Quote Generator</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>EH Import & Proposals</div>
-          </div>
-        </Link>
+
         <Link href="/todo" className="card" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '4px solid #f59e0b' }}>
           <div style={{ fontSize: '1.5rem' }}>✅</div>
           <div>

@@ -30,7 +30,7 @@ const statusStyle = (status) => {
     return { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', label: status || 'Scheduled' };
 };
 
-export default function MyWeekView({ jobs = [], subTasks = [], users = [], currentUser = null, onCallSchedule = [] }) {
+export default function MyWeekView({ jobs = [], subTasks = [], users = [], currentUser = null, onJobSelect, onCallSchedule = [] }) {
     const userId = currentUser?.id != null ? String(currentUser.id) : null;
     const username = currentUser?.username || null;
 
@@ -179,7 +179,35 @@ export default function MyWeekView({ jobs = [], subTasks = [], users = [], curre
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {items.map(item => {
                                         const s = statusStyle(item.status);
-                                        return (
+                                        return onJobSelect ? (
+                                            <button key={item.key} onClick={(e) => { e.preventDefault(); onJobSelect(item.jobId); }} style={{
+                                                textAlign: 'left',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                textDecoration: 'none', color: 'inherit',
+                                                display: 'block',
+                                                padding: '0.5rem',
+                                                borderRadius: '0.5rem',
+                                                background: 'rgba(255,255,255,0.04)',
+                                                border: '1px solid var(--card-border)',
+                                                borderLeft: `3px solid ${s.color}`
+                                            }}>
+                                                <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', lineHeight: 1.2 }}>
+                                                    {item.type === 'subtask' ? '☑️ ' : ''}{item.title}
+                                                </div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px', background: s.bg, color: s.color }}>
+                                                        {s.label}
+                                                    </span>
+                                                    {item.customer && (
+                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>📍 {item.customer}</span>
+                                                    )}
+                                                    {item.hours > 0 && (
+                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>⏱ {item.hours}h</span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ) : (
                                             <Link key={item.key} href={`/jobs/${item.jobId}`} style={{
                                                 textDecoration: 'none', color: 'inherit',
                                                 display: 'block',

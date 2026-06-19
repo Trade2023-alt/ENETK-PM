@@ -89,7 +89,7 @@ export default function Header({ userRole }) {
                         {userRole !== 'customer' && <Link href="/pipeline" className={navLinkClass('/pipeline')} onClick={close}>📊 Pipeline</Link>}
                         {userRole !== 'customer' && <Link href="/customers" className={navLinkClass('/customers')} onClick={close}>👥 Clients</Link>}
                         {userRole !== 'customer' && <Link href="/inventory" className={navLinkClass('/inventory')} onClick={close}>📦 Stock</Link>}
-                        {userRole !== 'customer' && <Link href="/quotes" className={navLinkClass('/quotes')} onClick={close}>💰 Quotes</Link>}
+
                         <Link href="/reports" className={navLinkClass('/reports')} onClick={close}>📈 Reports</Link>
                         {userRole !== 'customer' && <Link href="/knowledge" className={navLinkClass('/knowledge')} onClick={close}>🧠 Tips & Tricks</Link>}
                         <Link href="/scada" className={navLinkClass('/scada', 'enetk-nav-link-scada')} onClick={close}>🌐 SCADA App</Link>

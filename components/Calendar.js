@@ -158,7 +158,7 @@ function DayModal({ day, items, users, onClose, onNavigate }) {
     );
 }
 
-export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedule = [] }) {
+export default function Calendar({ jobs, subTasks = [], users = [], currentUser, onJobSelect, onCallSchedule = [] }) {
     const router = useRouter();
     const [isUpdating, setIsUpdating] = useState(false);
     const [draggedOverDay, setDraggedOverDay] = useState(null);
@@ -555,7 +555,15 @@ export default function Calendar({ jobs, subTasks = [], users = [], onCallSchedu
                 onDragEnter={() => setDraggedOverItem(`${item.type}-${item.id}`)}
                 onDragLeave={() => setDraggedOverItem(null)}
                 onDrop={async (e) => { setDraggedOverItem(null); await handleDropOnItem(e, item); }}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(url); }}
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onJobSelect) {
+                        onJobSelect(isJob ? item.id : item.job_id);
+                    } else {
+                        router.push(url);
+                    }
+                }}
                 onContextMenu={(e) => handleItemContextMenu(e, item)}
                 title={`${isJob ? 'Job' : 'Sub-task'}: ${item.title}\nStatus: ${item.status}\nAssigned: ${assignedUsers.map(u => u.username).join(', ') || 'Unassigned'}`}
                 style={{

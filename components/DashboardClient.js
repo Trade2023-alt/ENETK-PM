@@ -8,6 +8,7 @@ import ScheduleSpreadsheet from '@/components/ScheduleSpreadsheet';
 import OnCallEditor from '@/components/OnCallEditor';
 import MyWeekView from '@/components/MyWeekView';
 import MonthlyWorkforceView from '@/components/MonthlyWorkforceView';
+import JobDetailSidePanel from '@/components/JobDetailSidePanel';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { updateJobStatus } from '@/app/actions/updateJob';
@@ -18,6 +19,7 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
     const isAdmin = userRole === 'admin' || userRole === 'system_integrator';
     const [grouping, setGrouping] = useState('customer'); // none, customer, status, assigned
     const [viewMode, setViewMode] = useState(initialViewMode || (isAdmin ? 'grid' : 'my-week')); // grid, cards, gantt, calendar, spreadsheet, my-week, workforce
+    const [selectedJobId, setSelectedJobId] = useState(null);
     // Inline editing state for the grid view
     const [editingCell, setEditingCell] = useState(null); // { jobId, field }
     const [savingCell, setSavingCell] = useState(null); // { jobId, field }
@@ -390,7 +392,7 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                                     ))}
                                 </td>
                                 <td style={{ padding: '0.4rem 0.75rem', verticalAlign: 'middle', textAlign: 'center' }}>
-                                    <Link href={`/jobs/${job.id}`} className="btn" style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', background: 'rgba(255,255,255,0.06)' }}>Open</Link>
+                                    <button onClick={() => setSelectedJobId(job.id)} className="btn" style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', color: 'var(--foreground)' }}>Open</button>
                                 </td>
                                 {userRole === 'admin' && (
                                     <td style={{ padding: '0.75rem 1rem', verticalAlign: 'middle', textAlign: 'center' }}>
@@ -692,7 +694,7 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
 
             {viewMode === 'my-week' ? (
                 <div style={{ marginTop: '0.5rem' }}>
-                    <MyWeekView jobs={jobs} subTasks={subTasks} users={users} currentUser={currentUser} onCallSchedule={onCallSchedule} />
+                    <MyWeekView jobs={jobs} subTasks={subTasks} users={users} currentUser={currentUser} onCallSchedule={onCallSchedule} onJobSelect={(id) => setSelectedJobId(id)} />
                 </div>
             ) : viewMode === 'workforce' ? (
                 <div style={{ marginTop: '0.5rem' }}>
@@ -700,7 +702,7 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                 </div>
             ) : viewMode === 'gantt' ? (
                 <div style={{ marginTop: '0.5rem' }}>
-                    <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={users} />
+                    <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={users} onJobSelect={(id) => setSelectedJobId(id)} />
                     {jobs.filter(j => j.scheduled_date).length === 0 && (
                         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📊</div>
@@ -712,11 +714,11 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
             ) : viewMode === 'calendar' ? (
                 <div style={{ marginTop: '0.5rem' }}>
                     <OnCallEditor initialSchedule={onCallSchedule} userRole={userRole} />
-                    <Calendar jobs={jobs} subTasks={subTasks} users={users} currentUser={currentUser} />
+                    <Calendar jobs={jobs} subTasks={subTasks} users={users} currentUser={currentUser} onJobSelect={(id) => setSelectedJobId(id)} />
                 </div>
             ) : viewMode === 'spreadsheet' ? (
                 <div style={{ marginTop: '0.5rem' }}>
-                    <ScheduleSpreadsheet jobs={jobs} users={users} subTasks={subTasks} />
+                    <ScheduleSpreadsheet jobs={jobs} users={users} subTasks={subTasks} onJobSelect={(id) => setSelectedJobId(id)} />
                 </div>
             ) : (grouping === 'none' || grouping === 'incomplete') ? (
                 viewMode === 'grid' ? (
@@ -728,7 +730,7 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                         gap: '1rem'
                     }}>
                         {jobs.map(job => (
-                            <JobCard key={job.id} job={job} userRole={userRole} onDelete={() => handleDeleteJob(job.id)} />
+                            <JobCard key={job.id} job={job} userRole={userRole} onDelete={() => handleDeleteJob(job.id)} onClick={() => setSelectedJobId(job.id)} />
                         ))}
                         {jobs.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No jobs found.</p>}
                     </div>
@@ -749,13 +751,27 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                                     gap: '1rem'
                                 }}>
                                     {groupedJobs[group].map(job => (
-                                        <JobCard key={job.id} job={job} userRole={userRole} onDelete={() => handleDeleteJob(job.id)} />
+                                        <JobCard key={job.id} job={job} userRole={userRole} onDelete={() => handleDeleteJob(job.id)} onClick={() => setSelectedJobId(job.id)} />
                                     ))}
                                 </div>
                             )}
                         </div>
                     ))}
                 </div>
+            )}
+
+            {selectedJobId && (
+                <JobDetailSidePanel
+                    jobId={selectedJobId}
+                    job={initialJobs.find(j => j.id === selectedJobId)}
+                    subTasks={subTasks.filter(st => st.job_id === selectedJobId)}
+                    users={users}
+                    customers={customers}
+                    onClose={() => {
+                        setSelectedJobId(null);
+                        router.refresh();
+                    }}
+                />
             )}
         </div>
     );
