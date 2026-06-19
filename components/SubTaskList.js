@@ -114,7 +114,11 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
     // Form fragment used for both adding top-level and adding child
     const TaskForm = ({ parentId = null, onCancel }) => (
         <form action={async (formData) => { 
-            await createSubTask(formData); 
+            const result = await createSubTask(formData); 
+            if (result && result.error) {
+                alert(result.error);
+                return;
+            }
             if (parentId) setAddingChildTo(null);
             else setIsAdding(false);
         }} style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '0.5rem' }}>
@@ -169,7 +173,11 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
                 {isEditing ? (
                     <li style={{ padding: '0.75rem', borderBottom: '1px solid var(--card-border)', marginLeft: `${level * 2}rem` }}>
                         <form action={async (formData) => {
-                            await updateSubTask(formData);
+                            const result = await updateSubTask(formData);
+                            if (result && result.error) {
+                                alert(result.error);
+                                return;
+                            }
                             setEditingTaskId(null);
                         }}>
                             <input type="hidden" name="id" value={task.id} />
