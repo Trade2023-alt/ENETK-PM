@@ -1,12 +1,82 @@
 'use client'
 
 import { createSubTask, updateSubTask, deleteSubTask } from '@/app/actions/subtasks';
+import { addSubTaskNote, getSubTaskNotes } from '@/app/actions/notes';
 import { useState } from 'react';
 
-export default function SubTaskList({ jobId, subTasks, users }) {
+const MAROON = '#7b1e3a';
+
+function formatNoteTime(value) {
+    return new Date(value).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    }).replace(',', '').replace(/(\d{4}) /, '$1 at ');
+}
+
+function groupNotesBySubTask(notes = []) {
+    const grouped = {};
+    for (const note of notes) {
+        const key = note.sub_task_id;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(note);
+    }
+    for (const key of Object.keys(grouped)) {
+        grouped[key].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+    return grouped;
+}
+
+export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNotes = [] }) {
     const [isAdding, setIsAdding] = useState(false);
     const [editingTaskId, setEditingTaskId] = useState(null);
     const [addingChildTo, setAddingChildTo] = useState(null);
+    const [notesOpen, setNotesOpen] = useState(new Set());
+    const [subTaskNotes, setSubTaskNotes] = useState(() => groupNotesBySubTask(initialSubTaskNotes));
+    const [loadedSubTasks, setLoadedSubTasks] = useState(() => new Set(Object.keys(groupNotesBySubTask(initialSubTaskNotes))));
+    const [noteDrafts, setNoteDrafts] = useState({});
+    const [savingNote, setSavingNote] = useState(null);
+
+    const toggleNotes = async (taskId) => {
+        setNotesOpen(prev => {
+            const next = new Set(prev);
+            if (next.has(taskId)) next.delete(taskId);
+            else next.add(taskId);
+            return next;
+        });
+
+        if (!loadedSubTasks.has(taskId.toString())) {
+            setLoadedSubTasks(prev => new Set(prev).add(taskId.toString()));
+            const notes = await getSubTaskNotes(taskId);
+            setSubTaskNotes(prev => ({ ...prev, [taskId]: notes }));
+        }
+    };
+
+    const handleAddNote = async (taskId) => {
+        const content = (noteDrafts[taskId] || '').trim();
+        if (!content) return;
+
+        setSavingNote(taskId);
+        const formData = new FormData();
+        formData.append('sub_task_id', taskId);
+        formData.append('job_id', jobId);
+        formData.append('content', content);
+
+        const result = await addSubTaskNote(formData);
+        if (result.error) {
+            alert(result.error);
+        } else if (result.note) {
+            setSubTaskNotes(prev => ({
+                ...prev,
+                [taskId]: [result.note, ...(prev[taskId] || [])]
+            }));
+            setNoteDrafts(prev => ({ ...prev, [taskId]: '' }));
+        }
+        setSavingNote(null);
+    };
 
     // Form fragment used for both adding top-level and adding child
     const TaskForm = ({ parentId = null, onCancel }) => (
@@ -174,6 +244,9 @@ export default function SubTaskList({ jobId, subTasks, users }) {
 
                         <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Used: {task.used_hours}h</div>
+                            <button onClick={() => toggleNotes(task.id)} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'rgba(123, 30, 58, 0.1)', color: MAROON, borderColor: 'rgba(123, 30, 58, 0.25)' }} title="Task Notes">
+                                📝 Notes ({(subTaskNotes[task.id] || []).length})
+                            </button>
                             <button onClick={() => { setAddingChildTo(task.id); setIsAdding(false); setEditingTaskId(null); }} className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', borderColor: 'rgba(59, 130, 246, 0.2)' }} title="Add Micro Task">
                                 + Micro Task
                             </button>
@@ -193,6 +266,65 @@ export default function SubTaskList({ jobId, subTasks, users }) {
                             </button>
                         </div>
                     </li>
+                )}
+
+                {notesOpen.has(task.id) && (
+                    <div style={{
+                        marginLeft: `${level * 2 + 1.5}rem`,
+                        marginTop: '0.25rem',
+                        marginBottom: '0.5rem',
+                        paddingLeft: '0.75rem',
+                        borderLeft: `2px solid ${MAROON}`
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            {(subTaskNotes[task.id] || []).length === 0 ? (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                    No notes yet for this task.
+                                </div>
+                            ) : (
+                                (subTaskNotes[task.id] || []).map(note => (
+                                    <div key={note.id} style={{
+                                        background: 'rgba(123, 30, 58, 0.04)',
+                                        border: '1px solid var(--card-border)',
+                                        borderRadius: '0.375rem',
+                                        padding: '0.5rem 0.75rem'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                            <span style={{ fontWeight: 700, color: MAROON, fontSize: '0.8rem' }}>
+                                                {note.user?.username || 'System User'}
+                                            </span>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                {formatNoteTime(note.created_at)}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                                            {note.content}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                            <textarea
+                                rows={2}
+                                className="input"
+                                placeholder="Add a note to this task..."
+                                value={noteDrafts[task.id] || ''}
+                                onChange={e => setNoteDrafts(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                style={{ flex: 1, resize: 'vertical', fontSize: '0.8rem' }}
+                                disabled={savingNote === task.id}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => handleAddNote(task.id)}
+                                className="btn"
+                                disabled={savingNote === task.id || !(noteDrafts[task.id] || '').trim()}
+                                style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem', background: MAROON, color: '#fff', whiteSpace: 'nowrap' }}
+                            >
+                                {savingNote === task.id ? 'Adding...' : 'Add Note'}
+                            </button>
+                        </div>
+                    </div>
                 )}
 
                 {isAddingChild && (

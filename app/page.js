@@ -63,6 +63,7 @@ export default async function Home({ searchParams }) {
                 customer:customers(name, address),
                 lead:users(username),
                 assignments:job_assignments(
+                    user_id,
                     user:users(username)
                 ),
                 sub_tasks(used_hours, estimated_hours, completion_percent, status)
@@ -100,6 +101,7 @@ export default async function Home({ searchParams }) {
         customer_address: job.customer?.address,
         lead_name: job.lead?.username,
         assigned_users: job.assignments?.map(a => a.user?.username).filter(Boolean).join(', '),
+        assigned_ids: (job.assignments?.map(a => a.user_id).filter(v => v != null) || []).join(','),
         actual_hours: (job.actual_hours || 0) + subTasksActual,
         estimated_hours: (job.estimated_hours || 0) + subTasksEst
       };
@@ -111,15 +113,18 @@ export default async function Home({ searchParams }) {
   // Fetch additional data required for Calendar and Spreadsheet unified tabs
   let users = [];
   let subTasks = [];
+  let customers = [];
   let onCallSchedule = [];
 
   try {
-    const [{ data: usersData }, { data: subTasksRaw }] = await Promise.all([
+    const [{ data: usersData }, { data: subTasksRaw }, { data: customersData }] = await Promise.all([
       supabase.from('users').select('id, username').order('username'),
-      supabase.from('sub_tasks').select(`*, assignments:sub_task_assignments(user_id)`)
+      supabase.from('sub_tasks').select(`*, assignments:sub_task_assignments(user_id)`),
+      supabase.from('customers').select('id, name').order('name')
     ]);
 
     users = usersData || [];
+    customers = customersData || [];
     subTasks = (subTasksRaw || []).map(st => ({
       ...st,
       assigned_ids: st.assignments?.map(a => a.user_id).join(',')
@@ -188,13 +193,14 @@ export default async function Home({ searchParams }) {
           <Link href="/jobs/new" className="text-primary" style={{ fontWeight: 600 }}>Create your first job →</Link>
         </div>
       ) : (
-        <DashboardClient 
-          initialJobs={jobs} 
-          userRole={userRole} 
-          users={users} 
-          subTasks={subTasks} 
-          onCallSchedule={onCallSchedule} 
-          currentUser={userProfile}
+        <DashboardClient
+          initialJobs={jobs}
+          userRole={userRole}
+          users={users}
+          customers={customers}
+          subTasks={subTasks}
+          onCallSchedule={onCallSchedule}
+          currentUser={{ ...(userProfile || {}), id: userId }}
           initialViewMode={initialViewMode}
         />
       )}

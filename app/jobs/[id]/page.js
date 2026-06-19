@@ -11,7 +11,7 @@ import LessonsLearned from '@/components/LessonsLearned';
 import JobNotes from '@/components/JobNotes';
 import { getJobMilestones } from '@/app/actions/roadmap';
 import { getLessonsLearned } from '@/app/actions/lessons';
-import { getJobNotes } from '@/app/actions/notes';
+import { getJobNotes, getSubTaskNotesForJob } from '@/app/actions/notes';
 import JobDetailActions from '@/components/JobDetailActions';
 import JobPhases from '@/components/JobPhases';
 import { getJobPhases } from '@/app/actions/phases';
@@ -70,6 +70,9 @@ export default async function JobDetailPage({ params }) {
 
         // Fetch Job Phases
         const phases = await getJobPhases(id);
+
+        // Fetch all sub-task notes for this job (used by both SubTaskList and JobNotes)
+        const subTaskNotes = await getSubTaskNotesForJob(id);
 
         // Calculate total hours from subtasks
         const subTasksActual = (subTasksRaw || []).reduce((sum, st) => sum + (st.used_hours || 0), 0);
@@ -188,9 +191,9 @@ export default async function JobDetailPage({ params }) {
 
                     <JobMilestones jobId={job.id} initialMilestones={await getJobMilestones(job.id)} subTasks={subTasks} />
 
-                    <SubTaskList jobId={job.id} subTasks={subTasks} users={users} />
+                    <SubTaskList jobId={job.id} subTasks={subTasks} users={users} initialSubTaskNotes={subTaskNotes} />
 
-                    <JobNotes jobId={job.id} initialNotes={await getJobNotes(job.id)} />
+                    <JobNotes jobId={job.id} initialNotes={await getJobNotes(job.id)} initialSubTaskNotes={subTaskNotes} />
 
                     <LessonsLearned jobId={job.id} initialLessons={await getLessonsLearned(job.id)} />
                 </div>
