@@ -122,24 +122,19 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
             {parentId && <input type="hidden" name="parent_id" value={parentId} />}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <input name="title" placeholder="Task Title" className="input" required autoFocus />
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                    gap: '0.25rem',
-                    padding: '0.5rem',
-                    maxHeight: '100px',
-                    overflowY: 'auto',
-                    border: '1px solid var(--input-border)',
-                    background: 'var(--input-bg)',
-                    borderRadius: '0.375rem'
-                }}>
+                <select 
+                    multiple 
+                    name="assigned_user_ids" 
+                    className="input" 
+                    style={{ height: '80px', padding: '0.25rem' }}
+                    title="Ctrl+Click to select multiple"
+                >
                     {users.map(u => (
-                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}>
-                            <input type="checkbox" name="assigned_user_ids" value={u.id} />
+                        <option key={u.id} value={u.id} style={{ padding: '0.1rem 0.25rem', fontSize: '0.75rem' }}>
                             {u.username}
-                        </label>
+                        </option>
                     ))}
-                </div>
+                </select>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <input name="start_date" type="date" className="input" title="Start Date" />
                     <input name="due_date" type="date" className="input" title="End Date" />
@@ -194,27 +189,20 @@ export default function SubTaskList({ jobId, subTasks, users, initialSubTaskNote
                                     <option value="Urgent">Urgent</option>
                                 </select>
                             </div>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                                gap: '0.25rem',
-                                marginBottom: '0.5rem',
-                                padding: '0.5rem',
-                                border: '1px solid var(--input-border)',
-                                background: 'var(--input-bg)',
-                                borderRadius: '0.375rem'
-                            }}>
-                                {users.map(u => {
-                                    const assignedIds = task.assigned_ids ? task.assigned_ids.toString().split(',') : [];
-                                    const isAssigned = assignedIds.includes(u.id.toString());
-                                    return (
-                                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}>
-                                            <input type="checkbox" name="assigned_user_ids" value={u.id} defaultChecked={isAssigned} />
-                                            {u.username}
-                                        </label>
-                                    );
-                                })}
-                            </div>
+                            <select 
+                                multiple 
+                                name="assigned_user_ids" 
+                                className="input" 
+                                style={{ height: '80px', padding: '0.25rem', marginBottom: '0.5rem' }}
+                                title="Ctrl+Click to select multiple"
+                                defaultValue={task.assigned_ids ? task.assigned_ids.toString().split(',') : []}
+                            >
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id} style={{ padding: '0.1rem 0.25rem', fontSize: '0.75rem' }}>
+                                        {u.username}
+                                    </option>
+                                ))}
+                            </select>
 
                             <MultiDatePicker name="additional_dates" initialDates={task.additional_dates || []} />
 

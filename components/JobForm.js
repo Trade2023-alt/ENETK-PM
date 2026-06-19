@@ -101,28 +101,19 @@ export default function JobForm({ customers, contacts, users, userRole }) {
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-                <label className="label">Assign Team Members</label>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                    gap: '0.5rem',
-                    padding: '0.5rem',
-                    border: '1px solid var(--input-border)',
-                    borderRadius: '0.375rem',
-                    background: 'var(--input-bg)'
-                }}>
+                <label className="label">Assign Team Members (Ctrl+Click to select multiple)</label>
+                <select 
+                    multiple 
+                    name="assigned_user_ids" 
+                    className="input" 
+                    style={{ height: '120px', padding: '0.5rem' }}
+                >
                     {users.map(u => (
-                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                            <input
-                                type="checkbox"
-                                name="assigned_user_ids"
-                                value={u.id}
-                                style={{ width: '1rem', height: '1rem' }}
-                            />
+                        <option key={u.id} value={u.id} style={{ padding: '0.25rem 0.5rem' }}>
                             {u.username}
-                        </label>
+                        </option>
                     ))}
-                </div>
+                </select>
             </div>
 
             <div className="form-section-title" style={{ marginTop: '1.5rem' }}>Scheduling & Priority</div>

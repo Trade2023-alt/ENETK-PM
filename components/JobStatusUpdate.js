@@ -137,33 +137,20 @@ export default function JobStatusUpdate({ job, allUsers, allCustomers = [] }) {
             </div>
 
             <div style={{ marginTop: '1rem' }}>
-                <label className="label">Update Assignments</label>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                    gap: '0.5rem',
-                    padding: '0.5rem',
-                    border: '1px solid var(--input-border)',
-                    borderRadius: '0.375rem',
-                    background: 'var(--input-bg)'
-                }}>
-                    {allUsers.map(u => {
-                        const assignedIds = job.assigned_user_ids ? job.assigned_user_ids : [];
-                        const isAssigned = assignedIds.includes(u.id);
-                        return (
-                            <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                                <input
-                                    type="checkbox"
-                                    name="assigned_user_ids"
-                                    value={u.id}
-                                    defaultChecked={isAssigned}
-                                    style={{ width: '1rem', height: '1rem' }}
-                                />
-                                {u.username}
-                            </label>
-                        );
-                    })}
-                </div>
+                <label className="label">Update Assignments (Ctrl+Click to select multiple)</label>
+                <select 
+                    multiple 
+                    name="assigned_user_ids" 
+                    className="input" 
+                    style={{ height: '120px', padding: '0.5rem' }}
+                    defaultValue={job.assigned_user_ids || []}
+                >
+                    {allUsers.map(u => (
+                        <option key={u.id} value={u.id} style={{ padding: '0.25rem 0.5rem' }}>
+                            {u.username}
+                        </option>
+                    ))}
+                </select>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
