@@ -1,111 +1,161 @@
 'use client'
 
-import React, { useState, useMemo } from 'react';
-import Link from 'next/link';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import './gantt.css';
-
-// Pure-CSS/HTML Gantt — no external library.
-// frappe-gantt v1.x changed its API (popup, view_modes/view_mode coupling,
-// header_height split) and crashes on SSR / zero-size containers in Next.js.
-// A div-based timeline is far more reliable and renders milestones as diamonds.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function parseDate(str) {
-    if (!str) return null;
-    const d = new Date(str + 'T00:00:00');
-    return isNaN(d) ? null : d;
-}
+import { updateJobStatus } from '@/app/actions/updateJob';
 
 function toISO(d) {
+    if (!d) return null;
+    if (typeof d === 'string') return d.split('T')[0];
     return d.toISOString().split('T')[0];
 }
 
-function diffDays(a, b) {
-    return Math.round((a - b) / DAY_MS);
-}
-
-const STATUS_COLOR = {
-    'Scheduled': '#dc2626',
-    'In Progress': '#d97706',
-    'Complete': '#059669'
-};
-
-const PX_PER_DAY = {
-    Day: 34,
-    Week: 16,
-    Month: 6
+const STATUS_CLASS = {
+    'Scheduled': 'job-status-scheduled',
+    'In Progress': 'job-status-in-progress',
+    'Complete': 'job-status-complete',
 };
 
 export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
     const [viewMode, setViewMode] = useState('Week');
     const [filterStatus, setFilterStatus] = useState('All');
+    const [error, setError] = useState(null);
 
-    const filteredJobs = filterStatus === 'All'
-        ? jobs
-        : jobs.filter(j => j.status === filterStatus);
+    const ganttRef = useRef(null);
+    const ganttInstanceRef = useRef(null);
 
-    const model = useMemo(() => {
-        const dated = filteredJobs.filter(j => j.scheduled_date);
-        if (dated.length === 0 && milestones.length === 0) return null;
+    const filteredJobs = useMemo(() => (
+        filterStatus === 'All' ? jobs : jobs.filter(j => j.status === filterStatus)
+    ), [jobs, filterStatus]);
 
-        const allStarts = [];
-        const allEnds = [];
-
-        dated.forEach(j => {
-            const s = parseDate(j.scheduled_date);
-            let e = parseDate(j.due_date) || s;
-            if (e < s) e = s;
-            allStarts.push(s);
-            allEnds.push(e);
-        });
-        milestones.forEach(m => {
-            const d = parseDate(m.end_date || m.start_date);
-            if (d) { allStarts.push(d); allEnds.push(d); }
-        });
-
-        if (allStarts.length === 0) return null;
-
-        let min = new Date(Math.min(...allStarts.map(d => d.getTime())));
-        let max = new Date(Math.max(...allEnds.map(d => d.getTime())));
-        // pad a few days each side
-        min = new Date(min.getTime() - 3 * DAY_MS);
-        max = new Date(max.getTime() + 3 * DAY_MS);
-        const totalDays = Math.max(diffDays(max, min) + 1, 7);
-
-        return { dated, min, max, totalDays };
-    }, [filteredJobs, milestones]);
-
-    const pxPerDay = PX_PER_DAY[viewMode] || 16;
-
-    // Month gridlines across the timeline
-    const monthMarkers = useMemo(() => {
-        if (!model) return [];
+    // Build frappe-gantt task list (jobs + milestones as zero-duration diamonds)
+    const tasks = useMemo(() => {
         const out = [];
-        const cur = new Date(model.min.getFullYear(), model.min.getMonth(), 1);
-        while (cur <= model.max) {
-            const offset = diffDays(cur, model.min);
-            if (offset >= 0) {
-                out.push({
-                    left: offset * pxPerDay,
-                    label: cur.toLocaleDateString('default', { month: 'short', year: '2-digit' })
-                });
-            }
-            cur.setMonth(cur.getMonth() + 1);
-        }
-        return out;
-    }, [model, pxPerDay]);
 
-    const todayOffset = useMemo(() => {
-        if (!model) return null;
-        const today = new Date(toISO(new Date()) + 'T00:00:00');
-        if (today < model.min || today > model.max) return null;
-        return diffDays(today, model.min) * pxPerDay;
-    }, [model, pxPerDay]);
+        filteredJobs.forEach(job => {
+            const start = toISO(job.scheduled_date);
+            if (!start) return;
+            let end = toISO(job.due_date) || start;
+            if (end < start) end = start;
+
+            const assignedList = (job.assigned_ids || '').split(',').filter(Boolean);
+            const workerNames = assignedList.map(id => {
+                const found = users.find(u => String(u.id) === String(id));
+                return found?.username || id;
+            });
+
+            out.push({
+                id: `job-${job.id}`,
+                _jobId: job.id,
+                name: `${job.job_number ? job.job_number + ' ' : ''}${job.title || 'Untitled'}`,
+                start,
+                end,
+                progress: job.status === 'Complete' ? 100 : job.status === 'In Progress' ? 50 : 0,
+                custom_class: STATUS_CLASS[job.status] || 'job-status-scheduled',
+                status: job.status,
+                customer: job.customer_name || '',
+                workers: workerNames.join(', '),
+            });
+        });
+
+        milestones.forEach(m => {
+            const date = toISO(m.end_date || m.start_date);
+            if (!date) return;
+            const achieved = m.status === 'Achieved';
+            const overdue = !achieved && date < toISO(new Date());
+            const cls = achieved
+                ? 'milestone milestone-achieved'
+                : overdue
+                    ? 'milestone milestone-overdue'
+                    : 'milestone';
+            out.push({
+                id: `milestone-${m.id}`,
+                _milestone: true,
+                name: m.title || 'Milestone',
+                start: date,
+                end: date,
+                progress: achieved ? 100 : 0,
+                custom_class: cls,
+                status: m.status || '',
+                customer: '',
+                workers: '',
+            });
+        });
+
+        return out;
+    }, [filteredJobs, milestones, users]);
+
+    // Instantiate / re-instantiate the Gantt whenever inputs change
+    useEffect(() => {
+        let cancelled = false;
+        const container = ganttRef.current;
+        if (!container) return;
+
+        // reset previous render
+        container.innerHTML = '';
+        ganttInstanceRef.current = null;
+        setError(null);
+
+        if (tasks.length === 0) return;
+
+        // explicit height to avoid zero-height crash
+        container.style.height = `${Math.max(tasks.length * 50 + 120, 300)}px`;
+
+        (async () => {
+            try {
+                const GanttLib = (await import('frappe-gantt')).default;
+                if (cancelled || !ganttRef.current) return;
+
+                const instance = new GanttLib(ganttRef.current, tasks, {
+                    view_mode: viewMode,
+                    bar_height: 28,
+                    padding: 14,
+                    infinite_padding: false,
+                    popup_on: 'hover',
+                    popup: (ctx) => {
+                        const task = ctx.task;
+                        return `<div style="padding:0.75rem;background:#1e293b;border-radius:8px;min-width:200px;font-family:inherit;color:#f8fafc;">
+                            <div style="font-weight:700;margin-bottom:0.4rem">${task.name}</div>
+                            <div style="font-size:0.75rem;color:#94a3b8">${task.status || ''}</div>
+                            ${task.customer ? `<div style="font-size:0.75rem;color:#94a3b8">🏢 ${task.customer}</div>` : ''}
+                            ${task.workers ? `<div style="font-size:0.75rem;color:#94a3b8">👤 ${task.workers}</div>` : ''}
+                            <div style="font-size:0.75rem;color:#94a3b8">${task.start} → ${task.end}</div>
+                        </div>`;
+                    },
+                    on_date_change: async (task, start, end) => {
+                        if (task._milestone) return;
+                        const fd = new FormData();
+                        fd.append('job_id', task._jobId);
+                        fd.append('scheduled_date', start.toISOString().split('T')[0]);
+                        fd.append('due_date', end.toISOString().split('T')[0]);
+                        await updateJobStatus(fd);
+                    },
+                });
+
+                ganttInstanceRef.current = instance;
+            } catch (e) {
+                console.error('Gantt render error:', e);
+                if (!cancelled) setError(e?.message || String(e));
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [tasks, viewMode]);
+
+    const changeView = (mode) => {
+        const instance = ganttInstanceRef.current;
+        if (instance) {
+            try {
+                instance.change_view_mode(mode);
+            } catch (e) {
+                console.error('change_view_mode error:', e);
+            }
+        }
+        setViewMode(mode);
+    };
 
     const statusOptions = ['All', 'Scheduled', 'In Progress', 'Complete'];
-    const timelineWidth = model ? model.totalDays * pxPerDay : 0;
-    const LABEL_WIDTH = 220;
+    const scheduledCount = filteredJobs.filter(j => j.scheduled_date).length;
 
     return (
         <div className="card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--card-border)' }}>
@@ -118,7 +168,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                 <div>
                     <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>📊 Master Schedule Timeline</h3>
                     <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        {filteredJobs.filter(j => j.scheduled_date).length} job{filteredJobs.filter(j => j.scheduled_date).length !== 1 ? 's' : ''} · {milestones.length} milestone{milestones.length !== 1 ? 's' : ''} · Hover bars for details
+                        {scheduledCount} job{scheduledCount !== 1 ? 's' : ''} · {milestones.length} milestone{milestones.length !== 1 ? 's' : ''} · Drag bars to reschedule · Hover for details
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -134,7 +184,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
                         {['Day', 'Week', 'Month'].map(mode => (
                             <button
                                 key={mode}
-                                onClick={() => setViewMode(mode)}
+                                onClick={() => changeView(mode)}
                                 style={{
                                     border: 'none', padding: '0.35rem 0.9rem', fontSize: '0.75rem',
                                     fontWeight: 600, borderRadius: '6px', cursor: 'pointer',
@@ -158,9 +208,9 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
             }}>
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>LEGEND:</span>
                 {[
-                    { color: '#ef4444', label: '🔴 Scheduled' },
-                    { color: '#f59e0b', label: '🟡 In Progress' },
-                    { color: '#10b981', label: '🟢 Complete' },
+                    { color: '#dc2626', label: '🔴 Scheduled' },
+                    { color: '#d97706', label: '🟡 In Progress' },
+                    { color: '#059669', label: '🟢 Complete' },
                 ].map(({ color, label }) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: color, flexShrink: 0 }} />
@@ -173,101 +223,18 @@ export default function JobGantt({ jobs = [], users = [], milestones = [] }) {
             </div>
 
             {/* Timeline */}
-            {!model ? (
+            {error ? (
+                <div style={{ padding: '2rem 1.5rem', color: '#ef4444', fontSize: '0.85rem' }}>
+                    <strong>Could not render the timeline.</strong>
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>{error}</div>
+                </div>
+            ) : tasks.length === 0 ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                     No scheduled jobs to display on the timeline.
                 </div>
             ) : (
-                <div style={{ overflowX: 'auto', background: 'rgba(0,0,0,0.3)', position: 'relative' }}>
-                    <div style={{ minWidth: `${LABEL_WIDTH + timelineWidth}px` }}>
-                        {/* Month header row */}
-                        <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', height: '32px', position: 'sticky', top: 0, background: '#161616', zIndex: 3 }}>
-                            <div style={{ width: `${LABEL_WIDTH}px`, flexShrink: 0, padding: '0.5rem 1rem', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, borderRight: '1px solid rgba(255,255,255,0.08)' }}>
-                                JOB
-                            </div>
-                            <div style={{ position: 'relative', width: `${timelineWidth}px`, flexShrink: 0 }}>
-                                {monthMarkers.map((m, i) => (
-                                    <div key={i} style={{ position: 'absolute', left: `${m.left}px`, top: 0, fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', padding: '0.5rem 0.25rem', borderLeft: '1px solid rgba(255,255,255,0.06)', height: '32px', whiteSpace: 'nowrap' }}>
-                                        {m.label}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Milestone diamonds row */}
-                        {milestones.length > 0 && (
-                            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', minHeight: '34px', alignItems: 'center', background: 'rgba(167,139,250,0.04)' }}>
-                                <div style={{ width: `${LABEL_WIDTH}px`, flexShrink: 0, padding: '0 1rem', fontSize: '0.7rem', color: '#a78bfa', fontWeight: 700, borderRight: '1px solid rgba(255,255,255,0.08)' }}>
-                                    ◆ Milestones
-                                </div>
-                                <div style={{ position: 'relative', width: `${timelineWidth}px`, height: '34px', flexShrink: 0 }}>
-                                    {milestones.map(m => {
-                                        const d = parseDate(m.end_date || m.start_date);
-                                        if (!d) return null;
-                                        const left = diffDays(d, model.min) * pxPerDay;
-                                        const achieved = m.status === 'Achieved';
-                                        const overdue = !achieved && toISO(d) < toISO(new Date());
-                                        const color = achieved ? '#10b981' : overdue ? '#ef4444' : '#a78bfa';
-                                        return (
-                                            <div key={m.id} title={`${m.title} — ${toISO(d)} (${m.status})`} style={{ position: 'absolute', left: `${left - 7}px`, top: '8px' }}>
-                                                <span style={{ display: 'inline-block', width: '14px', height: '14px', background: color, transform: 'rotate(45deg)', borderRadius: '2px', boxShadow: '0 0 4px rgba(0,0,0,0.4)' }} />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Job rows */}
-                        <div style={{ position: 'relative' }}>
-                            {/* today line spanning all rows */}
-                            {todayOffset !== null && (
-                                <div style={{ position: 'absolute', left: `${LABEL_WIDTH + todayOffset}px`, top: 0, bottom: 0, width: '2px', background: 'rgba(239,68,68,0.6)', zIndex: 2, pointerEvents: 'none' }} />
-                            )}
-                            {model.dated.map(job => {
-                                const s = parseDate(job.scheduled_date);
-                                let e = parseDate(job.due_date) || s;
-                                if (e < s) e = s;
-                                const left = diffDays(s, model.min) * pxPerDay;
-                                const width = Math.max((diffDays(e, s) + 1) * pxPerDay, pxPerDay);
-                                const color = STATUS_COLOR[job.status] || '#9f1239';
-                                const progress = job.status === 'Complete' ? 100 : job.status === 'In Progress' ? 50 : 0;
-                                const assignedList = (job.assigned_ids || '').split(',').filter(Boolean);
-                                const workerNames = assignedList.map(id => {
-                                    const found = users.find(u => String(u.id) === String(id));
-                                    return found?.username || id;
-                                });
-                                return (
-                                    <div key={job.id} style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', minHeight: '42px', alignItems: 'center' }} className="grid-row">
-                                        <div style={{ width: `${LABEL_WIDTH}px`, flexShrink: 0, padding: '0.4rem 1rem', borderRight: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                                            <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
-                                                {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
-                                            </Link>
-                                            {workerNames.length > 0 && (
-                                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>👤 {workerNames.join(', ')}</div>
-                                            )}
-                                        </div>
-                                        <div style={{ position: 'relative', width: `${timelineWidth}px`, height: '42px', flexShrink: 0 }}>
-                                            <div
-                                                title={`${job.title} | ${job.status} | ${toISO(s)} → ${toISO(e)}${job.customer_name ? ' | ' + job.customer_name : ''}`}
-                                                style={{
-                                                    position: 'absolute', left: `${left}px`, top: '8px', width: `${width}px`, height: '26px',
-                                                    background: color, borderRadius: '5px', overflow: 'hidden',
-                                                    display: 'flex', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${progress}%`, background: 'rgba(255,255,255,0.22)' }} />
-                                                <span style={{ position: 'relative', fontSize: '0.68rem', color: '#fff', fontWeight: 600, padding: '0 0.4rem', whiteSpace: 'nowrap' }}>
-                                                    {job.title || 'Untitled'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                <div style={{ overflowX: 'auto', background: 'rgba(0,0,0,0.3)' }}>
+                    <div ref={ganttRef} className="gantt-target" />
                 </div>
             )}
         </div>
