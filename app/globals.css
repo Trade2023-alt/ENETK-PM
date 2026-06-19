@@ -2,7 +2,7 @@
 
 :root {
   /* ENETK Brand Theme - WWDC2025 Liquid Glassmorphism */
-  --background: #0f172a; /* Dark slate base if image fails */
+  --background: #1a0508; /* Deep maroon base */
   --foreground: #f8fafc; /* Slate-50 text */
 
   /* Liquid Glassmorphism Variables */
@@ -37,9 +37,9 @@
 
 body {
   background-color: var(--background);
-  /* Liquid-like multi-color soft mesh gradient for clear glass backdrop */
+  /* Maroon-tinted gradient over background image */
   background-image: 
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.8)),
+    linear-gradient(to bottom, rgba(26, 5, 8, 0.72), rgba(10, 2, 4, 0.88)),
     url('/enetkbackground.jpg');
   background-size: cover;
   background-position: center;
