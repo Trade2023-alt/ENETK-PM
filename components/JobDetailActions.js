@@ -33,7 +33,7 @@ export default function JobDetailActions({ jobId, isHidden }) {
                 {loading ? 'Updating...' : isHidden ? '👁️ Unhide Job' : '🚫 Hide from Dashboard'}
             </button>
             <button 
-                onClick={() => router.push('/')} 
+                onClick={() => router.back()} 
                 className="btn"
                 style={{
                     background: 'rgba(255, 255, 255, 0.05)',
