@@ -10,6 +10,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
     const [grouping, setGrouping] = useState('customer'); // none, customer, status, assigned
     const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
     const [selectedLead, setSelectedLead] = useState('All');
+    const [selectedCustomer, setSelectedCustomer] = useState('All');
     const [showHidden, setShowHidden] = useState(false);
     const [statusFilter, setStatusFilter] = useState('Active'); // Default to Active (hides Completed)
     const [priorityFilter, setPriorityFilter] = useState('All');
@@ -17,6 +18,7 @@ export default function DashboardClient({ initialJobs, userRole }) {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     const uniqueLeads = Array.from(new Set(initialJobs.map(j => j.lead_name || 'Unassigned'))).sort();
+    const uniqueCustomers = Array.from(new Set(initialJobs.map(j => j.customer_name).filter(Boolean))).sort();
 
     let filteredJobs = initialJobs;
     if (!showHidden) {
@@ -32,6 +34,9 @@ export default function DashboardClient({ initialJobs, userRole }) {
     }
     if (priorityFilter !== 'All') {
         filteredJobs = filteredJobs.filter(j => j.priority === priorityFilter);
+    }
+    if (selectedCustomer !== 'All') {
+        filteredJobs = filteredJobs.filter(j => j.customer_name === selectedCustomer);
     }
     if (searchTerm.trim() !== '') {
         const term = searchTerm.toLowerCase();
@@ -351,17 +356,40 @@ export default function DashboardClient({ initialJobs, userRole }) {
                 background: 'rgba(255, 255, 255, 0.02)',
                 borderRadius: '0.75rem'
             }}>
-                {/* Search Input (Left) */}
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: '240px', position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-muted)', fontSize: '0.9rem', pointerEvents: 'none' }}>🔍</span>
-                    <input
-                        type="text"
-                        placeholder="Search job title, customer, or number..."
+                {/* Search Input + Customer Dropdown (Left) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '240px', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+                        <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem', pointerEvents: 'none' }}>🔍</span>
+                        <input
+                            type="text"
+                            placeholder="Search job title, customer, or number..."
+                            className="input"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ paddingLeft: '2.25rem', fontSize: '0.85rem', height: '38px', width: '100%', background: 'rgba(255,255,255,0.05)' }}
+                        />
+                    </div>
+                    <select
+                        value={selectedCustomer}
+                        onChange={(e) => setSelectedCustomer(e.target.value)}
                         className="input"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ paddingLeft: '2.25rem', fontSize: '0.85rem', height: '38px', width: '100%', background: 'rgba(255,255,255,0.05)' }}
-                    />
+                        style={{
+                            padding: '0.4rem 0.85rem',
+                            fontSize: '0.85rem',
+                            height: '38px',
+                            minWidth: '150px',
+                            maxWidth: '200px',
+                            background: selectedCustomer !== 'All' ? 'rgba(159,18,57,0.15)' : 'rgba(255,255,255,0.05)',
+                            borderColor: selectedCustomer !== 'All' ? 'rgba(159,18,57,0.5)' : undefined,
+                            color: selectedCustomer !== 'All' ? '#fda4af' : undefined,
+                            fontWeight: selectedCustomer !== 'All' ? 700 : undefined,
+                        }}
+                    >
+                        <option value="All">All Customers</option>
+                        {uniqueCustomers.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
                 </div>
 
                 {/* Filters Dropdowns (Right) */}
