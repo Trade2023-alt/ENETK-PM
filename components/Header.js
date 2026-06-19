@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { logout } from '@/app/actions/auth';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import ViewSwitcher from '@/components/ViewSwitcher';
 
 export default function Header({ userRole }) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -61,6 +62,11 @@ export default function Header({ userRole }) {
                         style={{ height: '32px', width: 'auto', filter: 'drop-shadow(0 0 8px rgba(139, 0, 0, 0.3))' }}
                     />
                 </Link>
+
+                {/* View Switcher Buttons (Centered) */}
+                <Suspense fallback={<div style={{ width: '200px' }} />}>
+                    <ViewSwitcher />
+                </Suspense>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <span style={{

@@ -8,7 +8,9 @@ import { getOnCallScheduleForMonth } from '@/app/actions/oncall';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Home() {
+export default async function Home({ searchParams }) {
+  const params = await searchParams;
+  const initialViewMode = params?.view || 'grid';
   const cookieStore = await cookies();
   const userId = cookieStore.get('user_id')?.value;
   const userRole = cookieStore.get('user_role')?.value;
@@ -194,6 +196,7 @@ export default async function Home() {
           subTasks={subTasks} 
           onCallSchedule={onCallSchedule} 
           currentUser={userProfile}
+          initialViewMode={initialViewMode}
         />
       )}
     </div>
