@@ -158,6 +158,26 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
         };
     }, [dragState, px, router]);
     // ---------------------------
+    const handleDoubleClick = async (e, item, type) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickedDate = addDays(rangeStart, Math.floor(clickX / px));
+        const dateStr = toDateStr(clickedDate);
+
+        const choice = window.prompt(`Add date to "${item.title}" on ${dateStr}?\n\nType '1' to set as Due Date\nType '2' to add as an Intermittent Scheduled Date`);
+        
+        if (choice === '1') {
+            await supabase.from(type === 'job' ? 'jobs' : 'sub_tasks').update({ due_date: dateStr }).eq('id', item.id);
+            router.refresh();
+        } else if (choice === '2') {
+            const currentDates = Array.isArray(item.additional_dates) ? [...item.additional_dates] : [];
+            if (!currentDates.includes(dateStr)) {
+                currentDates.push(dateStr);
+                await supabase.from(type === 'job' ? 'jobs' : 'sub_tasks').update({ additional_dates: currentDates }).eq('id', item.id);
+                router.refresh();
+            }
+        }
+    };
 
     const filtered = jobs.filter(j => j.scheduled_date);
 
@@ -370,7 +390,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                                             )}
                                         </div>
                                         {/* Bar */}
-                                        <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H}px`, flexShrink: 0 }}>
+                                        <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H}px`, flexShrink: 0 }} onDoubleClick={(e) => handleDoubleClick(e, job, 'job')}>
                                             {/* Tick-marked span bar */}
                                             <div title={`${job.title} | ${job.status} | ${toDateStr(s)} → ${toDateStr(eAdj)}${job.customer_name ? ' | ' + job.customer_name : ''}`}
                                                 onMouseDown={(e) => handleMouseDown(e, job, 'move', 'job')}
@@ -400,6 +420,16 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                                                 {job.title}
                                             </span>
                                             
+                                            {/* Due Date Marker */}
+                                            {job.due_date && (
+                                                <div title={`Due: ${job.due_date}`} style={{
+                                                    position: 'absolute', left: `${diffDays(parseLocalDate(job.due_date), rangeStart) * px + (px/2) - 7}px`, top: '15px',
+                                                    width: '14px', height: '14px', border: '2px solid #ef4444', transform: 'rotate(45deg)', borderRadius: '2px', zIndex: 3, pointerEvents: 'none'
+                                                }}>
+                                                    <div style={{ position: 'absolute', inset: '1px', background: '#ef4444', borderRadius: '1px' }} />
+                                                </div>
+                                            )}
+
                                             {/* Intermittent Dates */}
                                             {Array.isArray(job.additional_dates) && job.additional_dates.map(dStr => {
                                                 const d = parseLocalDate(dStr);
@@ -449,16 +479,20 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                                                     </div>
                                                 </div>
                                                 {/* Bar */}
-                                                <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H - 8}px`, flexShrink: 0 }}>
+                                                <div style={{ position: 'relative', width: `${timelineW}px`, height: `${ROW_H - 8}px`, flexShrink: 0 }} onDoubleClick={(e) => handleDoubleClick(e, st, 'subtask')}>
                                                     {sts && (
-                                                        <div title={`${st.title} | ${st.status}`}
+                                                        <div title={`${st.title} | ${st.status} | ${toDateStr(sts)} → ${toDateStr(steAdj)}`}
                                                             onMouseDown={(e) => handleMouseDown(e, st, 'move', 'subtask')}
                                                             style={{
                                                                 position: 'absolute', left: `${stLeft}px`, top: '8px',
-                                                                width: `${stWidth}px`, height: '20px',
-                                                                background: stColor, borderRadius: '4px', overflow: 'hidden',
-                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.4)', opacity: isDraggedSt ? 0.6 : 0.85,
-                                                                cursor: 'grab'
+                                                                width: `${stWidth}px`, height: '10px',
+                                                                background: 'rgba(255,255,255,0.05)',
+                                                                borderLeft: `2px solid ${stColor}`,
+                                                                borderRight: `2px solid ${stColor}`,
+                                                                borderTop: `1px solid rgba(255,255,255,0.1)`,
+                                                                borderBottom: `1px solid rgba(255,255,255,0.1)`,
+                                                                borderRadius: '2px', overflow: 'hidden', cursor: 'grab',
+                                                                opacity: isDraggedSt ? 0.7 : 1
                                                             }}>
                                                             {/* Left handle */}
                                                             <div onMouseDown={(e) => handleMouseDown(e, st, 'resize-left', 'subtask')} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '6px', cursor: 'ew-resize', zIndex: 10, background: 'rgba(255,255,255,0.01)' }} />
@@ -466,8 +500,18 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                                                             <div onMouseDown={(e) => handleMouseDown(e, st, 'resize-right', 'subtask')} style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '6px', cursor: 'ew-resize', zIndex: 10, background: 'rgba(255,255,255,0.01)' }} />
 
                                                             {stProgress > 0 && (
-                                                                <div style={{ position: 'absolute', inset: 0, width: `${stProgress}%`, background: 'rgba(255,255,255,0.2)', borderRadius: '4px 0 0 4px', pointerEvents: 'none' }} />
+                                                                <div style={{ position: 'absolute', inset: 0, width: `${stProgress}%`, background: stColor, opacity: 0.6, pointerEvents: 'none' }} />
                                                             )}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Due Date Marker for Subtask */}
+                                                    {st.due_date && (
+                                                        <div title={`Due: ${st.due_date}`} style={{
+                                                            position: 'absolute', left: `${diffDays(parseLocalDate(st.due_date), rangeStart) * px + (px/2) - 5}px`, top: '8px',
+                                                            width: '10px', height: '10px', border: '1px solid #ef4444', transform: 'rotate(45deg)', borderRadius: '1px', zIndex: 3, pointerEvents: 'none'
+                                                        }}>
+                                                            <div style={{ position: 'absolute', inset: '1px', background: '#ef4444', borderRadius: '1px' }} />
                                                         </div>
                                                     )}
                                                     
@@ -478,7 +522,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                                                         const dLeft = diffDays(d, rangeStart) * px;
                                                         return (
                                                             <div key={`st-d-${dStr}`} title={`Scheduled: ${dStr}`} style={{
-                                                                position: 'absolute', left: `${dLeft + (px/2) - 5}px`, top: '13px',
+                                                                position: 'absolute', left: `${dLeft + (px/2) - 5}px`, top: '8px',
                                                                 width: '10px', height: '10px', background: '#d8b4fe', transform: 'rotate(45deg)', borderRadius: '1px',
                                                                 boxShadow: '0 0 0 1px rgba(0,0,0,0.5)', zIndex: 2
                                                             }} />
