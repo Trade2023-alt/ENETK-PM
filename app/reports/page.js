@@ -268,7 +268,7 @@ User Question: ${userText}`;
                     <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         📊 Project Reports & Analytics
                     </h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Aggregate project tracking, estimating metrics, and completion rates.</p>
+                    <p className="page-subtitle">Aggregate project tracking, estimating metrics, and completion rates.</p>
                 </div>
                 <div style={{ width: '300px' }}>
                     <label className="label">Filter by Customer</label>
@@ -312,8 +312,8 @@ User Question: ${userText}`;
                                 <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{totalEstHours}h / {totalUsedHours}h</div>
                             </div>
                         </div>
-                        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderLeftColor: 'deepskyblue' }}>
-                            <div style={{ fontSize: '2rem', color: 'deepskyblue' }}><Users /></div>
+                        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderLeftColor: 'var(--primary)' }}>
+                            <div style={{ fontSize: '2rem', color: 'var(--primary)' }}><Users /></div>
                             <div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Customers</div>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{customers.length}</div>

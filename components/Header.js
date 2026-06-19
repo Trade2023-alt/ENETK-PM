@@ -3,44 +3,19 @@
 import Link from 'next/link';
 import { logout } from '@/app/actions/auth';
 import { useState, Suspense } from 'react';
+import { usePathname } from 'next/navigation';
 import ViewSwitcher from '@/components/ViewSwitcher';
 
 export default function Header({ userRole }) {
     const [menuOpen, setMenuOpen] = useState(false);
+    const pathname = usePathname();
 
-    // Button-style for nav links
-    const navButtonStyle = {
-        display: 'block',
-        color: 'var(--text-muted)',
-        padding: '0.75rem 1rem',
-        borderRadius: '8px',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        background: 'rgba(255, 255, 255, 0.02)',
-        marginBottom: '0.5rem',
-        transition: 'all 0.15s'
-    };
+    const isActive = (href) => href === '/' ? pathname === '/' : pathname.startsWith(href);
 
-    const activeButtonStyle = {
-        ...navButtonStyle,
-        color: 'var(--primary)',
-        borderColor: 'rgba(59, 130, 246, 0.3)',
-        background: 'rgba(59, 130, 246, 0.1)'
-    };
+    const navLinkClass = (href, extra = '') =>
+        `enetk-nav-link ${isActive(href) ? 'enetk-nav-link-active' : ''} ${extra}`.trim();
 
-    const adminButtonStyle = {
-        ...navButtonStyle,
-        color: 'rgba(59, 130, 246, 0.9)',
-        borderColor: 'rgba(59, 130, 246, 0.2)',
-        background: 'rgba(59, 130, 246, 0.05)'
-    };
-
-    const aiButtonStyle = {
-        ...navButtonStyle,
-        color: 'var(--primary)',
-        borderColor: 'rgba(59, 130, 246, 0.4)',
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))',
-        fontWeight: 800
-    };
+    const close = () => setMenuOpen(false);
 
     return (
         <header style={{
@@ -54,12 +29,12 @@ export default function Header({ userRole }) {
             zIndex: 1000
         }}>
             {/* Top Bar: Logo + Hamburger + Sign Out */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '40px' }}>
                 <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
                     <img
                         src="/logo.webp"
                         alt="ENETK Logo"
-                        style={{ height: '32px', width: 'auto', filter: 'drop-shadow(0 0 8px rgba(139, 0, 0, 0.3))' }}
+                        style={{ height: '32px', width: 'auto', filter: 'drop-shadow(0 0 8px rgba(159, 18, 57, 0.4))' }}
                     />
                 </Link>
 
@@ -69,44 +44,27 @@ export default function Header({ userRole }) {
                 </Suspense>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{
-                        fontSize: '0.6rem',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '100px',
-                        background: userRole === 'admin' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                        color: userRole === 'admin' ? '#ef4444' : 'var(--primary)',
-                        border: `1px solid ${userRole === 'admin' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`,
-                        fontWeight: 800,
-                        textTransform: 'uppercase'
-                    }}>
+                    <span className={`badge ${userRole === 'admin' ? 'badge-danger' : 'badge-primary'}`}>
                         {userRole}
                     </span>
 
-                    <button onClick={() => logout()} className="btn" style={{
-                        background: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'var(--text-muted)',
-                        padding: '0.35rem 0.6rem',
-                        fontSize: '0.7rem',
-                        borderRadius: '6px'
-                    }}>
+                    <button onClick={() => logout()} className="btn btn-secondary btn-sm">
                         Sign Out
                     </button>
 
                     {/* Hamburger Menu Button */}
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
+                        className="btn btn-sm"
                         style={{
-                            background: menuOpen ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                            border: `1px solid ${menuOpen ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
-                            color: menuOpen ? '#ef4444' : 'var(--primary)',
+                            background: menuOpen ? 'rgba(159, 18, 57, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                            borderColor: menuOpen ? 'rgba(159, 18, 57, 0.4)' : 'var(--card-border)',
+                            color: menuOpen ? 'var(--primary)' : 'var(--foreground)',
                             fontSize: '1.25rem',
-                            cursor: 'pointer',
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '6px',
                             lineHeight: 1
                         }}
                         aria-label="Toggle menu"
+                        aria-expanded={menuOpen}
                     >
                         {menuOpen ? '✕' : '☰'}
                     </button>
@@ -118,53 +76,97 @@ export default function Header({ userRole }) {
                 <nav style={{
                     marginTop: '1rem',
                     paddingTop: '1rem',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                    fontSize: '0.9rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.03em',
-                    fontWeight: 600
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
                 }}>
-                    {/* Section Label */}
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.75rem', opacity: 0.6, paddingLeft: '0.25rem' }}>Main</div>
-
-                    {/* Main Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
-                        <Link href="/" style={activeButtonStyle} onClick={() => setMenuOpen(false)}>🏠 Dashboard</Link>
-                        {userRole !== 'customer' && <Link href="/todo" style={navButtonStyle} onClick={() => setMenuOpen(false)}>✅ To-Do</Link>}
+                    <div className="enetk-nav-section-label">Main</div>
+                    <div className="enetk-nav-grid">
+                        <Link href="/" className={navLinkClass('/')} onClick={close}>🏠 Dashboard</Link>
+                        {userRole !== 'customer' && <Link href="/todo" className={navLinkClass('/todo')} onClick={close}>✅ To-Do</Link>}
                     </div>
 
-                    {/* Section Label */}
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.75rem', opacity: 0.6, paddingLeft: '0.25rem' }}>Operations</div>
-
-                    {/* Operations Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
-                        {userRole !== 'customer' && <Link href="/pipeline" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📊 Pipeline</Link>}
-                        {userRole !== 'customer' && <Link href="/customers" style={navButtonStyle} onClick={() => setMenuOpen(false)}>👥 Clients</Link>}
-                        {userRole !== 'customer' && <Link href="/inventory" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📦 Stock</Link>}
-                        {userRole !== 'customer' && <Link href="/quotes" style={navButtonStyle} onClick={() => setMenuOpen(false)}>💰 Quotes</Link>}
-                        <Link href="/reports" style={navButtonStyle} onClick={() => setMenuOpen(false)}>📈 Reports</Link>
-                        {userRole !== 'customer' && <Link href="/knowledge" style={navButtonStyle} onClick={() => setMenuOpen(false)}>🧠 Tips & Tricks</Link>}
-                        <Link href="/scada" style={{...navButtonStyle, color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)'}} onClick={() => setMenuOpen(false)}>🌐 SCADA App</Link>
+                    <div className="enetk-nav-section-label">Operations</div>
+                    <div className="enetk-nav-grid">
+                        {userRole !== 'customer' && <Link href="/pipeline" className={navLinkClass('/pipeline')} onClick={close}>📊 Pipeline</Link>}
+                        {userRole !== 'customer' && <Link href="/customers" className={navLinkClass('/customers')} onClick={close}>👥 Clients</Link>}
+                        {userRole !== 'customer' && <Link href="/inventory" className={navLinkClass('/inventory')} onClick={close}>📦 Stock</Link>}
+                        {userRole !== 'customer' && <Link href="/quotes" className={navLinkClass('/quotes')} onClick={close}>💰 Quotes</Link>}
+                        <Link href="/reports" className={navLinkClass('/reports')} onClick={close}>📈 Reports</Link>
+                        {userRole !== 'customer' && <Link href="/knowledge" className={navLinkClass('/knowledge')} onClick={close}>🧠 Tips & Tricks</Link>}
+                        <Link href="/scada" className={navLinkClass('/scada', 'enetk-nav-link-scada')} onClick={close}>🌐 SCADA App</Link>
                     </div>
 
                     {/* AI Section */}
                     <div style={{ marginBottom: '1rem' }}>
-                        <Link href="/ai-chat" style={aiButtonStyle} onClick={() => setMenuOpen(false)}>🤖 AI Agent</Link>
+                        <Link href="/ai-chat" className={navLinkClass('/ai-chat', 'enetk-nav-link-ai')} onClick={close}>🤖 AI Agent</Link>
                     </div>
 
                     {/* Admin Section */}
                     {userRole === 'admin' && (
                         <>
-                            <div style={{ fontSize: '0.65rem', color: 'rgba(59, 130, 246, 0.8)', marginBottom: '0.75rem', opacity: 0.8, paddingLeft: '0.25rem', marginTop: '1rem' }}>Admin / Integrations</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                                <Link href="/team" style={adminButtonStyle} onClick={() => setMenuOpen(false)}>👥 Team</Link>
-                                <Link href="/admin/chats" style={adminButtonStyle} onClick={() => setMenuOpen(false)}>📋 Audit</Link>
-                                <Link href="/admin/email-logs" style={adminButtonStyle} onClick={() => setMenuOpen(false)}>📧 Email Logs</Link>
+                            <div className="enetk-nav-section-label">Admin / Integrations</div>
+                            <div className="enetk-nav-grid">
+                                <Link href="/team" className={navLinkClass('/team')} onClick={close}>👥 Team</Link>
+                                <Link href="/admin/chats" className={navLinkClass('/admin/chats')} onClick={close}>📋 Audit</Link>
+                                <Link href="/admin/email-logs" className={navLinkClass('/admin/email-logs')} onClick={close}>📧 Email Logs</Link>
                             </div>
                         </>
                     )}
                 </nav>
             )}
+
+            <style jsx>{`
+                .enetk-nav-section-label {
+                    font-size: 0.65rem;
+                    color: var(--text-muted);
+                    margin-bottom: 0.6rem;
+                    opacity: 0.7;
+                    padding-left: 0.25rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.08em;
+                    font-weight: 700;
+                }
+                .enetk-nav-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 0.5rem;
+                    margin-bottom: 1.25rem;
+                }
+                @media (min-width: 768px) {
+                    .enetk-nav-grid { grid-template-columns: repeat(4, 1fr); }
+                }
+                :global(.enetk-nav-link) {
+                    display: block;
+                    color: var(--text-muted) !important;
+                    padding: 0.65rem 0.9rem;
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: rgba(255, 255, 255, 0.02);
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    letter-spacing: 0.02em;
+                    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+                }
+                :global(.enetk-nav-link:hover) {
+                    color: var(--foreground) !important;
+                    background: rgba(255, 255, 255, 0.07);
+                    border-color: rgba(255, 255, 255, 0.18);
+                }
+                :global(.enetk-nav-link-active) {
+                    color: var(--primary) !important;
+                    border-color: rgba(159, 18, 57, 0.4);
+                    background: rgba(159, 18, 57, 0.12);
+                }
+                :global(.enetk-nav-link-scada) {
+                    color: var(--success) !important;
+                    border-color: rgba(16, 185, 129, 0.25);
+                }
+                :global(.enetk-nav-link-ai) {
+                    color: var(--primary) !important;
+                    border-color: rgba(159, 18, 57, 0.45);
+                    background: linear-gradient(135deg, rgba(159, 18, 57, 0.18), rgba(190, 18, 60, 0.12));
+                    font-weight: 800;
+                }
+            `}</style>
         </header>
     );
 }

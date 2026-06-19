@@ -114,13 +114,7 @@ export default async function JobDetailPage({ params }) {
                         <div>
                             <h2 style={{ marginBottom: '0.5rem' }}>{job.title}</h2>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                                <span style={{
-                                    background: 'rgba(59, 130, 246, 0.2)',
-                                    color: 'var(--primary)',
-                                    padding: '0.25rem 0.5rem',
-                                    borderRadius: '0.5rem',
-                                    fontSize: '0.875rem'
-                                }}>
+                                <span className={`badge ${job.status === 'Complete' ? 'badge-success' : job.status === 'In Progress' ? 'badge-warning' : 'badge-danger'}`}>
                                     {job.status}
                                 </span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

@@ -21,14 +21,11 @@ export default function DeleteUserButton({ userId, username }) {
         <button
             onClick={handleDelete}
             disabled={loading}
+            className="btn btn-sm"
             style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--danger)',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                marginLeft: '1rem',
-                padding: 0
+                background: 'rgba(239, 68, 68, 0.1)',
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                color: 'var(--danger)'
             }}
         >
             {loading ? 'Deleting...' : 'Delete'}

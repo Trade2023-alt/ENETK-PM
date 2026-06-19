@@ -28,15 +28,7 @@ export default function TeamMemberForm() {
     return (
         <form onSubmit={handleSubmit}>
             {error && (
-                <div style={{
-                    padding: '1rem',
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
-                    borderRadius: '4px',
-                    marginBottom: '1rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid rgba(239, 68, 68, 0.2)'
-                }}>
+                <div className="form-error">
                     <strong>Update Required:</strong> {error}
                     {error.includes('missing') && (
                         <div style={{ marginTop: '0.5rem', fontSize: '0.8rem' }}>

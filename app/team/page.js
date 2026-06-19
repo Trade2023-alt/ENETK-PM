@@ -30,52 +30,44 @@ export default async function TeamPage() {
         <div className="container" style={{ paddingBottom: '4rem' }}>
             <Header userRole={userRole} />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.5rem' }}>Team Management</h2>
+            <div className="page-header">
+                <h2 className="page-title">Team Management</h2>
                 <Link href="/team/new" className="btn btn-primary">
                     + Add Member
                 </Link>
             </div>
 
-            <div className="card">
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <table className="table">
                     <thead>
-                        <tr style={{ borderBottom: '1px solid var(--card-border)', textAlign: 'left' }}>
-                            <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Username</th>
-                            <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Role</th>
-                            <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Company</th>
-                            <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Email</th>
-                            <th style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Phone</th>
-                            <th style={{ padding: '0.75rem' }}></th>
+                        <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Company</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {users.map(user => (
-                            <tr key={user.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                <td style={{ padding: '0.75rem' }}>{user.username}</td>
-                                <td style={{ padding: '0.75rem' }}>
-                                    <span style={{
-                                        padding: '0.25rem 0.5rem',
-                                        borderRadius: '0.25rem',
-                                        background: user.role === 'admin' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                                        color: user.role === 'admin' ? 'var(--success)' : 'var(--primary)',
-                                        fontSize: '0.75rem'
-                                    }}>
+                            <tr key={user.id}>
+                                <td style={{ fontWeight: 500 }}>{user.username}</td>
+                                <td>
+                                    <span className={`badge ${user.role === 'admin' ? 'badge-success' : 'badge-primary'}`}>
                                         {user.role}
                                     </span>
                                 </td>
-                                <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{user.company || 'ENETK'}</td>
-                                <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{user.email || '-'}</td>
-                                <td style={{ padding: '0.75rem', fontSize: '0.875rem' }}>{user.phone || '-'}</td>
-                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                    <Link href={`/team/${user.id}`} style={{
-                                        color: 'var(--primary)',
-                                        textDecoration: 'none',
-                                        fontSize: '0.875rem'
-                                    }}>
-                                        Edit
-                                    </Link>
-                                    <DeleteUserButton userId={user.id} username={user.username} />
+                                <td className="text-muted">{user.company || 'ENETK'}</td>
+                                <td className="text-muted">{user.email || '-'}</td>
+                                <td className="text-muted">{user.phone || '-'}</td>
+                                <td style={{ textAlign: 'right' }}>
+                                    <div style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <Link href={`/team/${user.id}`} className="btn btn-secondary btn-sm">
+                                            Edit
+                                        </Link>
+                                        <DeleteUserButton userId={user.id} username={user.username} />
+                                    </div>
                                 </td>
                             </tr>
                         ))}

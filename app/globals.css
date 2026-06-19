@@ -22,9 +22,33 @@
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --radius: 1.25rem; /* Smoother, larger corners like iOS/visionOS */
-  
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Radius scale */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.25rem;
+
+  /* Surfaces used by tables / inputs across the app */
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-border: rgba(255, 255, 255, 0.15);
+  --row-hover: rgba(255, 255, 255, 0.05);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+
   /* Specular reflections: top edge highlight + internal gloss */
-  --shadow-glass: inset 0 1px 1px rgba(255, 255, 255, 0.2), 
+  --shadow-glass: inset 0 1px 1px rgba(255, 255, 255, 0.2),
                   inset 0 12px 24px -12px rgba(255, 255, 255, 0.1),
                   0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
@@ -47,6 +71,22 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--foreground);
   font-weight: 700;
   letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+/* Smooth base transition for interactive elements */
+a, button, select, input, textarea,
+.btn, .card, [role="button"] {
+  transition: color 0.15s ease, background-color 0.15s ease,
+              border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 .card h1, .card h2, .card h3, .card h4, .card h5, .card h6 {
@@ -328,4 +368,175 @@ input[type="checkbox"]:checked {
 .card-condensed .btn, .card-condensed a {
   font-size: 0.775rem !important;
   padding: 0.375rem 0.75rem !important;
+}
+
+/* ============================================================
+   Shared layout & component utilities
+   (additive — standardizes patterns repeated across pages)
+   ============================================================ */
+
+/* Consistent page-level header row: title (left) + actions (right) */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.page-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+/* Brand color helpers (replace inline color:'#9f1239') */
+.text-primary { color: var(--primary); }
+.text-muted { color: var(--text-muted); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+
+/* Status / role pill badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.badge-success { background: rgba(16, 185, 129, 0.12); color: var(--success); border-color: rgba(16, 185, 129, 0.3); }
+.badge-warning { background: rgba(245, 158, 11, 0.12); color: var(--warning); border-color: rgba(245, 158, 11, 0.3); }
+.badge-danger  { background: rgba(239, 68, 68, 0.12);  color: var(--danger);  border-color: rgba(239, 68, 68, 0.3); }
+.badge-primary { background: rgba(159, 18, 57, 0.15);  color: #fda4af;        border-color: rgba(159, 18, 57, 0.4); }
+
+/* Secondary / muted button variant for cancel-style actions */
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  border-color: var(--card-border);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--foreground);
+}
+
+/* Compact action button (table edit/delete) */
+.btn-sm {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+}
+
+/* Standardized data table */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  color: var(--foreground);
+}
+.table thead tr {
+  border-bottom: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+.table th {
+  padding: 0.85rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted) !important;
+  white-space: nowrap;
+}
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--card-border);
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+.table tbody tr {
+  transition: background-color 0.15s ease;
+}
+.table tbody tr:hover {
+  background: var(--row-hover);
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Generic text input used by inventory filters etc. */
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.form-control::placeholder { color: var(--text-muted); }
+.form-control:focus {
+  outline: none;
+  border-color: rgba(159, 18, 57, 0.5);
+  box-shadow: 0 0 0 2px rgba(159, 18, 57, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Empty-state block */
+.empty-state {
+  text-align: center;
+  padding: 3.5rem 2rem;
+  color: var(--text-muted);
+}
+.empty-state .empty-icon {
+  font-size: 2.75rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.8;
+}
+
+/* Group of related form fields under a section heading */
+.form-section {
+  border-top: 1px solid var(--card-border);
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+}
+.form-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+/* Consistent vertical rhythm between stacked form fields */
+.form-field { margin-bottom: 1rem; }
+
+/* Inline form error / alert block */
+.form-error {
+  padding: 0.85rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-md);
+  margin-bottom: 1.25rem;
+  color: #fca5a5;
+  font-size: 0.875rem;
 }

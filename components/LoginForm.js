@@ -19,19 +19,19 @@ export default function LoginForm() {
     return (
         <form action={formAction} className="card" style={{ maxWidth: '400px', width: '100%', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Welcome Back</h2>
-                <p className="label">Enter your credentials to access the workspace</p>
+                <img
+                    src="/logo.webp"
+                    alt="ENETK Logo"
+                    style={{ height: '44px', width: 'auto', margin: '0 auto 1rem', display: 'block', filter: 'drop-shadow(0 0 10px rgba(159, 18, 57, 0.45))' }}
+                />
+                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+                    Welcome to <span className="text-primary">ENETK</span>
+                </h2>
+                <p className="label" style={{ marginBottom: 0 }}>Enter your credentials to access the workspace</p>
             </div>
 
             {state?.error && (
-                <div style={{
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    color: '#ef4444',
-                    padding: '0.75rem',
-                    borderRadius: '0.5rem',
-                    marginBottom: '1rem',
-                    fontSize: '0.875rem'
-                }}>
+                <div className="form-error">
                     {state.error}
                 </div>
             )}

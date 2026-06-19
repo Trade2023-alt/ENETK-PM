@@ -75,9 +75,6 @@ export default async function ScheduleV2Page() {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <Link href="/schedule" className="btn" style={{ fontSize: '0.85rem' }}>
-                        📅 Classic View
-                    </Link>
                     <Link href="/calendar" className="btn" style={{ fontSize: '0.85rem' }}>
                         🗓️ Calendar
                     </Link>

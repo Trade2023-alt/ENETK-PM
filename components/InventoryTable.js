@@ -212,7 +212,7 @@ export default function InventoryTable({ initialData }) {
                     </button>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn" onClick={() => setIsImportModalOpen(true)} style={{ background: 'var(--card-bg)', border: '1px solid #ddd' }}>
+                    <button className="btn btn-secondary" onClick={() => setIsImportModalOpen(true)}>
                         Import CSV
                     </button>
                     <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
@@ -267,7 +267,7 @@ export default function InventoryTable({ initialData }) {
                     </thead>
                     <tbody>
                         {sortedData.map(item => (
-                            <tr key={item.id} style={{ background: selectedIds.includes(item.id) ? 'rgba(59, 130, 246, 0.05)' : undefined }}>
+                            <tr key={item.id} style={{ background: selectedIds.includes(item.id) ? 'rgba(159, 18, 57, 0.08)' : undefined }}>
                                 <td>
                                     <input
                                         type="checkbox"
@@ -291,8 +291,8 @@ export default function InventoryTable({ initialData }) {
                                 <td>
                                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'nowrap' }}>
                                         <button
-                                            className="btn"
-                                            style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                            className="btn btn-sm"
+                                            style={{ background: 'rgba(159, 18, 57, 0.12)', color: '#fda4af', borderColor: 'rgba(159, 18, 57, 0.3)' }}
                                             onClick={() => {
                                                 setEditingItem(item);
                                                 setIsEditModalOpen(true);
@@ -302,16 +302,16 @@ export default function InventoryTable({ initialData }) {
                                         </button>
                                         {!item.check_out_date && (
                                             <button
-                                                className="btn"
-                                                style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                                className="btn btn-sm"
+                                                style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
                                                 onClick={() => handleCheckout(item.id)}
                                             >
                                                 Remove
                                             </button>
                                         )}
                                         <button
-                                            className="btn"
-                                            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                            className="btn btn-sm"
+                                            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                                             onClick={() => handleDelete(item.id)}
                                         >
                                             Delete

@@ -19,8 +19,8 @@ export default async function InventoryPage() {
         <div className="container" style={{ paddingBottom: '4rem' }}>
             <Header userRole={userRole} />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.5rem' }}>Material Inventory & Management</h2>
+            <div className="page-header">
+                <h2 className="page-title">Material Inventory &amp; Management</h2>
             </div>
 
             <InventoryTable initialData={inventory} />
