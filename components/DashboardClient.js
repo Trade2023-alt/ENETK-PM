@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import JobCard from '@/components/JobCard';
+import JobGantt from '@/components/JobGantt';
 import Link from 'next/link';
 import { updateJobStatus } from '@/app/actions/updateJob';
 import { deleteJob } from '@/app/actions/deleteJob';
 
 export default function DashboardClient({ initialJobs, userRole }) {
     const [grouping, setGrouping] = useState('customer'); // none, customer, status, assigned
-    const [viewMode, setViewMode] = useState('grid'); // Default to grid view like Microsoft Planner
+    const [viewMode, setViewMode] = useState('grid'); // grid, cards, gantt
     const [selectedLead, setSelectedLead] = useState('All');
     const [selectedCustomer, setSelectedCustomer] = useState('All');
     const [showHidden, setShowHidden] = useState(false);
@@ -220,8 +221,50 @@ export default function DashboardClient({ initialJobs, userRole }) {
         );
     };
 
+    // KPI stats from current filtered jobs list
+    const allJobsForStats = initialJobs.filter(j => !j.is_hidden || showHidden);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const kpiStats = {
+        total: allJobsForStats.filter(j => j.status !== 'Complete').length,
+        scheduled: allJobsForStats.filter(j => j.status === 'Scheduled').length,
+        inProgress: allJobsForStats.filter(j => j.status === 'In Progress').length,
+        complete: allJobsForStats.filter(j => j.status === 'Complete').length,
+        overdue: allJobsForStats.filter(j => j.status !== 'Complete' && j.due_date && j.due_date < todayStr).length,
+    };
+
     return (
         <div>
+            {/* KPI Metric Ribbon */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '0.65rem',
+                marginBottom: '1.25rem'
+            }}>
+                {[
+                    { label: 'Active Jobs', value: kpiStats.total, color: 'rgba(255,255,255,0.7)', bg: 'rgba(255,255,255,0.04)', icon: '📋', border: 'rgba(255,255,255,0.15)' },
+                    { label: 'Scheduled', value: kpiStats.scheduled, color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: '🔴', border: '#ef4444' },
+                    { label: 'In Progress', value: kpiStats.inProgress, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '🟡', border: '#f59e0b' },
+                    { label: 'Complete', value: kpiStats.complete, color: '#10b981', bg: 'rgba(16,185,129,0.1)', icon: '🟢', border: '#10b981' },
+                    { label: 'Overdue', value: kpiStats.overdue, color: kpiStats.overdue > 0 ? '#ef4444' : '#10b981', bg: kpiStats.overdue > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.08)', icon: kpiStats.overdue > 0 ? '⚠️' : '✅', border: kpiStats.overdue > 0 ? '#ef4444' : '#10b981' },
+                ].map(({ label, value, color, bg, icon, border }) => (
+                    <div key={label} className="card" style={{
+                        padding: '0.75rem 1rem',
+                        background: bg,
+                        borderLeft: `3px solid ${border}`,
+                        display: 'flex', flexDirection: 'column', gap: '0.2rem',
+                        borderRadius: '10px'
+                    }}>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {icon} {label}
+                        </div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color, lineHeight: 1 }}>
+                            {value}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             {/* View and Grouping Switchers (Row 1) */}
             <div style={{ 
                 marginBottom: '1rem', 
@@ -272,6 +315,25 @@ export default function DashboardClient({ initialJobs, userRole }) {
                         }}
                     >
                         <span style={{ fontSize: '1rem' }}>📋</span> Cards
+                    </button>
+                    <button
+                        onClick={() => setViewMode('gantt')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 1.25rem',
+                            borderRadius: '0.5rem',
+                            background: viewMode === 'gantt' ? 'rgba(159, 18, 57, 0.12)' : 'transparent',
+                            border: viewMode === 'gantt' ? '1px solid rgba(159, 18, 57, 0.3)' : '1px solid transparent',
+                            color: viewMode === 'gantt' ? 'var(--primary)' : 'var(--text-muted)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.9rem'
+                        }}
+                    >
+                        <span style={{ fontSize: '1rem' }}>📊</span> Gantt
                     </button>
                     <div style={{ 
                         display: 'flex', 
@@ -439,7 +501,18 @@ export default function DashboardClient({ initialJobs, userRole }) {
                 </div>
             </div>
 
-            {(grouping === 'none' || grouping === 'incomplete') ? (
+            {viewMode === 'gantt' ? (
+                <div style={{ marginTop: '0.5rem' }}>
+                    <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={[]} />
+                    {jobs.filter(j => j.scheduled_date).length === 0 && (
+                        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📊</div>
+                            <p>No jobs with scheduled dates to display on the Gantt.</p>
+                            <p style={{ fontSize: '0.85rem', marginTop: '0.4rem' }}>Add a scheduled date to your jobs to see them here.</p>
+                        </div>
+                    )}
+                </div>
+            ) : (grouping === 'none' || grouping === 'incomplete') ? (
                 viewMode === 'grid' ? (
                     renderGridTable(jobs)
                 ) : (

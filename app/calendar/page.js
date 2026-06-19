@@ -59,32 +59,36 @@ export default async function CalendarPage() {
     }));
 
     return (
-        <div className="container" style={{ paddingBottom: '4rem' }}>
+        <div style={{ padding: '0 1.5rem 4rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
             <Header userRole={userRole} />
 
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '1.5rem',
+                marginBottom: '1.25rem',
+                marginTop: '0.5rem',
             }}>
                 <div>
-                    <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>
                         🗓️ Calendar
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        Full-screen monthly calendar · Drag &amp; drop to reschedule
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                        Full-screen monthly &amp; weekly calendar · Drag &amp; drop to reschedule · Right-click for options
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <Link href="/schedule" className="btn" style={{ fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <Link href="/gantt" className="btn" style={{ fontSize: '0.82rem' }}>
+                        📊 Gantt View
+                    </Link>
+                    <Link href="/schedule" className="btn" style={{ fontSize: '0.82rem' }}>
                         📅 Schedule
                     </Link>
-                    <Link href="/schedule/v2" className="btn" style={{ fontSize: '0.85rem' }}>
-                        📊 Spreadsheet
+                    <Link href="/schedule/v2" className="btn" style={{ fontSize: '0.82rem' }}>
+                        🗃️ Spreadsheet
                     </Link>
                     <Link href="/jobs/new" className="btn btn-primary">
-                        + Add Job
+                        + New Job
                     </Link>
                 </div>
             </div>
