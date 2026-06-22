@@ -131,6 +131,8 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
     const [dragState, setDragState] = useState(null);
     const [colWidths, setColWidths] = useState(DEFAULT_COLS.map(c => c.width));
     const [colResizing, setColResizing] = useState(null); // { colIndex, startX, startWidth }
+    const [sortCol, setSortCol] = useState(null); // column key to sort by
+    const [sortDir, setSortDir] = useState('asc'); // 'asc' or 'desc'
     const GRID_COLS = DEFAULT_COLS.map((c, i) => ({ ...c, width: colWidths[i] }));
     const currentGridW = colWidths.reduce((sum, w) => sum + w, 0);
     const [dividerX, setDividerX] = useState(DEFAULT_GRID_W);
@@ -282,10 +284,70 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
 
     const filtered = jobs.filter(j => j.scheduled_date);
 
+    // --- Sort logic ---
+    const handleSort = (colKey) => {
+        if (sortCol === colKey) {
+            setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortCol(colKey);
+            setSortDir('asc');
+        }
+    };
+
+    const sortedFiltered = useMemo(() => {
+        if (!sortCol) return filtered;
+        const sorted = [...filtered].sort((a, b) => {
+            let valA, valB;
+            switch (sortCol) {
+                case 'title':
+                    valA = (a.title || '').toLowerCase();
+                    valB = (b.title || '').toLowerCase();
+                    break;
+                case 'customer':
+                    valA = (a.customer?.name || '').toLowerCase();
+                    valB = (b.customer?.name || '').toLowerCase();
+                    break;
+                case 'work':
+                    valA = a.estimated_hours || 0;
+                    valB = b.estimated_hours || 0;
+                    break;
+                case 'remaining':
+                    valA = Math.max(0, (a.estimated_hours || 0) - (a.actual_hours || 0));
+                    valB = Math.max(0, (b.estimated_hours || 0) - (b.actual_hours || 0));
+                    break;
+                case 'pct': {
+                    const estA = a.estimated_hours || 0, actA = a.actual_hours || 0;
+                    const estB = b.estimated_hours || 0, actB = b.actual_hours || 0;
+                    valA = a.status === 'Complete' ? 100 : (estA > 0 ? (actA / estA) * 100 : 0);
+                    valB = b.status === 'Complete' ? 100 : (estB > 0 ? (actB / estB) * 100 : 0);
+                    break;
+                }
+                case 'start':
+                    valA = a.scheduled_date || '';
+                    valB = b.scheduled_date || '';
+                    break;
+                case 'finish':
+                    valA = a.due_date || '';
+                    valB = b.due_date || '';
+                    break;
+                case 'status':
+                    valA = (a.status || '').toLowerCase();
+                    valB = (b.status || '').toLowerCase();
+                    break;
+                default:
+                    return 0;
+            }
+            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+        return sorted;
+    }, [filtered, sortCol, sortDir]);
+
     // Compute timeline bounds
     const { rangeStart, totalDays } = useMemo(() => {
         const dates = [];
-        filtered.forEach(j => {
+        sortedFiltered.forEach(j => {
             const s = parseLocalDate(j.scheduled_date);
             const e = parseLocalDate(j.due_date) || s;
             if (s) dates.push(s.getTime(), (e || s).getTime());
@@ -305,7 +367,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
         const end = addDays(new Date(maxT), 5);
         const days = Math.max(diffDays(end, start) + 1, 30);
         return { rangeStart: start, totalDays: days };
-    }, [filtered, milestones, zoom]);
+    }, [sortedFiltered, milestones, zoom]);
 
     const timelineW = totalDays * px;
 
@@ -333,7 +395,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
         // Milestones row
         if (milestones.length > 0) out.push({ type: 'milestones' });
 
-        filtered.forEach((job, idx) => {
+        sortedFiltered.forEach((job, idx) => {
             const isExpanded = expandedJobs.has(job.id);
             const hasSubTasks = Array.isArray(job.sub_tasks) && job.sub_tasks.length > 0;
             out.push({ type: 'job', job, idx, isExpanded, hasSubTasks });
@@ -344,7 +406,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
             }
         });
         return out;
-    }, [filtered, expandedJobs, milestones]);
+    }, [sortedFiltered, expandedJobs, milestones]);
 
     const totalH = HEADER_H + rows.length * ROW_H + 4;
 
@@ -608,10 +670,21 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                                         width: col.width, flexShrink: 0, display: 'flex', alignItems: 'center',
                                         justifyContent: col.align === 'center' ? 'center' : 'flex-start',
                                         padding: '0 6px', fontSize: '0.6rem', fontWeight: 700,
-                                        color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.04em',
-                                        position: 'relative', userSelect: 'none'
-                                    }}>
+                                        color: sortCol === col.key ? '#fff' : 'rgba(255,255,255,0.4)',
+                                        textTransform: 'uppercase', letterSpacing: '0.04em',
+                                        position: 'relative', userSelect: 'none', cursor: 'pointer',
+                                        background: sortCol === col.key ? 'rgba(159,18,57,0.15)' : 'transparent',
+                                        transition: 'background 0.15s'
+                                    }}
+                                    onClick={() => handleSort(col.key)}
+                                    title={`Sort by ${col.label}`}
+                                    >
                                         {col.label}
+                                        {sortCol === col.key && (
+                                            <span style={{ marginLeft: '3px', fontSize: '0.55rem', color: '#f43f5e' }}>
+                                                {sortDir === 'asc' ? '▲' : '▼'}
+                                            </span>
+                                        )}
                                         {/* Column resize handle */}
                                         <div
                                             onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setColResizing({ colIndex: colIdx, startX: e.clientX, startWidth: col.width }); }}
