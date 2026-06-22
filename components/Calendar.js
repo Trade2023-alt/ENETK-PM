@@ -191,6 +191,8 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
     const [quickAddJobId, setQuickAddJobId] = useState('');
     const [quickAddAssignees, setQuickAddAssignees] = useState([]);
     const [quickAddPriority, setQuickAddPriority] = useState('Normal');
+    const [draggedOverJobId, setDraggedOverJobId] = useState(null);
+    const [jobSearch, setJobSearch] = useState('');
 
     useEffect(() => {
         if (jobs && jobs.length > 0 && !quickAddJobId) {
@@ -507,6 +509,18 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                 }
                 router.refresh();
                 addToast('Date updated');
+            } else if (dragData.type === 'create_event') {
+                setIsUpdating(true);
+                const subData = {
+                    job_id: null,
+                    title: 'New Event',
+                    status: 'Pending',
+                    priority: 'Normal',
+                    due_date: dateKey
+                };
+                await insertSubTaskSafely(subData);
+                router.refresh();
+                addToast('Event created successfully');
             }
         } catch (err) {
             console.error('Error updating item date via drag & drop:', err);
@@ -571,6 +585,78 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         }
     };
 
+    const handleDropTaskOnJob = async (e, jobId) => {
+        e.preventDefault();
+        try {
+            const dataStr = e.dataTransfer.getData('application/json');
+            if (!dataStr) return;
+            const dragData = JSON.parse(dataStr);
+            if (dragData.type === 'item' && dragData.itemType === 'subtask') {
+                setIsUpdating(true);
+                const { error } = await supabase
+                    .from('sub_tasks')
+                    .update({ job_id: jobId, updated_at: new Date().toISOString() })
+                    .eq('id', dragData.itemId);
+                if (error) throw error;
+                router.refresh();
+                addToast('Event assigned to project successfully');
+            }
+        } catch (err) {
+            console.error('Error assigning subtask to job via drag & drop:', err);
+            addToast('Failed to assign project: ' + err.message, 'error');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleRenameTask = async (item) => {
+        setContextMenu(null);
+        const newTitle = prompt('Enter new title for this task:', item.title);
+        if (newTitle === null) return;
+        if (!newTitle.trim()) {
+            alert('Title cannot be empty.');
+            return;
+        }
+        setIsUpdating(true);
+        try {
+            const { error } = await supabase
+                .from('sub_tasks')
+                .update({ title: newTitle.trim(), updated_at: new Date().toISOString() })
+                .eq('id', item.id);
+            if (error) throw error;
+            router.refresh();
+            addToast('Task renamed successfully');
+        } catch (err) {
+            console.error('Error renaming task:', err);
+            addToast('Failed to rename task: ' + err.message, 'error');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleDeleteTask = async (item) => {
+        setContextMenu(null);
+        if (!confirm(`Are you sure you want to delete "${item.title}"?`)) return;
+        setIsUpdating(true);
+        try {
+            // Delete assignments first
+            await supabase.from('sub_task_assignments').delete().eq('sub_task_id', item.id);
+            // Delete subtask
+            const { error } = await supabase
+                .from('sub_tasks')
+                .delete()
+                .eq('id', item.id);
+            if (error) throw error;
+            router.refresh();
+            addToast('Event deleted successfully');
+        } catch (err) {
+            console.error('Error deleting subtask:', err);
+            addToast('Failed to delete event: ' + err.message, 'error');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     const nextMonth = () => setMonthOffset(prev => prev + 1);
     const prevMonth = () => setMonthOffset(prev => prev - 1);
     const resetMonth = () => { setMonthOffset(0); setWeekOffset(0); };
@@ -623,6 +709,10 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (!isJob && !item.job_id) {
+                        addToast('This is an unassigned event. Drag it to a project in the sidebar to assign it.', 'error');
+                        return;
+                    }
                     if (onJobSelect) {
                         onJobSelect(isJob ? item.id : item.job_id);
                     } else {
@@ -1141,9 +1231,27 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                             {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
                         </button>
 
-                        <button onClick={() => setShowQuickAddModal(true)} className="cal-header-btn" style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(159,18,57,0.15)', borderColor: 'rgba(159,18,57,0.4)', color: '#fda4af' }}>
+                        <div
+                            draggable
+                            onDragStart={(e) => {
+                                e.dataTransfer.setData('application/json', JSON.stringify({ type: 'create_event' }));
+                            }}
+                            onClick={() => setShowQuickAddModal(true)}
+                            className="cal-header-btn"
+                            style={{
+                                marginLeft: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                background: 'rgba(159,18,57,0.15)',
+                                borderColor: 'rgba(159,18,57,0.4)',
+                                color: '#fda4af',
+                                cursor: 'grab',
+                                userSelect: 'none'
+                            }}
+                        >
                             ➕ Unscheduled Event
-                        </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1202,32 +1310,150 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                     </div>
                 </div>
 
-                {/* Calendar Grid */}
-                {viewMode === 'month' ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--card-border)', gap: '1px' }}>
-                        {/* Day of week headers */}
-                        {DAY_LABELS.map((d, i) => (
-                            <div key={d} style={{
-                                padding: '0.6rem 0.5rem',
-                                background: 'rgba(255,255,255,0.03)',
-                                textAlign: 'center',
-                                fontSize: '0.78rem',
-                                fontWeight: 700,
-                                color: (i === 0 || i === 6) ? 'rgba(255,255,255,0.3)' : 'var(--text-muted)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em'
-                            }}>
-                                {d}
+                {/* Side-by-Side Calendar + Projects Sidebar Container */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--card-border)', alignItems: 'stretch' }}>
+                    {/* Calendar grid/view wrapper */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        {viewMode === 'month' ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--card-border)', gap: '1px' }}>
+                                {/* Day of week headers */}
+                                {DAY_LABELS.map((d, i) => (
+                                    <div key={d} style={{
+                                        padding: '0.6rem 0.5rem',
+                                        background: 'rgba(255,255,255,0.03)',
+                                        textAlign: 'center',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        color: (i === 0 || i === 6) ? 'rgba(255,255,255,0.3)' : 'var(--text-muted)',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em'
+                                    }}>
+                                        {d}
+                                    </div>
+                                ))}
+                                {/* Day cells */}
+                                {monthDays.map((day, idx) => (
+                                    <DayCell key={idx} day={day} />
+                                ))}
                             </div>
-                        ))}
-                        {/* Day cells */}
-                        {monthDays.map((day, idx) => (
-                            <DayCell key={idx} day={day} />
-                        ))}
+                        ) : (
+                            <WeekView />
+                        )}
                     </div>
-                ) : (
-                    <WeekView />
-                )}
+
+                    {/* Right Projects Sidebar */}
+                    <div style={{
+                        width: '260px',
+                        borderLeft: '1px solid var(--card-border)',
+                        background: 'rgba(255,255,255,0.015)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        flexShrink: 0
+                    }}>
+                        <div style={{
+                            padding: '0.75rem',
+                            borderBottom: '1px solid var(--card-border)',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            color: 'var(--text-muted)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
+                        }}>
+                            <span>📁 Assign to Project</span>
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="Search projects..."
+                                value={jobSearch}
+                                onChange={e => setJobSearch(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.3rem 0.6rem',
+                                    fontSize: '0.78rem',
+                                    height: '32px'
+                                }}
+                            />
+                        </div>
+                        <div style={{
+                            padding: '0.5rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem',
+                            overflowY: 'auto',
+                            flex: 1,
+                            maxHeight: isFullscreen ? 'calc(100vh - 320px)' : '750px'
+                        }}>
+                            {jobs
+                                .filter(job => {
+                                    if (!jobSearch) return true;
+                                    const term = jobSearch.toLowerCase();
+                                    return (
+                                        (job.title && job.title.toLowerCase().includes(term)) ||
+                                        (job.job_number && String(job.job_number).toLowerCase().includes(term))
+                                    );
+                                })
+                                .map(job => {
+                                    const isHovered = draggedOverJobId === job.id;
+                                    const statusColor = job.status === 'Complete' ? '#10b981' : 'var(--primary)';
+                                    return (
+                                        <div
+                                            key={job.id}
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDragEnter={() => setDraggedOverJobId(job.id)}
+                                            onDragLeave={() => setDraggedOverJobId(null)}
+                                            onDrop={async (e) => {
+                                                setDraggedOverJobId(null);
+                                                await handleDropTaskOnJob(e, job.id);
+                                            }}
+                                            style={{
+                                                padding: '0.6rem',
+                                                borderRadius: '8px',
+                                                background: isHovered ? 'rgba(159,18,57,0.15)' : 'rgba(255,255,255,0.03)',
+                                                border: `1px solid ${isHovered ? 'var(--primary)' : 'var(--card-border)'}`,
+                                                boxShadow: isHovered ? '0 0 10px rgba(159,18,57,0.3)' : 'none',
+                                                transition: 'all 0.15s',
+                                                cursor: 'default',
+                                                userSelect: 'none'
+                                            }}
+                                            onMouseEnter={e => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                            }}
+                                            onMouseLeave={e => {
+                                                e.currentTarget.style.background = isHovered ? 'rgba(159,18,57,0.15)' : 'rgba(255,255,255,0.03)';
+                                            }}
+                                        >
+                                            <div style={{
+                                                fontWeight: 600,
+                                                fontSize: '0.8rem',
+                                                color: '#f8fafc',
+                                                marginBottom: '0.2rem',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            }} title={job.title}>
+                                                {job.job_number ? `[${job.job_number}] ` : ''}{job.title}
+                                            </div>
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                fontSize: '0.68rem',
+                                                color: 'var(--text-muted)'
+                                            }}>
+                                                <span>Status: {job.status || 'Pending'}</span>
+                                                <span style={{
+                                                    color: statusColor,
+                                                    fontWeight: 700
+                                                }}>🔧</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            }
+                        </div>
+                    </div>
+                </div>
 
                 {/* Legend */}
                 <div style={{
@@ -1296,6 +1522,22 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                         </div>
                                     )}
                                 </div>
+                                {contextMenu.target.type === 'subtask' && (
+                                    <>
+                                        <div onClick={() => handleRenameTask(contextMenu.target)}
+                                            style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f8fafc', fontWeight: 500, transition: 'background 0.15s' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#334155'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                            ✏️ Rename Event
+                                        </div>
+                                        <div onClick={() => handleDeleteTask(contextMenu.target)}
+                                            style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', fontWeight: 500, transition: 'background 0.15s' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                            🗑️ Delete Event
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                         {contextMenu.type === 'day' && (
