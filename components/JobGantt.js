@@ -110,16 +110,16 @@ function EditableCell({ value, onSave, type = 'text', style = {}, options }) {
 }
 
 // Grid column config — mirrors MS Project layout
-const GRID_COLS = [
-    { key: 'title', label: 'Task Name', width: 220, align: 'left' },
-    { key: 'work', label: 'Work', width: 55, align: 'center' },
-    { key: 'remaining', label: 'Remaining', width: 65, align: 'center' },
-    { key: 'pct', label: '% Comp', width: 55, align: 'center' },
-    { key: 'start', label: 'Start', width: 90, align: 'center' },
-    { key: 'finish', label: 'Finish', width: 90, align: 'center' },
-    { key: 'status', label: 'Status', width: 80, align: 'center' },
+const DEFAULT_COLS = [
+    { key: 'title', label: 'Task Name', width: 220, minWidth: 100, align: 'left' },
+    { key: 'work', label: 'Work', width: 55, minWidth: 35, align: 'center' },
+    { key: 'remaining', label: 'Remaining', width: 65, minWidth: 40, align: 'center' },
+    { key: 'pct', label: '% Comp', width: 55, minWidth: 40, align: 'center' },
+    { key: 'start', label: 'Start', width: 90, minWidth: 50, align: 'center' },
+    { key: 'finish', label: 'Finish', width: 90, minWidth: 50, align: 'center' },
+    { key: 'status', label: 'Status', width: 80, minWidth: 50, align: 'center' },
 ];
-const GRID_W = GRID_COLS.reduce((sum, c) => sum + c.width, 0);
+const DEFAULT_GRID_W = DEFAULT_COLS.reduce((sum, c) => sum + c.width, 0);
 
 export default function JobGantt({ jobs = [], users = [], milestones = [], onJobSelect }) {
     const containerRef = useRef(null);
@@ -128,7 +128,11 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
     const [expandedJobs, setExpandedJobs] = useState(new Set());
     const router = useRouter();
     const [dragState, setDragState] = useState(null);
-    const [dividerX, setDividerX] = useState(GRID_W);
+    const [colWidths, setColWidths] = useState(DEFAULT_COLS.map(c => c.width));
+    const [colResizing, setColResizing] = useState(null); // { colIndex, startX, startWidth }
+    const GRID_COLS = DEFAULT_COLS.map((c, i) => ({ ...c, width: colWidths[i] }));
+    const currentGridW = colWidths.reduce((sum, w) => sum + w, 0);
+    const [dividerX, setDividerX] = useState(DEFAULT_GRID_W);
     const [draggingDivider, setDraggingDivider] = useState(false);
 
     useEffect(() => {
@@ -145,14 +149,41 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
         }
     };
 
-    // Resizable divider drag
+    // Column resize drag
+    useEffect(() => {
+        if (!colResizing) return;
+        const handleMove = (e) => {
+            const delta = e.clientX - colResizing.startX;
+            const newWidth = Math.max(DEFAULT_COLS[colResizing.colIndex].minWidth, colResizing.startWidth + delta);
+            setColWidths(prev => {
+                const next = [...prev];
+                next[colResizing.colIndex] = newWidth;
+                return next;
+            });
+        };
+        const handleUp = () => {
+            // Update divider position to match new total grid width
+            setDividerX(colWidths.reduce((sum, w) => sum + w, 0));
+            setColResizing(null);
+        };
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleUp);
+        return () => { window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleUp); };
+    }, [colResizing, colWidths]);
+
+    // Keep divider in sync with column widths
+    useEffect(() => {
+        setDividerX(colWidths.reduce((sum, w) => sum + w, 0));
+    }, [colWidths]);
+
+    // Resizable divider drag (between grid and timeline)
     useEffect(() => {
         if (!draggingDivider) return;
         const handleMove = (e) => {
             const rect = containerRef.current?.getBoundingClientRect();
             if (!rect) return;
             const x = e.clientX - rect.left;
-            setDividerX(Math.max(300, Math.min(x, rect.width - 200)));
+            setDividerX(Math.max(200, Math.min(x, rect.width - 200)));
         };
         const handleUp = () => setDraggingDivider(false);
         window.addEventListener('mousemove', handleMove);
@@ -564,15 +595,28 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                         <div style={{ width: `${dividerX}px`, flexShrink: 0, position: 'sticky', left: 0, zIndex: 5, background: '#1a0508' }}>
                             {/* Grid header */}
                             <div style={{ display: 'flex', height: `${HEADER_H}px`, borderBottom: '1px solid rgba(255,255,255,0.1)', background: '#161b22', position: 'sticky', top: 0, zIndex: 6 }}>
-                                {GRID_COLS.map(col => (
+                                {GRID_COLS.map((col, colIdx) => (
                                     <div key={col.key} style={{
                                         width: col.width, flexShrink: 0, display: 'flex', alignItems: 'center',
                                         justifyContent: col.align === 'center' ? 'center' : 'flex-start',
                                         padding: '0 6px', fontSize: '0.6rem', fontWeight: 700,
                                         color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.04em',
-                                        borderRight: '1px solid rgba(255,255,255,0.05)'
+                                        position: 'relative', userSelect: 'none'
                                     }}>
                                         {col.label}
+                                        {/* Column resize handle */}
+                                        <div
+                                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setColResizing({ colIndex: colIdx, startX: e.clientX, startWidth: col.width }); }}
+                                            style={{
+                                                position: 'absolute', right: 0, top: 0, bottom: 0, width: '5px',
+                                                cursor: 'col-resize', background: colResizing?.colIndex === colIdx ? 'rgba(159,18,57,0.6)' : 'rgba(255,255,255,0.08)',
+                                                transition: colResizing ? 'none' : 'background 0.15s',
+                                                zIndex: 2
+                                            }}
+                                            onMouseEnter={(e) => { if (!colResizing) e.currentTarget.style.background = 'rgba(159,18,57,0.4)'; }}
+                                            onMouseLeave={(e) => { if (!colResizing) e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                                            title="Drag to resize column"
+                                        />
                                     </div>
                                 ))}
                             </div>
