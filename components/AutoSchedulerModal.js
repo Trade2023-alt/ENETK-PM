@@ -21,6 +21,7 @@ export default function AutoSchedulerModal({ users }) {
     const [selectedDupSubtasks, setSelectedDupSubtasks] = useState(new Set());
     const [dupRemoving, setDupRemoving] = useState(false);
     const [dupRemoveResult, setDupRemoveResult] = useState(null);
+    const [aiUsage, setAiUsage] = useState(null); // { inputTokens, outputTokens, cost }
 
     // Loading progress state
     const [elapsed, setElapsed] = useState(0);
@@ -49,6 +50,7 @@ export default function AutoSchedulerModal({ users }) {
             } else if (res.proposals) {
                 setJobProposals(res.proposals.job_proposals || []);
                 setSubtaskProposals(res.proposals.subtask_proposals || []);
+                if (res.usage) setAiUsage(res.usage);
             } else {
                 setError('Invalid response from AI');
             }
@@ -278,6 +280,16 @@ export default function AutoSchedulerModal({ users }) {
                                 {!isLoading && (jobProposals.length > 0 || subtaskProposals.length > 0) && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                                         
+                                        {/* Cost Banner */}
+                                        {aiUsage && (
+                                            <div style={{ display: 'flex', gap: '1rem', padding: '0.75rem 1rem', background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)', borderRadius: '8px', fontSize: '0.78rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <span style={{ fontWeight: 700, color: '#a855f7' }}>💰 AI Cost:</span>
+                                                <span style={{ color: 'var(--text-muted)' }}>Input: <strong style={{ color: '#60a5fa' }}>{aiUsage.inputTokens?.toLocaleString()}</strong> tokens</span>
+                                                <span style={{ color: 'var(--text-muted)' }}>Output: <strong style={{ color: '#60a5fa' }}>{aiUsage.outputTokens?.toLocaleString()}</strong> tokens</span>
+                                                <span style={{ color: '#10b981', fontWeight: 700, marginLeft: 'auto' }}>Total: ${aiUsage.cost?.toFixed(4)}</span>
+                                            </div>
+                                        )}
+
                                         {jobProposals.length > 0 && (
                                             <div>
                                                 <h3 style={{ marginBottom: '1rem' }}>Project Rescheduling Proposals</h3>

@@ -3,6 +3,11 @@
 import { supabase } from '@/lib/supabase';
 import Anthropic from '@anthropic-ai/sdk';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+
+// Claude Sonnet pricing per token
+const PRICE_INPUT = 3 / 1000000;
+const PRICE_OUTPUT = 15 / 1000000;
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -48,10 +53,12 @@ Users: id, n=username, r=role, resp=responsibility
 RULES:
 1. Remaining effort = estimated_hours - actual_hours.
 2. Respect due dates and milestones. Prioritize overdue and urgent items.
-3. Assign people based on their "responsibility" field. Re-assign if needed for balance.
-4. Don't over-schedule anyone. 
-5. Focus on the TOP 30 most important items needing schedule changes.
-6. Keep "reasoning" to MAX 15 words per item.
+3. CHASYN is for ENETK ESTIMATION ONLY — never assign Chasyn to non-estimation tasks.
+4. DO NOT change the lead/primary assignment on JOBS. Only re-assign SUBTASKS if it improves balance.
+5. Keep existing job assignments intact in job_proposals (use current assigned_user_ids).
+6. Don't over-schedule anyone.
+7. Focus on the TOP 30 most important items needing schedule changes.
+8. Keep "reasoning" to MAX 15 words per item.
 
 Return ONLY valid JSON, no markdown fences, no extra text:
 {"job_proposals":[{"job_id":1,"job_title":"str","proposed_scheduled_date":"YYYY-MM-DD","proposed_due_date":"YYYY-MM-DD","assigned_user_ids":[1],"reasoning":"str"}],"subtask_proposals":[{"subtask_id":1,"subtask_title":"str","job_id":1,"proposed_due_date":"YYYY-MM-DD","assigned_user_ids":[1],"reasoning":"str"}]}`;
@@ -72,12 +79,34 @@ Milestones: ${JSON.stringify(milestones || [])}`;
 
         let jsonStr = response.content[0].text.trim();
         
+        // Calculate cost
+        const inputTokens = response.usage?.input_tokens || 0;
+        const outputTokens = response.usage?.output_tokens || 0;
+        const cost = (inputTokens * PRICE_INPUT) + (outputTokens * PRICE_OUTPUT);
+
+        // Log to ai_usage table
+        try {
+            const cookieStore = await cookies();
+            const userId = cookieStore.get('user_id')?.value;
+            await supabase.from('ai_usage').insert({
+                user_id: userId ? Number(userId) : null,
+                model: response.model || 'claude-sonnet-4-5-20250929',
+                input_tokens: inputTokens,
+                output_tokens: outputTokens,
+                cost_usd: cost
+            });
+        } catch (logErr) {
+            console.warn('AI Usage logging failed:', logErr.message);
+        }
+
+        const usageInfo = { inputTokens, outputTokens, cost };
+        
         // Strip markdown fences if present
         jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
         
         // Try to parse as-is first
         try {
-            return { success: true, proposals: JSON.parse(jsonStr) };
+            return { success: true, proposals: JSON.parse(jsonStr), usage: usageInfo };
         } catch (parseErr) {
             // If truncated, try to salvage by closing open arrays/objects
             console.warn('Initial JSON parse failed, attempting repair...');
@@ -97,7 +126,7 @@ Milestones: ${JSON.stringify(milestones || [])}`;
             
             try {
                 const parsed = JSON.parse(repaired);
-                return { success: true, proposals: parsed };
+                return { success: true, proposals: parsed, usage: usageInfo };
             } catch (repairErr) {
                 console.error('JSON repair also failed:', repairErr.message);
                 return { error: `AI returned invalid JSON. Try again — the response may have been too large. (${parseErr.message})` };
