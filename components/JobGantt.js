@@ -205,7 +205,7 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
     const [dragState, setDragState] = useState(null);
     const [colWidths, setColWidths] = useState(DEFAULT_COLS.map(c => c.width));
     const [colResizing, setColResizing] = useState(null); // { colIndex, startX, startWidth }
-    const [sortCol, setSortCol] = useState(null); // column key to sort by
+    const [sortCol, setSortCol] = useState('start'); // column key to sort by
     const [sortDir, setSortDir] = useState('asc'); // 'asc' or 'desc'
     const GRID_COLS = DEFAULT_COLS.map((c, i) => ({ ...c, width: colWidths[i] }));
     const currentGridW = colWidths.reduce((sum, w) => sum + w, 0);
@@ -1104,7 +1104,7 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                         {/* RIGHT: Timeline */}
                         <div style={{ flexShrink: 0 }}>
                             {/* Timeline header */}
-                            <div style={{ position: 'sticky', top: 0, zIndex: 4, height: `${HEADER_H}px`, background: '#161b22', borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative', width: `${timelineW}px` }}>
+                            <div style={{ position: 'sticky', top: 0, zIndex: 4, height: `${HEADER_H}px`, background: '#161b22', borderBottom: '1px solid rgba(255,255,255,0.1)', width: `${timelineW}px` }}>
                                 {monthMarkers.map((m, i) => (
                                     <div key={i} style={{ position: 'absolute', left: `${m.left}px`, top: 0, height: '100%', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '4px', paddingTop: '8px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
                                         {m.label}
