@@ -205,7 +205,7 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
     const [dragState, setDragState] = useState(null);
     const [colWidths, setColWidths] = useState(DEFAULT_COLS.map(c => c.width));
     const [colResizing, setColResizing] = useState(null); // { colIndex, startX, startWidth }
-    const [sortCol, setSortCol] = useState('start'); // column key to sort by
+    const [sortCol, setSortCol] = useState('customer'); // column key to sort by
     const [sortDir, setSortDir] = useState('asc'); // 'asc' or 'desc'
     const GRID_COLS = DEFAULT_COLS.map((c, i) => ({ ...c, width: colWidths[i] }));
     const currentGridW = colWidths.reduce((sum, w) => sum + w, 0);
@@ -360,6 +360,15 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
         observer.observe(containerRef.current);
         return () => observer.disconnect();
     }, []);
+
+    const scrollContainerRef = useRef(null);
+    const hasScrolledToToday = useRef(false);
+    useEffect(() => {
+        if (scrollContainerRef.current && todayLeft !== null && !hasScrolledToToday.current) {
+            scrollContainerRef.current.scrollLeft = Math.max(0, todayLeft - 100);
+            hasScrolledToToday.current = true;
+        }
+    }, [todayLeft]);
 
     // Creation modal states
     const [showMilestoneModal, setShowMilestoneModal] = useState(false);
@@ -1040,7 +1049,7 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                     No scheduled jobs to display. Add scheduled dates to jobs to see them here.
                 </div>
             ) : (
-                <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+                <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
                     {/* Split pane: LEFT = data grid, RIGHT = timeline */}
                     <div style={{ display: 'flex', minWidth: `${dividerX + timelineW + 4}px`, position: 'relative' }}>
                         {/* LEFT: Editable Data Grid */}
