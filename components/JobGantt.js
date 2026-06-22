@@ -111,7 +111,8 @@ function EditableCell({ value, onSave, type = 'text', style = {}, options }) {
 
 // Grid column config — mirrors MS Project layout
 const DEFAULT_COLS = [
-    { key: 'title', label: 'Task Name', width: 220, minWidth: 100, align: 'left' },
+    { key: 'title', label: 'Task Name', width: 200, minWidth: 100, align: 'left' },
+    { key: 'customer', label: 'Customer', width: 110, minWidth: 60, align: 'left' },
     { key: 'work', label: 'Work', width: 55, minWidth: 35, align: 'center' },
     { key: 'remaining', label: 'Remaining', width: 65, minWidth: 40, align: 'center' },
     { key: 'pct', label: '% Comp', width: 55, minWidth: 40, align: 'center' },
@@ -385,31 +386,35 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                             </Link>
                         )}
                     </div>
+                    {/* Customer */}
+                    <div style={{ width: GRID_COLS[1].width, flexShrink: 0, padding: '0 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: '#60a5fa', fontSize: '0.68rem' }}>
+                        {job.customer_name || '—'}
+                    </div>
                     {/* Work (Est Hrs) */}
-                    <div style={{ width: GRID_COLS[1].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={estHrs} type="number" onSave={(v) => saveJobField(job.id, 'estimated_hours', v)} />
                     </div>
                     {/* Remaining */}
-                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <div style={{ width: GRID_COLS[3].width, flexShrink: 0, padding: '0 4px', textAlign: 'center', color: 'var(--text-muted)' }}>
                         {remaining}h
                     </div>
                     {/* % Complete */}
-                    <div style={{ width: GRID_COLS[3].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[4].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden', height: '14px', position: 'relative' }}>
                             <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: pct >= 100 ? '#059669' : pct > 0 ? '#d97706' : 'transparent', transition: 'width 0.3s' }} />
                             <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{pct}%</span>
                         </div>
                     </div>
                     {/* Start */}
-                    <div style={{ width: GRID_COLS[4].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[5].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={job.scheduled_date || ''} type="date" onSave={(v) => saveJobField(job.id, 'scheduled_date', v)} />
                     </div>
                     {/* Finish */}
-                    <div style={{ width: GRID_COLS[5].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[6].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={job.due_date || ''} type="date" onSave={(v) => saveJobField(job.id, 'due_date', v)} />
                     </div>
                     {/* Status */}
-                    <div style={{ width: GRID_COLS[6].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[7].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={job.status} type="select" options={['Scheduled', 'In Progress', 'Complete']} onSave={(v) => saveJobField(job.id, 'status', v)} style={{ fontSize: '0.68rem', color: STATUS_COLOR[job.status] || 'inherit', fontWeight: 700 }} />
                     </div>
                 </div>
@@ -429,31 +434,34 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                     <div style={{ width: GRID_COLS[0].width, flexShrink: 0, padding: '0 4px 0 28px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.7)' }}>
                         ↳ {st.title || 'Untitled'}
                     </div>
+                    {/* Customer (inherit from parent job) */}
+                    <div style={{ width: GRID_COLS[1].width, flexShrink: 0, padding: '0 4px', color: 'var(--text-muted)', fontSize: '0.62rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    </div>
                     {/* Work */}
-                    <div style={{ width: GRID_COLS[1].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={estHrs} type="number" onSave={(v) => saveSubTaskField(st.id, 'estimated_hours', v)} />
                     </div>
                     {/* Remaining */}
-                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <div style={{ width: GRID_COLS[3].width, flexShrink: 0, padding: '0 4px', textAlign: 'center', color: 'var(--text-muted)' }}>
                         {remaining}h
                     </div>
                     {/* % */}
-                    <div style={{ width: GRID_COLS[3].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[4].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden', height: '12px', position: 'relative' }}>
                             <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: pct >= 100 ? '#059669' : pct > 0 ? '#d97706' : 'transparent' }} />
                             <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{pct}%</span>
                         </div>
                     </div>
                     {/* Start */}
-                    <div style={{ width: GRID_COLS[4].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[5].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={st.start_date || ''} type="date" onSave={(v) => saveSubTaskField(st.id, 'start_date', v)} />
                     </div>
                     {/* Finish */}
-                    <div style={{ width: GRID_COLS[5].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[6].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={st.due_date || ''} type="date" onSave={(v) => saveSubTaskField(st.id, 'due_date', v)} />
                     </div>
                     {/* Status */}
-                    <div style={{ width: GRID_COLS[6].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
+                    <div style={{ width: GRID_COLS[7].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={st.status} type="select" options={['Scheduled', 'In Progress', 'Complete']} onSave={(v) => saveSubTaskField(st.id, 'status', v)} style={{ fontSize: '0.65rem', color: STATUS_COLOR[st.status] || 'inherit', fontWeight: 700 }} />
                     </div>
                 </div>
