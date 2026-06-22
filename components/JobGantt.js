@@ -966,6 +966,47 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                         ↳ + Sub Task
                     </button>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255,255,255,0.04)', padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid var(--card-border)' }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Sort:</span>
+                    <select
+                        value={sortCol || ''}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                                setSortCol(val);
+                                setSortDir('asc');
+                            } else {
+                                setSortCol(null);
+                            }
+                        }}
+                        style={{
+                            background: 'transparent', border: 'none', color: 'var(--foreground)',
+                            fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', outline: 'none'
+                        }}
+                    >
+                        <option value="" style={{ background: '#1a0508' }}>Default (Start)</option>
+                        <option value="title" style={{ background: '#1a0508' }}>Task Name</option>
+                        <option value="customer" style={{ background: '#1a0508' }}>Customer</option>
+                        <option value="assigned" style={{ background: '#1a0508' }}>Assigned To</option>
+                        <option value="status" style={{ background: '#1a0508' }}>Status</option>
+                        <option value="work" style={{ background: '#1a0508' }}>Work</option>
+                        <option value="remaining" style={{ background: '#1a0508' }}>Remaining</option>
+                        <option value="pct" style={{ background: '#1a0508' }}>% Comp</option>
+                    </select>
+                    {sortCol && (
+                        <button
+                            type="button"
+                            onClick={() => setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            style={{
+                                background: 'rgba(255,255,255,0.08)', border: 'none',
+                                borderRadius: '4px', padding: '0.1rem 0.3rem', color: '#fff',
+                                fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer'
+                            }}
+                        >
+                            {sortDir === 'asc' ? '▲' : '▼'}
+                        </button>
+                    )}
+                </div>
                 <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', padding: '2px', border: '1px solid var(--card-border)' }}>
                     {['Day', 'Week', 'Month'].map(z => (
                         <button
@@ -1021,11 +1062,9 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                                     title={`Sort by ${col.label}`}
                                     >
                                         {col.label}
-                                        {sortCol === col.key && (
-                                            <span style={{ marginLeft: '3px', fontSize: '0.55rem', color: '#f43f5e' }}>
-                                                {sortDir === 'asc' ? '▲' : '▼'}
-                                            </span>
-                                        )}
+                                        <span style={{ marginLeft: '3px', fontSize: '0.55rem', color: sortCol === col.key ? '#f43f5e' : 'rgba(255,255,255,0.18)' }}>
+                                            {sortCol === col.key ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                                        </span>
                                         {/* Column resize handle */}
                                         <div
                                             onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setColResizing({ colIndex: colIdx, startX: e.clientX, startWidth: col.width }); }}
