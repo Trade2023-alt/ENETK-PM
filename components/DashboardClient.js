@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { updateJobStatus } from '@/app/actions/updateJob';
 import { deleteJob } from '@/app/actions/deleteJob';
 
-export default function DashboardClient({ initialJobs, userRole, users = [], customers = [], subTasks = [], onCallSchedule = [], currentUser = null, initialViewMode = null }) {
+export default function DashboardClient({ initialJobs, userRole, users = [], customers = [], subTasks = [], onCallSchedule = [], currentUser = null, initialViewMode = null, milestones = [] }) {
     const router = useRouter();
     const isAdmin = userRole === 'admin' || userRole === 'system_integrator';
     const [grouping, setGrouping] = useState('customer'); // none, customer, status, assigned
@@ -708,7 +708,7 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                         <AutoSchedulerModal users={users || []} />
                         <MSProjectImporter users={users || []} />
                     </div>
-                    <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={users} onJobSelect={(id) => setSelectedJobId(id)} />
+                    <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={users} customers={customers} milestones={milestones} onJobSelect={(id) => setSelectedJobId(id)} />
                     {jobs.filter(j => j.scheduled_date).length === 0 && (
                         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📊</div>

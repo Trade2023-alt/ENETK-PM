@@ -215,6 +215,141 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
     // Dynamic width tracking
     const [containerWidth, setContainerWidth] = useState(1200);
 
+    const filtered = useMemo(() => jobs.filter(j => j.scheduled_date), [jobs]);
+
+    const sortedFiltered = useMemo(() => {
+        if (!sortCol) return filtered;
+        const sorted = [...filtered].sort((a, b) => {
+            let valA, valB;
+            switch (sortCol) {
+                case 'title':
+                    valA = (a.title || '').toLowerCase();
+                    valB = (b.title || '').toLowerCase();
+                    break;
+                case 'customer':
+                    valA = (a.customer?.name || '').toLowerCase();
+                    valB = (b.customer?.name || '').toLowerCase();
+                    break;
+                case 'work':
+                    valA = a.estimated_hours || 0;
+                    valB = b.estimated_hours || 0;
+                    break;
+                case 'remaining':
+                    valA = Math.max(0, (a.estimated_hours || 0) - (a.actual_hours || 0));
+                    valB = Math.max(0, (b.estimated_hours || 0) - (b.actual_hours || 0));
+                    break;
+                case 'pct': {
+                    const estA = a.estimated_hours || 0, actA = a.actual_hours || 0;
+                    const estB = b.estimated_hours || 0, actB = b.actual_hours || 0;
+                    valA = a.status === 'Complete' ? 100 : (estA > 0 ? (actA / estA) * 100 : 0);
+                    valB = b.status === 'Complete' ? 100 : (estB > 0 ? (actB / estB) * 100 : 0);
+                    break;
+                }
+                case 'start':
+                    valA = a.scheduled_date || '';
+                    valB = b.scheduled_date || '';
+                    break;
+                case 'finish':
+                    valA = a.due_date || '';
+                    valB = b.due_date || '';
+                    break;
+                case 'status':
+                    valA = (a.status || '').toLowerCase();
+                    valB = (b.status || '').toLowerCase();
+                    break;
+                case 'assigned': {
+                    const getAssigned = (j) => (j.assignments || []).map(a => a.user?.username || '').join(', ').toLowerCase();
+                    valA = getAssigned(a);
+                    valB = getAssigned(b);
+                    break;
+                }
+                default:
+                    return 0;
+            }
+            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+        return sorted;
+    }, [filtered, sortCol, sortDir]);
+
+    // Compute timeline bounds
+    const { rangeStart, totalDays } = useMemo(() => {
+        const dates = [];
+        sortedFiltered.forEach(j => {
+            const s = parseLocalDate(j.scheduled_date);
+            const e = parseLocalDate(j.due_date) || s;
+            if (s) dates.push(s.getTime(), (e || s).getTime());
+            if (Array.isArray(j.additional_dates)) j.additional_dates.forEach(d => { const pd = parseLocalDate(d); if (pd) dates.push(pd.getTime()); });
+            if (Array.isArray(j.sub_tasks)) {
+                j.sub_tasks.forEach(st => {
+                    const sts = parseLocalDate(st.start_date); const ste = parseLocalDate(st.due_date) || sts;
+                    if (sts) dates.push(sts.getTime(), (ste || sts).getTime());
+                    if (Array.isArray(st.additional_dates)) st.additional_dates.forEach(d => { const pd = parseLocalDate(d); if (pd) dates.push(pd.getTime()); });
+                });
+            }
+        });
+        milestones.forEach(m => { const d = parseLocalDate(m.end_date || m.start_date); if (d) dates.push(d.getTime()); });
+        if (dates.length === 0) { const today = new Date(); today.setHours(0,0,0,0); return { rangeStart: addDays(today, -7), totalDays: 60 }; }
+        const minT = Math.min(...dates), maxT = Math.max(...dates);
+        const start = addDays(new Date(minT), -5); start.setHours(0,0,0,0);
+        const end = addDays(new Date(maxT), 5);
+        const days = Math.max(diffDays(end, start) + 1, 30);
+        return { rangeStart: start, totalDays: days };
+    }, [sortedFiltered, milestones, zoom]);
+
+    const basePx = PX[zoom];
+    const visibleTimelineW = Math.max(0, containerWidth - dividerX - 24);
+    const px = useMemo(() => {
+        const defaultW = totalDays * basePx;
+        if (defaultW < visibleTimelineW) {
+            return visibleTimelineW / totalDays;
+        }
+        return basePx;
+    }, [zoom, totalDays, visibleTimelineW, basePx]);
+
+    const timelineW = totalDays * px;
+
+    const monthMarkers = useMemo(() => {
+        const out = [];
+        const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+        while (diffDays(cur, rangeStart) < totalDays) {
+            const off = diffDays(cur, rangeStart);
+            if (off >= 0) out.push({ left: off * px, label: cur.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) });
+            cur.setMonth(cur.getMonth() + 1);
+        }
+        return out;
+    }, [rangeStart, totalDays, px]);
+
+    const todayLeft = useMemo(() => {
+        const today = new Date(); today.setHours(0,0,0,0);
+        const off = diffDays(today, rangeStart);
+        if (off < 0 || off > totalDays) return null;
+        return off * px;
+    }, [rangeStart, totalDays, px]);
+
+    // Build flat rows list for rendering
+    const rows = useMemo(() => {
+        const out = [];
+        // Milestones row
+        if (milestones.length > 0) out.push({ type: 'milestones' });
+
+        sortedFiltered.forEach((job, idx) => {
+            const isExpanded = expandedJobs.has(job.id);
+            const hasSubTasks = Array.isArray(job.sub_tasks) && job.sub_tasks.length > 0;
+            out.push({ type: 'job', job, idx, isExpanded, hasSubTasks });
+            if (isExpanded && hasSubTasks) {
+                job.sub_tasks.forEach((st, stIdx) => {
+                    out.push({ type: 'subtask', st, job, stIdx });
+                });
+            }
+        });
+        return out;
+    }, [sortedFiltered, expandedJobs, milestones]);
+
+    const totalH = HEADER_H + rows.length * ROW_H + 4;
+
+
     useEffect(() => {
         if (!containerRef.current) return;
         const observer = new ResizeObserver((entries) => {
@@ -515,149 +650,7 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
         }
     };
 
-    const filtered = jobs.filter(j => j.scheduled_date);
 
-    // --- Sort logic ---
-    const handleSort = (colKey) => {
-        if (sortCol === colKey) {
-            setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortCol(colKey);
-            setSortDir('asc');
-        }
-    };
-
-    const sortedFiltered = useMemo(() => {
-        if (!sortCol) return filtered;
-        const sorted = [...filtered].sort((a, b) => {
-            let valA, valB;
-            switch (sortCol) {
-                case 'title':
-                    valA = (a.title || '').toLowerCase();
-                    valB = (b.title || '').toLowerCase();
-                    break;
-                case 'customer':
-                    valA = (a.customer?.name || '').toLowerCase();
-                    valB = (b.customer?.name || '').toLowerCase();
-                    break;
-                case 'work':
-                    valA = a.estimated_hours || 0;
-                    valB = b.estimated_hours || 0;
-                    break;
-                case 'remaining':
-                    valA = Math.max(0, (a.estimated_hours || 0) - (a.actual_hours || 0));
-                    valB = Math.max(0, (b.estimated_hours || 0) - (b.actual_hours || 0));
-                    break;
-                case 'pct': {
-                    const estA = a.estimated_hours || 0, actA = a.actual_hours || 0;
-                    const estB = b.estimated_hours || 0, actB = b.actual_hours || 0;
-                    valA = a.status === 'Complete' ? 100 : (estA > 0 ? (actA / estA) * 100 : 0);
-                    valB = b.status === 'Complete' ? 100 : (estB > 0 ? (actB / estB) * 100 : 0);
-                    break;
-                }
-                case 'start':
-                    valA = a.scheduled_date || '';
-                    valB = b.scheduled_date || '';
-                    break;
-                case 'finish':
-                    valA = a.due_date || '';
-                    valB = b.due_date || '';
-                    break;
-                case 'status':
-                    valA = (a.status || '').toLowerCase();
-                    valB = (b.status || '').toLowerCase();
-                    break;
-                case 'assigned': {
-                    const getAssigned = (j) => (j.assignments || []).map(a => a.user?.username || '').join(', ').toLowerCase();
-                    valA = getAssigned(a);
-                    valB = getAssigned(b);
-                    break;
-                }
-                default:
-                    return 0;
-            }
-            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
-            return 0;
-        });
-        return sorted;
-    }, [filtered, sortCol, sortDir]);
-
-    // Compute timeline bounds
-    const { rangeStart, totalDays } = useMemo(() => {
-        const dates = [];
-        sortedFiltered.forEach(j => {
-            const s = parseLocalDate(j.scheduled_date);
-            const e = parseLocalDate(j.due_date) || s;
-            if (s) dates.push(s.getTime(), (e || s).getTime());
-            if (Array.isArray(j.additional_dates)) j.additional_dates.forEach(d => { const pd = parseLocalDate(d); if (pd) dates.push(pd.getTime()); });
-            if (Array.isArray(j.sub_tasks)) {
-                j.sub_tasks.forEach(st => {
-                    const sts = parseLocalDate(st.start_date); const ste = parseLocalDate(st.due_date) || sts;
-                    if (sts) dates.push(sts.getTime(), (ste || sts).getTime());
-                    if (Array.isArray(st.additional_dates)) st.additional_dates.forEach(d => { const pd = parseLocalDate(d); if (pd) dates.push(pd.getTime()); });
-                });
-            }
-        });
-        milestones.forEach(m => { const d = parseLocalDate(m.end_date || m.start_date); if (d) dates.push(d.getTime()); });
-        if (dates.length === 0) { const today = new Date(); today.setHours(0,0,0,0); return { rangeStart: addDays(today, -7), totalDays: 60 }; }
-        const minT = Math.min(...dates), maxT = Math.max(...dates);
-        const start = addDays(new Date(minT), -5); start.setHours(0,0,0,0);
-        const end = addDays(new Date(maxT), 5);
-        const days = Math.max(diffDays(end, start) + 1, 30);
-        return { rangeStart: start, totalDays: days };
-    }, [sortedFiltered, milestones, zoom]);
-
-    const basePx = PX[zoom];
-    const visibleTimelineW = Math.max(0, containerWidth - dividerX - 24);
-    const px = useMemo(() => {
-        const defaultW = totalDays * basePx;
-        if (defaultW < visibleTimelineW) {
-            return visibleTimelineW / totalDays;
-        }
-        return basePx;
-    }, [zoom, totalDays, visibleTimelineW, basePx]);
-
-    const timelineW = totalDays * px;
-
-    const monthMarkers = useMemo(() => {
-        const out = [];
-        const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
-        while (diffDays(cur, rangeStart) < totalDays) {
-            const off = diffDays(cur, rangeStart);
-            if (off >= 0) out.push({ left: off * px, label: cur.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) });
-            cur.setMonth(cur.getMonth() + 1);
-        }
-        return out;
-    }, [rangeStart, totalDays, px]);
-
-    const todayLeft = useMemo(() => {
-        const today = new Date(); today.setHours(0,0,0,0);
-        const off = diffDays(today, rangeStart);
-        if (off < 0 || off > totalDays) return null;
-        return off * px;
-    }, [rangeStart, totalDays, px]);
-
-    // Build flat rows list for rendering
-    const rows = useMemo(() => {
-        const out = [];
-        // Milestones row
-        if (milestones.length > 0) out.push({ type: 'milestones' });
-
-        sortedFiltered.forEach((job, idx) => {
-            const isExpanded = expandedJobs.has(job.id);
-            const hasSubTasks = Array.isArray(job.sub_tasks) && job.sub_tasks.length > 0;
-            out.push({ type: 'job', job, idx, isExpanded, hasSubTasks });
-            if (isExpanded && hasSubTasks) {
-                job.sub_tasks.forEach((st, stIdx) => {
-                    out.push({ type: 'subtask', st, job, stIdx });
-                });
-            }
-        });
-        return out;
-    }, [sortedFiltered, expandedJobs, milestones]);
-
-    const totalH = HEADER_H + rows.length * ROW_H + 4;
 
     // --- Render helper for a grid row (the left pane editable spreadsheet) ---
     const renderGridRow = (row) => {

@@ -110,11 +110,11 @@ export default async function Home({ searchParams }) {
     console.error('Error fetching jobs:', error);
   }
 
-  // Fetch additional data required for Calendar and Spreadsheet unified tabs
   let users = [];
   let subTasks = [];
   let customers = [];
   let onCallSchedule = [];
+  let milestones = [];
 
   try {
     const [{ data: usersData }, { data: subTasksRaw }, { data: customersData }] = await Promise.all([
@@ -132,6 +132,16 @@ export default async function Home({ searchParams }) {
 
     const today = new Date();
     onCallSchedule = await getOnCallScheduleForMonth(today.getFullYear(), today.getMonth());
+
+    try {
+      const { data: milestonesRaw } = await supabase
+          .from('roadmap_milestones')
+          .select('*, job:jobs(id, title, status)')
+          .order('end_date', { ascending: true });
+      milestones = milestonesRaw || [];
+    } catch (e) {
+      console.error('Error fetching milestones on dashboard:', e);
+    }
   } catch (error) {
     console.error('Error fetching supplementary dashboard data:', error);
   }
@@ -196,6 +206,7 @@ export default async function Home({ searchParams }) {
           onCallSchedule={onCallSchedule}
           currentUser={{ ...(userProfile || {}), id: userId }}
           initialViewMode={initialViewMode}
+          milestones={milestones}
         />
       )}
     </div>
