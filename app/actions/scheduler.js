@@ -24,43 +24,85 @@ export async function generateSchedulePreview() {
         // 3. Fetch Milestones
         const { data: milestones } = await supabase.from('roadmap_milestones').select('id, job_id, title, start_date, end_date');
 
-        // 4. Send to Claude
-        const systemPrompt = `You are an expert project management AI for ENETK.
-Your task is to analyze the active jobs, subtasks, milestones, and team member responsibilities to generate an optimized schedule.
+        // 4. Compact data to reduce token usage — only send essential fields
+        const compactJobs = (jobs || []).map(j => ({
+            id: j.id, t: j.title, p: j.priority, eh: j.estimated_hours, ah: j.actual_hours,
+            sd: j.scheduled_date, dd: j.due_date, s: j.status
+        }));
+        const compactST = (subTasks || []).map(s => ({
+            id: s.id, jid: s.job_id, t: s.title, p: s.priority, eh: s.estimated_hours,
+            s: s.status, dd: s.due_date
+        }));
+        const compactUsers = (users || []).map(u => ({
+            id: u.id, n: u.username, r: u.role, resp: u.responsibility
+        }));
+
+        // 5. Send to Claude
+        const systemPrompt = `You are a project scheduling AI for ENETK electrical company.
+Analyze jobs, subtasks, milestones, and team to generate optimized schedule proposals.
+
+DATA KEY: Jobs: id, t=title, p=priority, eh=estimated_hours, ah=actual_hours, sd=scheduled_date, dd=due_date, s=status
+SubTasks: id, jid=job_id, t=title, p=priority, eh=estimated_hours, s=status, dd=due_date
+Users: id, n=username, r=role, resp=responsibility
 
 RULES:
-1. "estimated_hours" minus "actual_hours" equals remaining effort.
-2. Ensure dates respect due dates and milestones.
-3. Assign team members strictly based on their "responsibility" string if it exists (e.g., Chasyn for estimating, Bruce/Rami for SCADA, Seth is tech support).
-4. Do not over-schedule individuals.
-5. You are free to completely re-assign tasks to different team members if it results in a better fit or better load balancing.
+1. Remaining effort = estimated_hours - actual_hours.
+2. Respect due dates and milestones. Prioritize overdue and urgent items.
+3. Assign people based on their "responsibility" field. Re-assign if needed for balance.
+4. Don't over-schedule anyone. 
+5. Focus on the TOP 30 most important items needing schedule changes.
+6. Keep "reasoning" to MAX 15 words per item.
 
-Return ONLY a valid JSON object matching this schema, no markdown, no other text:
-{
-  "job_proposals": [
-    { "job_id": 1, "job_title": "string", "proposed_scheduled_date": "YYYY-MM-DD", "proposed_due_date": "YYYY-MM-DD", "assigned_user_ids": [1,2], "reasoning": "string" }
-  ],
-  "subtask_proposals": [
-    { "subtask_id": 1, "subtask_title": "string", "job_id": 1, "proposed_due_date": "YYYY-MM-DD", "assigned_user_ids": [1], "reasoning": "string" }
-  ]
-}`;
+Return ONLY valid JSON, no markdown fences, no extra text:
+{"job_proposals":[{"job_id":1,"job_title":"str","proposed_scheduled_date":"YYYY-MM-DD","proposed_due_date":"YYYY-MM-DD","assigned_user_ids":[1],"reasoning":"str"}],"subtask_proposals":[{"subtask_id":1,"subtask_title":"str","job_id":1,"proposed_due_date":"YYYY-MM-DD","assigned_user_ids":[1],"reasoning":"str"}]}`;
 
-        const prompt = `Data Context:
-Users: ${JSON.stringify(users)}
-Jobs: ${JSON.stringify(jobs)}
-SubTasks: ${JSON.stringify(subTasks)}
-Milestones: ${JSON.stringify(milestones)}`;
+        const prompt = `Today: ${new Date().toISOString().split('T')[0]}
+Users: ${JSON.stringify(compactUsers)}
+Jobs (${compactJobs.length}): ${JSON.stringify(compactJobs)}
+SubTasks (${compactST.length}): ${JSON.stringify(compactST)}
+Milestones: ${JSON.stringify(milestones || [])}`;
 
         const response = await anthropic.messages.create({
             model: "claude-sonnet-4-5-20250929",
-            max_tokens: 4096,
+            max_tokens: 16384,
             temperature: 0.2,
             system: systemPrompt,
             messages: [{ role: "user", content: prompt }]
         });
 
-        const jsonStr = response.content[0].text.trim().replace(/^```json/, '').replace(/```$/, '');
-        return { success: true, proposals: JSON.parse(jsonStr) };
+        let jsonStr = response.content[0].text.trim();
+        
+        // Strip markdown fences if present
+        jsonStr = jsonStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+        
+        // Try to parse as-is first
+        try {
+            return { success: true, proposals: JSON.parse(jsonStr) };
+        } catch (parseErr) {
+            // If truncated, try to salvage by closing open arrays/objects
+            console.warn('Initial JSON parse failed, attempting repair...');
+            
+            // Find the last complete object in each array
+            let repaired = jsonStr;
+            
+            // Remove any trailing incomplete object (ends with { or ,)
+            repaired = repaired.replace(/,\s*\{[^}]*$/s, '');
+            
+            // Count open braces/brackets and close them
+            const openBraces = (repaired.match(/\{/g) || []).length - (repaired.match(/\}/g) || []).length;
+            const openBrackets = (repaired.match(/\[/g) || []).length - (repaired.match(/\]/g) || []).length;
+            
+            for (let i = 0; i < openBrackets; i++) repaired += ']';
+            for (let i = 0; i < openBraces; i++) repaired += '}';
+            
+            try {
+                const parsed = JSON.parse(repaired);
+                return { success: true, proposals: parsed };
+            } catch (repairErr) {
+                console.error('JSON repair also failed:', repairErr.message);
+                return { error: `AI returned invalid JSON. Try again — the response may have been too large. (${parseErr.message})` };
+            }
+        }
         
     } catch (error) {
         console.error("Auto Schedule Error:", error);

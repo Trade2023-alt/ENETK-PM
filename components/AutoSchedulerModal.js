@@ -22,9 +22,26 @@ export default function AutoSchedulerModal({ users }) {
     const [dupRemoving, setDupRemoving] = useState(false);
     const [dupRemoveResult, setDupRemoveResult] = useState(null);
 
+    // Loading progress state
+    const [elapsed, setElapsed] = useState(0);
+    const ESTIMATED_AI_SECONDS = 45; // rough estimate for AI analysis
+    const AI_STATUS_MSGS = [
+        '📡 Fetching all active jobs and subtasks...',
+        '👥 Loading team member responsibilities...',
+        '📊 Analyzing budgeted vs actual hours...',
+        '📅 Checking deadlines and milestones...',
+        '🧠 Claude AI is optimizing your schedule...',
+        '⚖️ Balancing workloads across the team...',
+        '🔄 Resolving scheduling conflicts...',
+        '✍️ Generating proposals and reasoning...',
+        '📝 Finalizing schedule recommendations...',
+        '⏳ Almost done, wrapping up analysis...'
+    ];
+
     const handleRunAI = async () => {
         setIsLoading(true);
         setError('');
+        setElapsed(0);
         try {
             const res = await generateSchedulePreview();
             if (res.error) {
@@ -104,6 +121,7 @@ export default function AutoSchedulerModal({ users }) {
         setSelectedDupJobs(new Set());
         setSelectedDupSubtasks(new Set());
         setDupRemoveResult(null);
+        setElapsed(0);
         try {
             const res = await findDuplicates();
             if (res.success) {
@@ -168,6 +186,17 @@ export default function AutoSchedulerModal({ users }) {
         transition: 'all 0.2s'
     });
 
+    // Elapsed timer
+    useEffect(() => {
+        if (!isLoading && !dupScanning) { setElapsed(0); return; }
+        const interval = setInterval(() => setElapsed(prev => prev + 1), 1000);
+        return () => clearInterval(interval);
+    }, [isLoading, dupScanning]);
+
+    const progressPct = Math.min(95, (elapsed / ESTIMATED_AI_SECONDS) * 100);
+    const currentStatusIdx = Math.min(Math.floor(elapsed / 5), AI_STATUS_MSGS.length - 1);
+    const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
     return (
         <>
             <button onClick={() => setIsOpen(true)} className="btn" style={{ fontSize: '0.82rem', background: 'var(--primary)', color: '#fff', border: 'none' }}>
@@ -213,9 +242,36 @@ export default function AutoSchedulerModal({ users }) {
                                 )}
 
                                 {isLoading && (
-                                    <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                                        <h3 style={{ animation: 'pulse 1.5s infinite' }}>🧠 AI is analyzing your schedule...</h3>
-                                        <p style={{ color: 'var(--text-muted)' }}>This may take a few moments as it balances workloads and respects deadlines.</p>
+                                    <div style={{ padding: '2rem 1rem' }}>
+                                        <h3 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>🧠 AI is analyzing your schedule...</h3>
+                                        
+                                        {/* Progress bar */}
+                                        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '8px', height: '28px', overflow: 'hidden', position: 'relative', marginBottom: '1rem', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <div style={{
+                                                height: '100%', borderRadius: '8px',
+                                                background: 'linear-gradient(90deg, #9f1239, #a855f7, #3b82f6)',
+                                                width: `${progressPct}%`,
+                                                transition: 'width 1s ease-out',
+                                                boxShadow: '0 0 15px rgba(168,85,247,0.4)'
+                                            }} />
+                                            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                                                {Math.round(progressPct)}%
+                                            </span>
+                                        </div>
+
+                                        {/* Status message */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                                            <span style={{ color: '#a78bfa', fontWeight: 600, animation: 'pulse 2s infinite' }}>
+                                                {AI_STATUS_MSGS[currentStatusIdx]}
+                                            </span>
+                                            <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.82rem' }}>
+                                                ⏱️ {formatTime(elapsed)}
+                                            </span>
+                                        </div>
+
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center', marginTop: '1rem' }}>
+                                            Estimated time: ~30–60 seconds depending on the number of active jobs.
+                                        </p>
                                     </div>
                                 )}
 
@@ -343,8 +399,17 @@ export default function AutoSchedulerModal({ users }) {
                                 )}
 
                                 {dupScanning && (
-                                    <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                                        <h3 style={{ animation: 'pulse 1.5s infinite' }}>🔍 Scanning for duplicates...</h3>
+                                    <div style={{ padding: '2rem 1rem' }}>
+                                        <h3 style={{ textAlign: 'center', marginBottom: '1rem' }}>🔍 Scanning for duplicates...</h3>
+                                        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '8px', height: '20px', overflow: 'hidden', position: 'relative', marginBottom: '0.75rem' }}>
+                                            <div style={{
+                                                height: '100%', borderRadius: '8px',
+                                                background: 'linear-gradient(90deg, #f59e0b, #ef4444)',
+                                                width: `${Math.min(95, elapsed * 15)}%`,
+                                                transition: 'width 0.5s ease-out'
+                                            }} />
+                                        </div>
+                                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'monospace' }}>⏱️ {formatTime(elapsed)}</div>
                                     </div>
                                 )}
 
