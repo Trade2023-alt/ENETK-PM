@@ -186,6 +186,17 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
     const [toasts, setToasts] = useState([]);
     const [expandedDay, setExpandedDay] = useState(null); // date object for modal
     const [viewMode, setViewMode] = useState('month'); // 'month' | 'week'
+    const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+    const [quickAddTitle, setQuickAddTitle] = useState('');
+    const [quickAddJobId, setQuickAddJobId] = useState('');
+    const [quickAddAssignees, setQuickAddAssignees] = useState([]);
+    const [quickAddPriority, setQuickAddPriority] = useState('Normal');
+
+    useEffect(() => {
+        if (jobs && jobs.length > 0 && !quickAddJobId) {
+            setQuickAddJobId(jobs[0].id);
+        }
+    }, [jobs, quickAddJobId]);
     const [copiedItem, setCopiedItem] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = sessionStorage.getItem('enetk_copied_task');
@@ -260,6 +271,32 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         }
         if (error) throw error;
         return data;
+    };
+
+    const handleAddUnscheduled = async (title, jobId, priority, assignedIds) => {
+        setIsUpdating(true);
+        try {
+            const subData = {
+                job_id: Number(jobId),
+                title: title || 'New Unscheduled Event',
+                status: 'Pending',
+                priority: priority || 'Normal'
+            };
+            const pastedSub = await insertSubTaskSafely(subData);
+            const newSubId = pastedSub.id;
+            if (assignedIds && assignedIds.length > 0) {
+                const assignments = assignedIds.map(userId => ({ sub_task_id: newSubId, user_id: Number(userId) }));
+                const { error: assignError } = await supabase.from('sub_task_assignments').insert(assignments);
+                if (assignError) throw assignError;
+            }
+            router.refresh();
+            addToast('Unscheduled event created');
+        } catch (err) {
+            console.error('Error creating unscheduled event:', err);
+            addToast('Failed to create event: ' + err.message, 'error');
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     const handlePasteTask = async (targetDate) => {
@@ -405,6 +442,10 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
     const filteredSubTasks = filterUser
         ? subTasks.filter(t => t.assigned_ids && t.assigned_ids.split(',').includes(filterUser))
         : subTasks;
+
+    const unscheduledSubTasks = useMemo(() => {
+        return filteredSubTasks.filter(st => !st.start_date && !st.due_date && (!st.additional_dates || st.additional_dates.length === 0));
+    }, [filteredSubTasks]);
 
     // Group by date
     const itemsByDate = useMemo(() => {
@@ -883,6 +924,122 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                 />
             )}
 
+            {showQuickAddModal && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 5000,
+                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }} onClick={() => setShowQuickAddModal(false)}>
+                    <div style={{
+                        background: '#1e293b',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: '16px',
+                        padding: '1.5rem',
+                        width: '380px',
+                        maxHeight: '90vh',
+                        overflowY: 'auto',
+                        boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>➕ Add Unscheduled Event</h3>
+                            <button onClick={() => setShowQuickAddModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.25rem', cursor: 'pointer', lineHeight: 1 }}>×</button>
+                        </div>
+                        
+                        <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>EVENT TITLE</label>
+                            <input
+                                type="text"
+                                className="input"
+                                placeholder="e.g. Wire Panel"
+                                value={quickAddTitle}
+                                onChange={e => setQuickAddTitle(e.target.value)}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>PARENT JOB / PROJECT</label>
+                            <select
+                                className="input"
+                                value={quickAddJobId}
+                                onChange={e => setQuickAddJobId(e.target.value)}
+                                style={{ width: '100%' }}
+                            >
+                                <option value="">Select a Job...</option>
+                                {jobs.map(j => (
+                                    <option key={j.id} value={j.id}>{j.job_number ? `[${j.job_number}] ` : ''}{j.title}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>PRIORITY</label>
+                            <select
+                                className="input"
+                                value={quickAddPriority}
+                                onChange={e => setQuickAddPriority(e.target.value)}
+                                style={{ width: '100%' }}
+                            >
+                                {['Low', 'Normal', 'High', 'Urgent'].map(p => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>ASSIGN TO</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--card-border)', borderRadius: '8px', padding: '0.5rem', maxHeight: '140px', overflowY: 'auto' }}>
+                                {users.map(u => {
+                                    const isAssigned = quickAddAssignees.includes(u.id);
+                                    return (
+                                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer', userSelect: 'none' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isAssigned}
+                                                onChange={() => {
+                                                    if (isAssigned) {
+                                                        setQuickAddAssignees(quickAddAssignees.filter(id => id !== u.id));
+                                                    } else {
+                                                        setQuickAddAssignees([...quickAddAssignees, u.id]);
+                                                    }
+                                                }}
+                                            />
+                                            {u.username}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={async () => {
+                                if (!quickAddTitle.trim()) {
+                                    alert('Please enter a title.');
+                                    return;
+                                }
+                                if (!quickAddJobId) {
+                                    alert('Please select a parent job.');
+                                    return;
+                                }
+                                await handleAddUnscheduled(quickAddTitle, quickAddJobId, quickAddPriority, quickAddAssignees);
+                                setShowQuickAddModal(false);
+                                setQuickAddTitle('');
+                                setQuickAddAssignees([]);
+                                setQuickAddPriority('Normal');
+                            }}
+                            className="btn btn-primary"
+                            style={{ width: '100%', marginTop: '0.5rem', display: 'flex', justifyContent: 'center' }}
+                            disabled={isUpdating}
+                        >
+                            {isUpdating ? 'Saving...' : 'Save & Add to Pool'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div ref={containerRef} className="card" style={{ padding: '0', overflow: isFullscreen ? 'auto' : 'hidden', position: 'relative', borderLeft: 'none', background: isFullscreen ? 'var(--background)' : undefined, height: isFullscreen ? '100vh' : undefined }}>
                 {/* Loading Overlay */}
                 {isUpdating && (
@@ -983,6 +1140,10 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                         <button onClick={toggleFullscreen} className="cal-header-btn" style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
                         </button>
+
+                        <button onClick={() => setShowQuickAddModal(true)} className="cal-header-btn" style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(159,18,57,0.15)', borderColor: 'rgba(159,18,57,0.4)', color: '#fda4af' }}>
+                            ➕ Unscheduled Event
+                        </button>
                     </div>
                 </div>
 
@@ -1012,6 +1173,32 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                 👤 {user.username}
                             </div>
                         ))}
+                    </div>
+                </div>
+
+                {/* Unscheduled Pool */}
+                <div style={{
+                    padding: '0.6rem 1.25rem',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderBottom: '1px solid var(--card-border)',
+                    display: 'flex', flexDirection: 'column', gap: '0.4rem'
+                }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>📋 Unscheduled Events Pool ({unscheduledSubTasks.length})</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 500, opacity: 0.7 }}>· Drag cards onto the calendar below to schedule, or drag team members here to assign them</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minHeight: '38px', maxHeight: '110px', overflowY: 'auto', alignItems: 'center', padding: '2px 0' }}>
+                        {unscheduledSubTasks.length === 0 ? (
+                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.15)', fontStyle: 'italic' }}>
+                                No unscheduled events. Click "+ Unscheduled Event" above to create one.
+                            </span>
+                        ) : (
+                            unscheduledSubTasks.map(item => (
+                                <div key={`${item.type}-${item.id}`} style={{ width: '220px', flexShrink: 0 }}>
+                                    <TaskPill item={{ ...item, type: 'subtask' }} compact={true} />
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
