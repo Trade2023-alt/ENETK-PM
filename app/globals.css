@@ -212,7 +212,13 @@ button { cursor: pointer; }
   background: rgba(255, 255, 255, 0.6);
 }
 
-.input option {
+.input option,
+select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+select optgroup {
   background: #ffffff;
   color: #0f172a;
 }
