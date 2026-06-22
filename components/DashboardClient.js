@@ -9,6 +9,8 @@ import OnCallEditor from '@/components/OnCallEditor';
 import MyWeekView from '@/components/MyWeekView';
 import MonthlyWorkforceView from '@/components/MonthlyWorkforceView';
 import JobDetailSidePanel from '@/components/JobDetailSidePanel';
+import AutoSchedulerModal from '@/components/AutoSchedulerModal';
+import MSProjectImporter from '@/components/MSProjectImporter';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { updateJobStatus } from '@/app/actions/updateJob';
@@ -702,6 +704,10 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                 </div>
             ) : viewMode === 'gantt' ? (
                 <div style={{ marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                        <AutoSchedulerModal users={users || []} />
+                        <MSProjectImporter users={users || []} />
+                    </div>
                     <JobGantt jobs={jobs.filter(j => j.scheduled_date)} users={users} onJobSelect={(id) => setSelectedJobId(id)} />
                     {jobs.filter(j => j.scheduled_date).length === 0 && (
                         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
@@ -713,6 +719,9 @@ export default function DashboardClient({ initialJobs, userRole, users = [], cus
                 </div>
             ) : viewMode === 'calendar' ? (
                 <div style={{ marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                        <AutoSchedulerModal users={users || []} />
+                    </div>
                     <OnCallEditor initialSchedule={onCallSchedule} userRole={userRole} />
                     <Calendar jobs={jobs} subTasks={subTasks} users={users} currentUser={currentUser} onJobSelect={(id) => setSelectedJobId(id)} />
                 </div>
