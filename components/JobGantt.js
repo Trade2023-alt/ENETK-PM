@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -45,10 +45,26 @@ const ROW_H = 44;
 const HEADER_H = 32;
 
 export default function JobGantt({ jobs = [], users = [], milestones = [], onJobSelect }) {
+    const containerRef = useRef(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const zoom = 'Week'; // fixed zoom — controls removed per user request
     const [expandedJobs, setExpandedJobs] = useState(new Set());
     const router = useRouter();
     const [dragState, setDragState] = useState(null); 
+
+    useEffect(() => {
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen().catch(err => console.error('Error attempting to enable fullscreen:', err));
+        } else {
+            document.exitFullscreen().catch(err => console.error('Error attempting to disable fullscreen:', err));
+        }
+    }; 
     // dragState format: { id, type: 'move'|'resize-left'|'resize-right', startX, initialStart, initialEnd, itemType: 'job'|'subtask' }
 
     const toggleExpand = (jobId) => {
@@ -262,7 +278,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
     const containerH = HEADER_H + (filtered.length + (milestones.length > 0 ? 1 : 0)) * ROW_H + 4;
 
     return (
-        <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid var(--card-border)', overflow: 'hidden' }}>
+        <div ref={containerRef} style={{ background: isFullscreen ? 'var(--background)' : 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid var(--card-border)', overflow: isFullscreen ? 'auto' : 'hidden', height: isFullscreen ? '100vh' : undefined }}>
             {/* Header — no buttons */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.02)' }}>
                 <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>📊 Gantt Timeline</span>
@@ -270,6 +286,9 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                     {filtered.length} job{filtered.length !== 1 ? 's' : ''}
                     {milestones.length > 0 ? ` · ${milestones.length} milestone${milestones.length !== 1 ? 's' : ''}` : ''}
                 </span>
+                <button onClick={toggleFullscreen} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '0.25rem 0.6rem', color: 'var(--foreground)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
+                </button>
             </div>
 
             {filtered.length === 0 && milestones.length === 0 ? (
@@ -277,7 +296,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                     No scheduled jobs to display. Add scheduled dates to jobs to see them here.
                 </div>
             ) : (
-                <div style={{ overflowX: 'auto', overflowY: 'auto', resize: 'vertical', minHeight: '250px', maxHeight: '85vh', paddingBottom: '10px' }}>
+                <div style={{ overflowX: 'auto', overflowY: 'auto', resize: 'vertical', minHeight: '250px', maxHeight: isFullscreen ? 'calc(100vh - 100px)' : '85vh', paddingBottom: '10px' }}>
                     <div style={{ width: `${totalW}px`, minWidth: '100%', position: 'relative', height: `${containerH}px` }}>
 
                         {/* Sticky header row */}

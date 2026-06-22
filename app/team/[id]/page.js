@@ -11,11 +11,21 @@ export default async function EditTeamPage({ params }) {
 
     if (userRole !== 'admin') redirect('/');
 
-    const { data: user, error: userError } = await supabase
+    let { data: user, error: userError } = await supabase
         .from('users')
-        .select('id, username, role, email, phone, company')
+        .select('id, username, role, email, phone, company, responsibility')
         .eq('id', id)
         .single();
+
+    if (userError && userError.code === '42703') {
+        const fallback = await supabase
+            .from('users')
+            .select('id, username, role, email, phone, company')
+            .eq('id', id)
+            .single();
+        user = fallback.data;
+        userError = fallback.error;
+    }
 
     if (userError || !user) {
         return (
@@ -67,6 +77,11 @@ export default async function EditTeamPage({ params }) {
                     <div style={{ marginBottom: '1rem' }}>
                         <label className="label">Phone</label>
                         <input name="phone" type="tel" className="input" defaultValue={user.phone} placeholder="(555) 123-4567" />
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label className="label">Responsibility / Role Definition</label>
+                        <textarea name="responsibility" className="input" defaultValue={user.responsibility} placeholder="e.g. Estimating only, Floating tech, SCADA manager..." rows="3" />
                     </div>
 
                     <div style={{ marginBottom: '1.5rem' }}>

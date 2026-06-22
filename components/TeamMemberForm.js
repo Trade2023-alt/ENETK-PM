@@ -32,7 +32,7 @@ export default function TeamMemberForm() {
                     <strong>Update Required:</strong> {error}
                     {error.includes('missing') && (
                         <div style={{ marginTop: '0.5rem', fontSize: '0.8rem' }}>
-                            Tip: Make sure you've run the SQL migration in Supabase to add 'company', 'phone', and 'email' columns to the 'users' table.
+                            Tip: Make sure you've run the SQL migration in Supabase to add 'company', 'phone', 'email', and 'responsibility' columns to the 'users' table.
                         </div>
                     )}
                 </div>
@@ -61,6 +61,11 @@ export default function TeamMemberForm() {
             <div style={{ marginBottom: '1rem' }}>
                 <label className="label">Phone</label>
                 <input name="phone" type="tel" className="input" placeholder="(555) 123-4567" disabled={loading} />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+                <label className="label">Responsibility / Role Definition</label>
+                <textarea name="responsibility" className="input" placeholder="e.g. Estimating only, Floating tech, SCADA manager..." disabled={loading} rows="3" />
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>

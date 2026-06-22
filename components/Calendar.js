@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -160,7 +160,25 @@ function DayModal({ day, items, users, onClose, onNavigate }) {
 
 export default function Calendar({ jobs, subTasks = [], users = [], currentUser, onJobSelect, onCallSchedule = [] }) {
     const router = useRouter();
+    const containerRef = useRef(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen().catch(err => console.error('Error attempting to enable fullscreen:', err));
+        } else {
+            document.exitFullscreen().catch(err => console.error('Error attempting to disable fullscreen:', err));
+        }
+    };
     const [draggedOverDay, setDraggedOverDay] = useState(null);
     const [draggedOverItem, setDraggedOverItem] = useState(null);
     const [contextMenu, setContextMenu] = useState(null);
@@ -859,7 +877,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                 />
             )}
 
-            <div className="card" style={{ padding: '0', overflow: 'hidden', position: 'relative', borderLeft: 'none' }}>
+            <div ref={containerRef} className="card" style={{ padding: '0', overflow: isFullscreen ? 'auto' : 'hidden', position: 'relative', borderLeft: 'none', background: isFullscreen ? 'var(--background)' : undefined, height: isFullscreen ? '100vh' : undefined }}>
                 {/* Loading Overlay */}
                 {isUpdating && (
                     <div style={{
@@ -953,6 +971,10 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                             <input type="checkbox" checked={showOnCall} onChange={(e) => setShowOnCall(e.target.checked)} />
                             📞 On-Call
                         </label>
+
+                        <button onClick={toggleFullscreen} className="cal-header-btn" style={{ marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
+                        </button>
                     </div>
                 </div>
 

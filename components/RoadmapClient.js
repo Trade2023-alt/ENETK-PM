@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { createMilestone, deleteMilestone, updateMilestone } from '@/app/actions/roadmap';
 import RoadmapGantt from './RoadmapGantt';
+import AutoSchedulerModal from './AutoSchedulerModal';
 
 export default function RoadmapClient({ initialMilestones, initialSubTasks = [], manloading = {}, users = [], userRole, jobs = [] }) {
     const [milestones, setMilestones] = useState(initialMilestones);
@@ -110,13 +111,16 @@ export default function RoadmapClient({ initialMilestones, initialSubTasks = [],
                     <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1a1a1a' }}>Master Road Map</h1>
                     <p style={{ color: '#1a1a1a' }}>All milestones and sub-tasks across all projects.</p>
                 </div>
-                <button
-                    onClick={() => setIsAdding(!isAdding)}
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.9rem' }}
-                >
-                    {isAdding ? 'Cancel' : '+ Milestone'}
-                </button>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <AutoSchedulerModal users={users || []} />
+                    <button
+                        onClick={() => setIsAdding(!isAdding)}
+                        className="btn btn-primary"
+                        style={{ fontSize: '0.9rem' }}
+                    >
+                        {isAdding ? 'Cancel' : '+ Milestone'}
+                    </button>
+                </div>
             </div>
 
             {/* Add Milestone Form */}

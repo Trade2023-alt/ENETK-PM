@@ -113,7 +113,7 @@ const tools = [
     },
     {
         name: "get_team",
-        description: "List all team members (users), their roles, and company affiliations.",
+        description: "List all team members (users), their roles, responsibilities, and company affiliations.",
         input_schema: {
             type: "object",
             properties: {}
@@ -324,7 +324,12 @@ async function handleToolCall(toolName, input) {
                 return data;
             }
             case "get_team": {
-                const { data, error } = await supabase.from('users').select('id, username, role, company, email, phone');
+                let { data, error } = await supabase.from('users').select('id, username, role, company, email, phone, responsibility');
+                if (error && error.code === '42703') {
+                    const fallback = await supabase.from('users').select('id, username, role, company, email, phone');
+                    data = fallback.data;
+                    error = fallback.error;
+                }
                 if (error) throw error;
                 return data;
             }
@@ -503,6 +508,11 @@ When the user asks to CREATE a new customer, job, or inventory item:
 1. Check if you have all required fields (e.g., name for customers, title/customer_id/scheduled_date for jobs, description/qty for inventory).
 2. For jobs, you MUST also assign at least one team member. Use 'get_team' to find the correct user IDs if you don't have them.
 3. If any required information is missing, ASK the user to provide it before calling the creation tool.
+
+TEAM RESPONSIBILITIES & SCHEDULING:
+When scheduling days worked, load balancing projects, or assigning roles, ALWAYS run 'get_team' to read the 'responsibility' field for team members.
+Pay strict attention to who is designated for Estimation, SCADA, floating, specific sites, or tech support, and assign them accordingly.
+
 Current User ID: ${userId}`;
 
         // MODEL UPDATE: 2026 Recommended Version (Sonnet 4.5)

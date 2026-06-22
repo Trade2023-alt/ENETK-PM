@@ -12,6 +12,7 @@ export async function createTeamMember(formData) {
     const email = formData.get('email');
     const phone = formData.get('phone');
     const company = formData.get('company') || 'ENETK';
+    const responsibility = formData.get('responsibility');
 
     if (!username || !password || !role) {
         return { error: 'All fields are required' };
@@ -41,6 +42,7 @@ export async function createTeamMember(formData) {
         // Add optional fields only if they are likely to exist
         if (phone) insertData.phone = phone;
         if (company) insertData.company = company;
+        if (responsibility) insertData.responsibility = responsibility;
 
         const { error } = await supabase
             .from('users')
@@ -71,6 +73,7 @@ export async function updateTeamMember(formData) {
     const email = formData.get('email');
     const phone = formData.get('phone');
     const company = formData.get('company') || 'ENETK';
+    const responsibility = formData.get('responsibility');
 
     if (!id || !username || !role) {
         return { error: 'Missing required fields' };
@@ -94,6 +97,7 @@ export async function updateTeamMember(formData) {
             email: email || null,
             phone: phone || null,
             company: company || 'ENETK',
+            responsibility: responsibility || null,
             updated_at: new Date().toISOString()
         };
 
