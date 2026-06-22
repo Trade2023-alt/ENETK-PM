@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import Calendar from '@/components/Calendar';
 import OnCallEditor from '@/components/OnCallEditor';
+import AutoSchedulerModal from '@/components/AutoSchedulerModal';
 import Link from 'next/link';
 import { getOnCallScheduleForMonth } from '@/app/actions/oncall';
 
@@ -78,6 +79,7 @@ export default async function CalendarPage() {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <AutoSchedulerModal users={users || []} />
                     <Link href="/gantt" className="btn" style={{ fontSize: '0.82rem' }}>
                         📊 Gantt View
                     </Link>
