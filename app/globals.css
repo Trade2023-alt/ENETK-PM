@@ -105,7 +105,8 @@ button { cursor: pointer; }
 
 /* Utilities */
 .container {
-  max-width: 1920px;
+  max-width: 2560px;
+  width: 96%;
   margin: 0 auto;
   padding: 0 1.5rem;
 }

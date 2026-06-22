@@ -37,7 +37,7 @@ const STATUS_COLOR = {
     'Complete':    '#059669',
 };
 
-const PX = { Day: 40, Week: 18, Month: 7 };
+const PX = { Day: 50, Week: 24, Month: 10 };
 const ROW_H = 38;
 const HEADER_H = 32;
 
@@ -184,12 +184,12 @@ function EditableCell({ value, onSave, type = 'text', style = {}, options, rende
 
 // Grid column config — mirrors MS Project layout
 const DEFAULT_COLS = [
-    { key: 'title', label: 'Task Name', width: 200, minWidth: 100, align: 'left' },
-    { key: 'customer', label: 'Customer', width: 110, minWidth: 60, align: 'left' },
-    { key: 'assigned', label: 'Assigned To', width: 110, minWidth: 60, align: 'left' },
+    { key: 'title', label: 'Task Name', width: 220, minWidth: 100, align: 'left' },
+    { key: 'customer', label: 'Customer', width: 130, minWidth: 60, align: 'left' },
+    { key: 'assigned', label: 'Assigned To', width: 150, minWidth: 60, align: 'left' },
     { key: 'work', label: 'Work', width: 55, minWidth: 35, align: 'center' },
-    { key: 'remaining', label: 'Remaining', width: 65, minWidth: 40, align: 'center' },
-    { key: 'pct', label: '% Comp', width: 55, minWidth: 40, align: 'center' },
+    { key: 'remaining', label: 'Remaining', width: 80, minWidth: 40, align: 'center' },
+    { key: 'pct', label: '% Comp', width: 65, minWidth: 40, align: 'center' },
     { key: 'start', label: 'Start', width: 90, minWidth: 50, align: 'center' },
     { key: 'finish', label: 'Finish', width: 90, minWidth: 50, align: 'center' },
     { key: 'status', label: 'Status', width: 80, minWidth: 50, align: 'center' },
@@ -199,7 +199,7 @@ const DEFAULT_GRID_W = DEFAULT_COLS.reduce((sum, c) => sum + c.width, 0);
 export default function JobGantt({ jobs = [], users = [], customers = [], milestones = [], onJobSelect }) {
     const containerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const zoom = 'Week';
+    const [zoom, setZoom] = useState('Week');
     const [expandedJobs, setExpandedJobs] = useState(new Set());
     const router = useRouter();
     const [dragState, setDragState] = useState(null);
@@ -965,6 +965,28 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                     <button type="button" onClick={() => setShowSubtaskModal(true)} style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '4px', padding: '0.25rem 0.6rem', color: '#60a5fa', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         ↳ + Sub Task
                     </button>
+                </div>
+                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', padding: '2px', border: '1px solid var(--card-border)' }}>
+                    {['Day', 'Week', 'Month'].map(z => (
+                        <button
+                            key={z}
+                            type="button"
+                            onClick={() => setZoom(z)}
+                            style={{
+                                background: zoom === z ? '#9f1239' : 'transparent',
+                                border: 'none',
+                                color: '#fff',
+                                borderRadius: '4px',
+                                padding: '0.2rem 0.5rem',
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                outline: 'none'
+                            }}
+                        >
+                            {z}
+                        </button>
+                    ))}
                 </div>
                 <button onClick={toggleFullscreen} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '0.25rem 0.6rem', color: 'var(--foreground)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
