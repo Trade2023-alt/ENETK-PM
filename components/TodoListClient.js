@@ -384,22 +384,27 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                                                 {jobName} <span style={{ fontSize: '0.75rem', opacity: 0.3, marginLeft: '0.25rem' }}>✏️</span>
                                                             </span>
                                                             <span style={{
-                                                                fontSize: '0.65rem',
-                                                                padding: '0.1rem 0.35rem',
-                                                                borderRadius: '4px',
-                                                                background: task.type === 'Job' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                                                                color: task.type === 'Job' ? '#3b82f6' : '#8b5cf6',
-                                                                fontWeight: 600,
-                                                                whiteSpace: 'nowrap'
-                                                            }}>
-                                                                {task.type}
-                                                            </span>
-                                                        </div>
-                                                        {task.parentTitle && (
-                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                                                📂 Part of: {task.parentTitle}
-                                                            </span>
-                                                        )}
+                                                                 fontSize: '0.65rem',
+                                                                 padding: '0.1rem 0.35rem',
+                                                                 borderRadius: '4px',
+                                                                 background: task.type === 'Job' ? 'rgba(59, 130, 246, 0.1)' : task.type === 'Follow-up' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(139, 92, 246, 0.1)',
+                                                                 color: task.type === 'Job' ? '#3b82f6' : task.type === 'Follow-up' ? '#f43f5e' : '#8b5cf6',
+                                                                 fontWeight: 600,
+                                                                 whiteSpace: 'nowrap'
+                                                             }}>
+                                                                 {task.type}
+                                                             </span>
+                                                         </div>
+                                                         {task.parentTitle && (
+                                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                                                                 📂 Part of: {task.parentTitle}
+                                                             </span>
+                                                         )}
+                                                         {task.assignedTo && (
+                                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                 👤 Assignee: <strong style={{ color: 'var(--foreground)' }}>{task.assignedTo}</strong>
+                                                             </span>
+                                                         )}
                                                     </div>
                                                 )}
                                             </td>
@@ -515,33 +520,34 @@ export default function TodoListClient({ initialTasks, users, currentUserId, use
                                                 </h4>
                                             )}
                                             <span style={{
-                                                fontSize: '0.7rem',
-                                                padding: '0.1rem 0.4rem',
-                                                borderRadius: '4px',
-                                                background: task.type === 'Job' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                                                color: task.type === 'Job' ? '#3b82f6' : '#8b5cf6',
-                                                fontWeight: 600
-                                            }}>
-                                                {task.type}
-                                            </span>
-                                            <span style={{
-                                                fontSize: '0.7rem',
-                                                padding: '0.1rem 0.4rem',
-                                                borderRadius: '4px',
-                                                background: `${priorityColors[task.priority]}22`,
-                                                color: priorityColors[task.priority],
-                                                fontWeight: 700,
-                                                border: `1px solid ${priorityColors[task.priority]}44`
-                                            }}>
-                                                {task.priority}
-                                            </span>
-                                        </div>
+                                                 fontSize: '0.7rem',
+                                                 padding: '0.1rem 0.4rem',
+                                                 borderRadius: '4px',
+                                                 background: task.type === 'Job' ? 'rgba(59, 130, 246, 0.1)' : task.type === 'Follow-up' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(139, 92, 246, 0.1)',
+                                                 color: task.type === 'Job' ? '#3b82f6' : task.type === 'Follow-up' ? '#f43f5e' : '#8b5cf6',
+                                                 fontWeight: 600
+                                             }}>
+                                                 {task.type}
+                                             </span>
+                                             <span style={{
+                                                 fontSize: '0.7rem',
+                                                 padding: '0.1rem 0.4rem',
+                                                 borderRadius: '4px',
+                                                 background: `${priorityColors[task.priority]}22`,
+                                                 color: priorityColors[task.priority],
+                                                 fontWeight: 700,
+                                                 border: `1px solid ${priorityColors[task.priority]}44`
+                                             }}>
+                                                 {task.priority}
+                                             </span>
+                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                            <span>📍 {task.customer}</span>
-                                            {task.parentTitle && <span>📂 Part of: {task.parentTitle}</span>}
-                                            {task.date && <span>📅 {new Date(task.date).toLocaleDateString()}</span>}
-                                        </div>
+                                         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                             <span>📍 {task.customer}</span>
+                                             {task.parentTitle && <span>📂 Part of: {task.parentTitle}</span>}
+                                             {task.date && <span>📅 {new Date(task.date).toLocaleDateString()}</span>}
+                                             {task.assignedTo && <span>👤 Assignee: <strong style={{ color: 'var(--foreground)' }}>{task.assignedTo}</strong></span>}
+                                         </div>
                                     </div>
 
                                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

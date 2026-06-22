@@ -101,6 +101,7 @@ export default async function CalendarPage() {
                 subTasks={subTasks}
                 users={users || []}
                 onCallSchedule={onCallSchedule}
+                currentUser={{ id: Number(userId), role: userRole }}
             />
         </div>
     );

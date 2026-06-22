@@ -75,10 +75,11 @@ export async function getTodoItems(specificUserId = null) {
 
         const jobIds = allUserJobs.map(j => j.id);
 
-        // 2. Fetch all subtasks for the jobs the user is assigned to (or is lead of)
-        let allSubTasks = [];
-        if (jobIds.length > 0) {
-            const { data: jobSubTasks, error: jobSubErr } = await supabase
+        // 2. Fetch all subtasks for the jobs where the user is the job lead
+        const leadJobIds = (leadJobs || []).map(j => j.id);
+        let leadJobSubTasks = [];
+        if (leadJobIds.length > 0) {
+            const { data: subTasksForLeadJobs, error: subLeadErr } = await supabase
                 .from('sub_tasks')
                 .select(`
                     id,
@@ -89,16 +90,20 @@ export async function getTodoItems(specificUserId = null) {
                     due_date,
                     parent_id,
                     parent:sub_tasks!parent_id(title),
-                    job:jobs(title, customer:customers(name))
+                    job:jobs(title, lead_id, customer:customers(name)),
+                    assignments:sub_task_assignments(
+                        user_id,
+                        user:users(id, username)
+                    )
                 `)
-                .in('job_id', jobIds);
+                .in('job_id', leadJobIds);
                 
-            if (!jobSubErr && jobSubTasks) {
-                allSubTasks = [...jobSubTasks];
+            if (!subLeadErr && subTasksForLeadJobs) {
+                leadJobSubTasks = subTasksForLeadJobs;
             }
         }
 
-        // 3. Fetch any subtasks explicitly assigned to the user (if they aren't assigned to the parent job)
+        // 3. Fetch any subtasks explicitly assigned to the user
         const { data: subTaskAssignments, error: subErr } = await supabase
             .from('sub_task_assignments')
             .select(`
@@ -112,21 +117,35 @@ export async function getTodoItems(specificUserId = null) {
                     due_date,
                     parent_id,
                     parent:sub_tasks!parent_id(title),
-                    job:jobs(title, customer:customers(name))
+                    job:jobs(title, lead_id, customer:customers(name)),
+                    assignments:sub_task_assignments(
+                        user_id,
+                        user:users(id, username)
+                    )
                 )
             `)
             .eq('user_id', targetUserId);
 
         if (subErr) console.error('Todo Sub-task Fetch Error:', subErr);
 
+        const allSubTasksMap = new Map();
+        
         if (subTaskAssignments) {
             subTaskAssignments.forEach(a => {
                 const st = getSafe(a, 'sub_task');
-                if (st && !allSubTasks.find(existing => existing.id === st.id)) {
-                    allSubTasks.push(st);
+                if (st) {
+                    allSubTasksMap.set(st.id, st);
                 }
             });
         }
+        
+        leadJobSubTasks.forEach(st => {
+            if (!allSubTasksMap.has(st.id)) {
+                allSubTasksMap.set(st.id, st);
+            }
+        });
+        
+        const allSubTasks = Array.from(allSubTasksMap.values());
 
         const tasks = [
             ...(allUserJobs || [])
@@ -158,10 +177,18 @@ export async function getTodoItems(specificUserId = null) {
                         parentContext = `${parentContext} > ${parent.title}`;
                     }
 
+                    const subAssignments = st.assignments || [];
+                    const isAssigned = subAssignments.some(a => String(a.user_id) === String(targetUserId));
+                    const isLead = j && String(j.lead_id) === String(targetUserId);
+
+                    const type = isAssigned ? (st.parent_id ? 'Micro Task' : 'Sub-task') : (isLead ? 'Follow-up' : 'Sub-task');
+                    const assigneeList = subAssignments.map(a => getSafe(a, 'user.username')).filter(Boolean);
+                    const assignedTo = assigneeList.join(', ') || 'Unassigned';
+
                     return {
                         id: `sub-${st.id}`,
                         originalId: st.id,
-                        type: st.parent_id ? 'Micro Task' : 'Sub-task',
+                        type: type,
                         title: st.title || 'Untitled Task',
                         description: null,
                         status: st.status || 'Pending',
@@ -169,7 +196,8 @@ export async function getTodoItems(specificUserId = null) {
                         date: st.due_date,
                         customer: cName,
                         parentTitle: parentContext,
-                        jobId: st.job_id
+                        jobId: st.job_id,
+                        assignedTo: assignedTo
                     };
                 })
         ];

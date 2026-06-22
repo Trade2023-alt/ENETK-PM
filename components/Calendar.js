@@ -335,10 +335,16 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
 
     const [monthOffset, setMonthOffset] = useState(0);
     const [weekOffset, setWeekOffset] = useState(0);
-    const [showTasks, setShowTasks] = useState(true);
+    const [showTasks, setShowTasks] = useState(false);
     const [showSubTasks, setShowSubTasks] = useState(true);
     const [showOnCall, setShowOnCall] = useState(true);
-    const [filterUser, setFilterUser] = useState('');
+    const [filterUser, setFilterUser] = useState(() => {
+        const role = currentUser?.role || '';
+        if (currentUser?.id && role !== 'admin' && role !== 'lead') {
+            return String(currentUser.id);
+        }
+        return '';
+    });
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -959,10 +965,12 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                         </select>
 
                         {/* Toggles */}
-                        <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#fda4af', userSelect: 'none' }}>
-                            <input type="checkbox" checked={showTasks} onChange={(e) => setShowTasks(e.target.checked)} />
-                            🔧 Tasks
-                        </label>
+                        {(currentUser?.role === 'admin' || currentUser?.role === 'lead') && (
+                            <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#fda4af', userSelect: 'none' }}>
+                                <input type="checkbox" checked={showTasks} onChange={(e) => setShowTasks(e.target.checked)} />
+                                🔧 Tasks
+                            </label>
+                        )}
                         <label style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', userSelect: 'none' }}>
                             <input type="checkbox" checked={showSubTasks} onChange={(e) => setShowSubTasks(e.target.checked)} />
                             📌 Sub-tasks

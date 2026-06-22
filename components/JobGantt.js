@@ -193,6 +193,7 @@ const DEFAULT_COLS = [
     { key: 'start', label: 'Start', width: 90, minWidth: 50, align: 'center' },
     { key: 'finish', label: 'Finish', width: 90, minWidth: 50, align: 'center' },
     { key: 'status', label: 'Status', width: 80, minWidth: 50, align: 'center' },
+    { key: 'additional_dates', label: 'Intermittent Dates', width: 140, minWidth: 80, align: 'left' },
 ];
 const DEFAULT_GRID_W = DEFAULT_COLS.reduce((sum, c) => sum + c.width, 0);
 
@@ -209,7 +210,7 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
     const [sortDir, setSortDir] = useState('asc'); // 'asc' or 'desc'
     const GRID_COLS = DEFAULT_COLS.map((c, i) => ({ ...c, width: colWidths[i] }));
     const currentGridW = colWidths.reduce((sum, w) => sum + w, 0);
-    const [dividerX, setDividerX] = useState(DEFAULT_GRID_W);
+    const [dividerX, setDividerX] = useState(Math.min(DEFAULT_GRID_W, 750));
     const [draggingDivider, setDraggingDivider] = useState(false);
 
     // Dynamic width tracking
@@ -645,11 +646,14 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
         const clickX = e.clientX - rect.left;
         const clickedDate = addDays(rangeStart, Math.floor(clickX / px));
         const dateStr = toDateStr(clickedDate);
-        const choice = window.prompt(`Add date to "${item.title}" on ${dateStr}?\n\nType '1' to set as Due Date\nType '2' to add as an Intermittent Scheduled Date`);
+        const choice = window.prompt(`Add/update date for "${item.title}" on ${dateStr}?\n\nType '1' to set as ${type === 'job' ? 'Scheduled Date' : 'Start Date'}\nType '2' to set as Due Date\nType '3' to add as an Intermittent Scheduled Date`);
         if (choice === '1') {
-            await supabase.from(type === 'job' ? 'jobs' : 'sub_tasks').update({ due_date: dateStr }).eq('id', item.id);
+            await supabase.from(type === 'job' ? 'jobs' : 'sub_tasks').update({ [type === 'job' ? 'scheduled_date' : 'start_date']: dateStr }).eq('id', item.id);
             router.refresh();
         } else if (choice === '2') {
+            await supabase.from(type === 'job' ? 'jobs' : 'sub_tasks').update({ due_date: dateStr }).eq('id', item.id);
+            router.refresh();
+        } else if (choice === '3') {
             const currentDates = Array.isArray(item.additional_dates) ? [...item.additional_dates] : [];
             if (!currentDates.includes(dateStr)) {
                 currentDates.push(dateStr);
@@ -765,6 +769,26 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                     <div style={{ width: GRID_COLS[8].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={job.status} type="select" options={['Scheduled', 'In Progress', 'Complete']} onSave={(v) => saveJobField(job.id, 'status', v)} style={{ fontSize: '0.68rem', color: STATUS_COLOR[job.status] || 'inherit', fontWeight: 700 }} />
                     </div>
+                    {/* Intermittent Dates */}
+                    <div style={{ width: GRID_COLS[9].width, flexShrink: 0, padding: '0 4px', fontSize: '0.66rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                        <EditableCell
+                            value={Array.isArray(job.additional_dates) ? job.additional_dates.join(', ') : ''}
+                            onSave={async (v) => {
+                                const dates = v.split(',').map(d => d.trim()).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+                                await supabase.from('jobs').update({ additional_dates: dates }).eq('id', job.id);
+                                router.refresh();
+                            }}
+                            style={{ fontSize: '0.66rem' }}
+                            renderDisplay={(val) => {
+                                const count = Array.isArray(job.additional_dates) ? job.additional_dates.length : 0;
+                                return (
+                                    <div title={val || 'No intermittent dates'} style={{ color: count > 0 ? '#d8b4fe' : 'var(--text-muted)' }}>
+                                        {count > 0 ? `${count} date${count > 1 ? 's' : ''} (${val})` : '—'}
+                                    </div>
+                                );
+                            }}
+                        />
+                    </div>
                 </div>
             );
         }
@@ -841,6 +865,26 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                     <div style={{ width: GRID_COLS[8].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
                         <EditableCell value={st.status} type="select" options={['Scheduled', 'In Progress', 'Complete']} onSave={(v) => saveSubTaskField(st.id, 'status', v)} style={{ fontSize: '0.65rem', color: STATUS_COLOR[st.status] || 'inherit', fontWeight: 700 }} />
                     </div>
+                    {/* Intermittent Dates */}
+                    <div style={{ width: GRID_COLS[9].width, flexShrink: 0, padding: '0 4px', fontSize: '0.62rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                        <EditableCell
+                            value={Array.isArray(st.additional_dates) ? st.additional_dates.join(', ') : ''}
+                            onSave={async (v) => {
+                                const dates = v.split(',').map(d => d.trim()).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+                                await supabase.from('sub_tasks').update({ additional_dates: dates }).eq('id', st.id);
+                                router.refresh();
+                            }}
+                            style={{ fontSize: '0.62rem' }}
+                            renderDisplay={(val) => {
+                                const count = Array.isArray(st.additional_dates) ? st.additional_dates.length : 0;
+                                return (
+                                    <div title={val || 'No intermittent dates'} style={{ color: count > 0 ? '#d8b4fe' : 'var(--text-muted)' }}>
+                                        {count > 0 ? `${count} date${count > 1 ? 's' : ''} (${val})` : '—'}
+                                    </div>
+                                );
+                            }}
+                        />
+                    </div>
                 </div>
             );
         }
@@ -915,7 +959,6 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
             const isDraggedSt = dragState && dragState.id === st.id && dragState.itemType === 'subtask';
             const sts = isDraggedSt && dragState.currentStart ? parseLocalDate(dragState.currentStart) : parseLocalDate(st.start_date);
             const ste = isDraggedSt && dragState.currentEnd ? parseLocalDate(dragState.currentEnd) : (parseLocalDate(st.due_date) || sts);
-            if (!sts && (!st.additional_dates || st.additional_dates.length === 0)) return <div style={{ width: `${timelineW}px`, height: `${ROW_H}px` }} />;
             const steAdj = sts && ste < sts ? sts : ste;
             const stLeft = sts ? diffDays(sts, rangeStart) * px : 0;
             const stWidth = sts ? Math.max((diffDays(steAdj, sts) + 1) * px, px) : 0;
@@ -1053,7 +1096,7 @@ export default function JobGantt({ jobs = [], users = [], customers = [], milest
                     {/* Split pane: LEFT = data grid, RIGHT = timeline */}
                     <div style={{ display: 'flex', minWidth: `${dividerX + timelineW + 4}px`, position: 'relative' }}>
                         {/* LEFT: Editable Data Grid */}
-                        <div style={{ width: `${dividerX}px`, flexShrink: 0, position: 'sticky', left: 0, zIndex: 5, background: '#1a0508' }}>
+                        <div style={{ width: `${dividerX}px`, flexShrink: 0, position: 'sticky', left: 0, zIndex: 5, background: '#1a0508', overflow: 'hidden' }}>
                             {/* Grid header */}
                             <div style={{ display: 'flex', height: `${HEADER_H}px`, borderBottom: '1px solid rgba(255,255,255,0.1)', background: '#161b22', position: 'sticky', top: 0, zIndex: 6 }}>
                                 {GRID_COLS.map((col, colIdx) => (
