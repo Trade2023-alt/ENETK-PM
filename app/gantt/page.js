@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import Header from '@/components/Header';
 import JobGantt from '@/components/JobGantt';
 import AutoSchedulerModal from '@/components/AutoSchedulerModal';
+import MSProjectImporter from '@/components/MSProjectImporter';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -148,6 +149,7 @@ export default async function GanttPage() {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <MSProjectImporter users={users || []} />
                     <AutoSchedulerModal users={users || []} />
                     <Link href="/calendar" className="btn" style={{ fontSize: '0.82rem' }}>🗓️ Calendar</Link>
                     <Link href="/schedule/v2" className="btn" style={{ fontSize: '0.82rem' }}>🗃️ Schedule</Link>
