@@ -59,6 +59,11 @@ export default async function GanttPage() {
         .select('id, username')
         .order('username');
 
+    const { data: customers } = await supabase
+        .from('customers')
+        .select('id, name')
+        .order('name');
+
     // Milestones for the timeline + KPI/risk widgets
     let milestones = [];
     try {
@@ -211,7 +216,7 @@ export default async function GanttPage() {
             )}
 
             {/* Gantt Chart */}
-            <JobGantt jobs={jobs} users={users || []} milestones={milestones} />
+            <JobGantt jobs={jobs} users={users || []} customers={customers || []} milestones={milestones} />
 
             {/* Team Workload balance */}
             {workload.length > 0 && (

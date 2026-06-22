@@ -42,7 +42,7 @@ const ROW_H = 38;
 const HEADER_H = 32;
 
 // Editable cell that saves on blur
-function EditableCell({ value, onSave, type = 'text', style = {}, options }) {
+function EditableCell({ value, onSave, type = 'text', style = {}, options, renderDisplay }) {
     const [editing, setEditing] = useState(false);
     const [val, setVal] = useState(value ?? '');
     const inputRef = useRef(null);
@@ -50,7 +50,7 @@ function EditableCell({ value, onSave, type = 'text', style = {}, options }) {
     useEffect(() => { setVal(value ?? ''); }, [value]);
 
     useEffect(() => {
-        if (editing && inputRef.current) {
+        if (editing && inputRef.current && (type === 'text' || type === 'number' || type === 'date')) {
             inputRef.current.focus();
             if (type === 'text' || type === 'number') inputRef.current.select();
         }
@@ -75,8 +75,80 @@ function EditableCell({ value, onSave, type = 'text', style = {}, options }) {
                     outline: 'none', ...style
                 }}
             >
-                {(options || []).map(o => <option key={o} value={o} style={{ background: '#1a0508', color: '#fff' }}>{o}</option>)}
+                {(options || []).map(o => {
+                    const optVal = typeof o === 'object' ? o.value : o;
+                    const optLabel = typeof o === 'object' ? o.label : o;
+                    return (
+                        <option key={optVal} value={optVal} style={{ background: '#1a0508', color: '#fff' }}>
+                            {optLabel}
+                        </option>
+                    );
+                })}
             </select>
+        );
+    }
+
+    if (type === 'users') {
+        const currentIds = Array.isArray(val) ? val : (typeof val === 'string' && val ? val.split(',') : []);
+        
+        return (
+            <div style={{ position: 'relative', width: '100%' }}>
+                <div
+                    onDoubleClick={() => setEditing(true)}
+                    style={{ cursor: 'pointer', minHeight: '1.2em', width: '100%', ...style }}
+                    title="Double-click to change assignments"
+                >
+                    {renderDisplay ? renderDisplay(currentIds) : (currentIds.length === 0 ? '—' : currentIds.map(id => {
+                        const u = (options || []).find(o => String(o.id) === String(id));
+                        return u ? u.username : '';
+                    }).filter(Boolean).join(', '))}
+                </div>
+                {editing && (
+                    <>
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setEditing(false)} />
+                        <div style={{
+                            position: 'absolute', top: '100%', left: 0, zIndex: 100,
+                            background: '#1a0508', border: '1px solid rgba(159,18,57,0.5)',
+                            borderRadius: '4px', padding: '6px', width: '160px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '4px',
+                            maxHeight: '180px', overflowY: 'auto'
+                        }}>
+                            {(options || []).map(u => {
+                                const isAssigned = currentIds.some(id => String(id) === String(u.id));
+                                return (
+                                    <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.72rem', color: '#fff', padding: '2px 4px', borderRadius: '3px', background: isAssigned ? 'rgba(255,255,255,0.05)' : 'transparent' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={isAssigned}
+                                            onChange={(e) => {
+                                                let nextIds;
+                                                if (e.target.checked) {
+                                                    nextIds = [...currentIds, u.id];
+                                                } else {
+                                                    nextIds = currentIds.filter(id => String(id) !== String(u.id));
+                                                }
+                                                setVal(nextIds);
+                                                onSave(nextIds);
+                                            }}
+                                        />
+                                        {u.username}
+                                    </label>
+                                );
+                            })}
+                            <button
+                                onClick={() => setEditing(false)}
+                                style={{
+                                    marginTop: '4px', background: '#9f1239', color: '#fff', border: 'none',
+                                    borderRadius: '3px', padding: '3px', fontSize: '0.65rem', cursor: 'pointer',
+                                    fontWeight: 700
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
         );
     }
 
@@ -87,7 +159,7 @@ function EditableCell({ value, onSave, type = 'text', style = {}, options }) {
                 style={{ cursor: 'text', minHeight: '1em', width: '100%', ...style }}
                 title="Double-click to edit"
             >
-                {type === 'number' ? (val || 0) : (val || '—')}
+                {renderDisplay ? renderDisplay(val) : (type === 'number' ? (val || 0) : (val || '—'))}
             </div>
         );
     }
@@ -109,6 +181,7 @@ function EditableCell({ value, onSave, type = 'text', style = {}, options }) {
     );
 }
 
+
 // Grid column config — mirrors MS Project layout
 const DEFAULT_COLS = [
     { key: 'title', label: 'Task Name', width: 200, minWidth: 100, align: 'left' },
@@ -123,7 +196,7 @@ const DEFAULT_COLS = [
 ];
 const DEFAULT_GRID_W = DEFAULT_COLS.reduce((sum, c) => sum + c.width, 0);
 
-export default function JobGantt({ jobs = [], users = [], milestones = [], onJobSelect }) {
+export default function JobGantt({ jobs = [], users = [], customers = [], milestones = [], onJobSelect }) {
     const containerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const zoom = 'Week';
@@ -138,6 +211,146 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
     const currentGridW = colWidths.reduce((sum, w) => sum + w, 0);
     const [dividerX, setDividerX] = useState(DEFAULT_GRID_W);
     const [draggingDivider, setDraggingDivider] = useState(false);
+
+    // Dynamic width tracking
+    const [containerWidth, setContainerWidth] = useState(1200);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                setContainerWidth(entry.contentRect.width);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
+    }, []);
+
+    // Creation modal states
+    const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+    const [showJobModal, setShowJobModal] = useState(false);
+    const [showSubtaskModal, setShowSubtaskModal] = useState(false);
+
+    // New items temporary state
+    const [newMilestone, setNewMilestone] = useState({ title: '', description: '', startDate: '', endDate: '', status: 'Planned', priority: 'Normal', jobId: '' });
+    const [newJob, setNewJob] = useState({ title: '', jobNumber: '', customerId: '', scheduledDate: '', dueDate: '', estimatedHours: 0, priority: 'Normal', assignedUserIds: [] });
+    const [newSubtask, setNewSubtask] = useState({ jobId: '', title: '', startDate: '', dueDate: '', estimatedHours: 0, priority: 'Normal', assignedUserIds: [] });
+
+    const handleAddMilestone = async (e) => {
+        e.preventDefault();
+        const { title, description, startDate, endDate, status, priority, jobId } = newMilestone;
+        if (!title || !startDate || !endDate) return alert("Title, Start Date, and End Date are required.");
+        
+        const { error } = await supabase.from('roadmap_milestones').insert([{
+            title,
+            description,
+            start_date: startDate,
+            end_date: endDate,
+            status,
+            priority,
+            job_id: jobId ? parseInt(jobId, 10) : null
+        }]);
+        if (error) return alert("Failed to add milestone: " + error.message);
+        
+        setShowMilestoneModal(false);
+        setNewMilestone({ title: '', description: '', startDate: '', endDate: '', status: 'Planned', priority: 'Normal', jobId: '' });
+        router.refresh();
+    };
+
+    const handleAddJob = async (e) => {
+        e.preventDefault();
+        const { title, jobNumber, customerId, scheduledDate, dueDate, estimatedHours, priority, assignedUserIds } = newJob;
+        if (!title || !customerId || !scheduledDate || !dueDate || assignedUserIds.length === 0) {
+            return alert("Missing required fields. Please ensure Title, Customer, Team, Schedule, and Due Date are set.");
+        }
+        
+        const jobToInsert = {
+            title,
+            job_number: jobNumber || null,
+            customer_id: customerId,
+            scheduled_date: scheduledDate,
+            due_date: dueDate,
+            estimated_hours: estimatedHours || 0,
+            status: 'Scheduled',
+            priority
+        };
+        
+        let { data, error } = await supabase.from('jobs').insert([jobToInsert]).select().single();
+        if (error && error.message.includes('jobs_pkey')) {
+            const { data: lastItem } = await supabase.from('jobs').select('id').order('id', { ascending: false }).limit(1);
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            jobToInsert.id = nextId;
+            const retry = await supabase.from('jobs').insert([jobToInsert]).select().single();
+            data = retry.data;
+            error = retry.error;
+        }
+        if (error) return alert("Failed to add job: " + error.message);
+        
+        const newJobId = data.id;
+        
+        // Phases
+        const defaultPhases = [
+            { job_id: newJobId, phase_name: 'Opportunity', status: 'Not Started', sequence_order: 1 },
+            { job_id: newJobId, phase_name: 'Estimating', status: 'Not Started', sequence_order: 2 },
+            { job_id: newJobId, phase_name: 'Planning', status: 'Not Started', sequence_order: 3 },
+            { job_id: newJobId, phase_name: 'Procurement', status: 'Not Started', sequence_order: 4 },
+            { job_id: newJobId, phase_name: 'Installation', status: 'Not Started', sequence_order: 5 },
+            { job_id: newJobId, phase_name: 'Finish', status: 'Not Started', sequence_order: 6 },
+            { job_id: newJobId, phase_name: 'Customer Follow UP / Turnover', status: 'Not Started', sequence_order: 7 }
+        ];
+        await supabase.from('job_phases').insert(defaultPhases);
+        
+        // Assignments
+        if (assignedUserIds.length > 0) {
+            await supabase.from('job_assignments').insert(
+                assignedUserIds.map(uid => ({ job_id: newJobId, user_id: uid }))
+            );
+        }
+        
+        setShowJobModal(false);
+        setNewJob({ title: '', jobNumber: '', customerId: '', scheduledDate: '', dueDate: '', estimatedHours: 0, priority: 'Normal', assignedUserIds: [] });
+        router.refresh();
+    };
+
+    const handleAddSubtask = async (e) => {
+        e.preventDefault();
+        const { jobId, title, startDate, dueDate, estimatedHours, priority, assignedUserIds } = newSubtask;
+        if (!jobId || !title) return alert("Parent Job and Title are required.");
+        
+        const taskToInsert = {
+            job_id: parseInt(jobId, 10),
+            title,
+            start_date: startDate || null,
+            due_date: dueDate || null,
+            estimated_hours: estimatedHours || 0,
+            status: 'Scheduled',
+            priority
+        };
+        
+        let { data, error } = await supabase.from('sub_tasks').insert([taskToInsert]).select().single();
+        if (error && error.message.includes('sub_tasks_pkey')) {
+            const { data: lastItem } = await supabase.from('sub_tasks').select('id').order('id', { ascending: false }).limit(1);
+            const nextId = (lastItem && lastItem[0]?.id ? lastItem[0].id : 0) + 1;
+            taskToInsert.id = nextId;
+            const retry = await supabase.from('sub_tasks').insert([taskToInsert]).select().single();
+            data = retry.data;
+            error = retry.error;
+        }
+        if (error) return alert("Failed to add subtask: " + error.message);
+        
+        const newStId = data.id;
+        
+        // Assignments
+        if (assignedUserIds.length > 0) {
+            await supabase.from('sub_task_assignments').insert(
+                assignedUserIds.map(uid => ({ sub_task_id: newStId, user_id: uid }))
+            );
+        }
+        
+        setShowSubtaskModal(false);
+        setNewSubtask({ jobId: '', title: '', startDate: '', dueDate: '', estimatedHours: 0, priority: 'Normal', assignedUserIds: [] });
+        router.refresh();
+    };
 
     useEffect(() => {
         const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -204,8 +417,6 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
         });
     };
 
-    const px = PX[zoom];
-
     // --- Inline Save Logic ---
     const saveJobField = async (jobId, field, value) => {
         await supabase.from('jobs').update({ [field]: value }).eq('id', jobId);
@@ -216,6 +427,27 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
         await supabase.from('sub_tasks').update({ [field]: value }).eq('id', stId);
         router.refresh();
     };
+
+    const saveJobAssignments = async (jobId, newUserIds) => {
+        await supabase.from('job_assignments').delete().eq('job_id', jobId);
+        if (newUserIds.length > 0) {
+            await supabase.from('job_assignments').insert(
+                newUserIds.map(uid => ({ job_id: jobId, user_id: uid }))
+            );
+        }
+        router.refresh();
+    };
+
+    const saveSubTaskAssignments = async (stId, newUserIds) => {
+        await supabase.from('sub_task_assignments').delete().eq('sub_task_id', stId);
+        if (newUserIds.length > 0) {
+            await supabase.from('sub_task_assignments').insert(
+                newUserIds.map(uid => ({ sub_task_id: stId, user_id: uid }))
+            );
+        }
+        router.refresh();
+    };
+
 
     // --- Drag and Drop Logic ---
     const handleMouseDown = (e, item, type, itemType) => {
@@ -376,6 +608,16 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
         return { rangeStart: start, totalDays: days };
     }, [sortedFiltered, milestones, zoom]);
 
+    const basePx = PX[zoom];
+    const visibleTimelineW = Math.max(0, containerWidth - dividerX - 24);
+    const px = useMemo(() => {
+        const defaultW = totalDays * basePx;
+        if (defaultW < visibleTimelineW) {
+            return visibleTimelineW / totalDays;
+        }
+        return basePx;
+    }, [zoom, totalDays, visibleTimelineW, basePx]);
+
     const timelineW = totalDays * px;
 
     const monthMarkers = useMemo(() => {
@@ -445,23 +687,54 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                                 {isExpanded ? '−' : '+'}
                             </button>
                         )}
-                        {onJobSelect ? (
-                            <button onClick={(e) => { e.stopPropagation(); onJobSelect(job.id); }} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: 'var(--foreground)', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                                {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
-                            </button>
-                        ) : (
-                            <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                                {job.job_number ? `${job.job_number} ` : ''}{job.title || 'Untitled'}
-                            </Link>
-                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <EditableCell
+                                value={job.title || ''}
+                                onSave={(v) => saveJobField(job.id, 'title', v)}
+                                renderDisplay={(val) => (
+                                    onJobSelect ? (
+                                        <button onClick={(e) => { e.stopPropagation(); onJobSelect(job.id); }} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: 'var(--foreground)', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', width: '100%' }}>
+                                            {job.job_number ? `${job.job_number} ` : ''}{val || 'Untitled'}
+                                        </button>
+                                    ) : (
+                                        <Link href={`/jobs/${job.id}`} style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--foreground)', textDecoration: 'none', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', display: 'block', width: '100%' }}>
+                                            {job.job_number ? `${job.job_number} ` : ''}{val || 'Untitled'}
+                                        </Link>
+                                    )
+                                )}
+                            />
+                        </div>
                     </div>
                     {/* Customer */}
-                    <div style={{ width: GRID_COLS[1].width, flexShrink: 0, padding: '0 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: '#60a5fa', fontSize: '0.68rem' }}>
-                        {job.customer_name || '—'}
+                    <div style={{ width: GRID_COLS[1].width, flexShrink: 0, padding: '0 4px', overflow: 'visible', fontSize: '0.68rem' }}>
+                        <EditableCell
+                            value={job.customer_id || ''}
+                            type="select"
+                            options={[
+                                { value: '', label: '—' },
+                                ...customers.map(c => ({ value: c.id, label: c.name }))
+                            ]}
+                            onSave={(v) => saveJobField(job.id, 'customer_id', v === '' ? null : v)}
+                            style={{ fontSize: '0.68rem', color: '#60a5fa' }}
+                        />
                     </div>
                     {/* Assigned To */}
-                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: '#fbbf24', fontSize: '0.66rem' }} title={(job.assignments || []).map(a => a.user?.username).filter(Boolean).join(', ')}>
-                        {(job.assignments || []).map(a => a.user?.username).filter(Boolean).join(', ') || '—'}
+                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', overflow: 'visible', fontSize: '0.66rem' }}>
+                        <EditableCell
+                            value={(job.assignments || []).map(a => a.user_id)}
+                            type="users"
+                            options={users}
+                            onSave={(v) => saveJobAssignments(job.id, v)}
+                            style={{ fontSize: '0.66rem', color: '#fbbf24' }}
+                            renderDisplay={(assignedIds) => {
+                                const names = (job.assignments || []).map(a => a.user?.username).filter(Boolean).join(', ');
+                                return (
+                                    <div title={names} style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                        {names || '—'}
+                                    </div>
+                                );
+                            }}
+                        />
                     </div>
                     {/* Work (Est Hrs) */}
                     <div style={{ width: GRID_COLS[3].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
@@ -494,6 +767,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
             );
         }
 
+
         if (row.type === 'subtask') {
             const { st, job } = row;
             const estHrs = st.estimated_hours || 0;
@@ -504,15 +778,39 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
             return (
                 <div style={{ display: 'flex', height: `${ROW_H}px`, alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.02)', background: 'rgba(0,0,0,0.2)', fontSize: '0.68rem' }}>
                     {/* Task Name indented */}
-                    <div style={{ width: GRID_COLS[0].width, flexShrink: 0, padding: '0 4px 0 28px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.7)' }}>
-                        ↳ {st.title || 'Untitled'}
+                    <div style={{ width: GRID_COLS[0].width, flexShrink: 0, padding: '0 4px 0 28px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <EditableCell
+                                value={st.title || ''}
+                                onSave={(v) => saveSubTaskField(st.id, 'title', v)}
+                                renderDisplay={(val) => (
+                                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem' }}>
+                                        ↳ {val || 'Untitled'}
+                                    </span>
+                                )}
+                            />
+                        </div>
                     </div>
                     {/* Customer (inherit from parent job) */}
                     <div style={{ width: GRID_COLS[1].width, flexShrink: 0, padding: '0 4px', color: 'var(--text-muted)', fontSize: '0.62rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                     </div>
                     {/* Assigned To (subtask level) */}
-                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: '#fbbf24', fontSize: '0.62rem' }}>
-                        {(st.assignments || []).map(a => a.user?.username).filter(Boolean).join(', ') || '—'}
+                    <div style={{ width: GRID_COLS[2].width, flexShrink: 0, padding: '0 4px', overflow: 'visible', fontSize: '0.62rem' }}>
+                        <EditableCell
+                            value={(st.assignments || []).map(a => a.user_id)}
+                            type="users"
+                            options={users}
+                            onSave={(v) => saveSubTaskAssignments(st.id, v)}
+                            style={{ fontSize: '0.62rem', color: '#fbbf24' }}
+                            renderDisplay={(assignedIds) => {
+                                const names = (st.assignments || []).map(a => a.user?.username).filter(Boolean).join(', ');
+                                return (
+                                    <div title={names} style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                        {names || '—'}
+                                    </div>
+                                );
+                            }}
+                        />
                     </div>
                     {/* Work */}
                     <div style={{ width: GRID_COLS[3].width, flexShrink: 0, padding: '0 4px', textAlign: 'center' }}>
@@ -544,6 +842,7 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                 </div>
             );
         }
+
         return null;
     };
 
@@ -656,17 +955,29 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
     return (
         <div ref={containerRef} style={{ background: isFullscreen ? 'var(--background)' : 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid var(--card-border)', overflow: 'hidden', height: isFullscreen ? '100vh' : 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1rem', borderBottom: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.02)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 1rem', borderBottom: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.02)', flexShrink: 0, flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>📊 Gantt Timeline</span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
                     {filtered.length} job{filtered.length !== 1 ? 's' : ''}
                     {milestones.length > 0 ? ` · ${milestones.length} milestone${milestones.length !== 1 ? 's' : ''}` : ''}
                     <span style={{ marginLeft: '0.5rem', color: '#a78bfa', fontWeight: 600 }}>✏️ Double-click cells to edit</span>
                 </span>
+                <div style={{ display: 'flex', gap: '0.4rem', marginLeft: '1rem' }}>
+                    <button type="button" onClick={() => setShowMilestoneModal(true)} style={{ background: 'rgba(167, 139, 250, 0.15)', border: '1px solid rgba(167, 139, 250, 0.4)', borderRadius: '4px', padding: '0.25rem 0.6rem', color: '#a78bfa', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        ◆ + Milestone
+                    </button>
+                    <button type="button" onClick={() => setShowJobModal(true)} style={{ background: 'rgba(5, 150, 105, 0.15)', border: '1px solid rgba(5, 150, 105, 0.4)', borderRadius: '4px', padding: '0.25rem 0.6rem', color: '#34d399', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        📋 + Task
+                    </button>
+                    <button type="button" onClick={() => setShowSubtaskModal(true)} style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '4px', padding: '0.25rem 0.6rem', color: '#60a5fa', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        ↳ + Sub Task
+                    </button>
+                </div>
                 <button onClick={toggleFullscreen} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--card-border)', borderRadius: '6px', padding: '0.25rem 0.6rem', color: 'var(--foreground)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     {isFullscreen ? '⤓ Exit Fullscreen' : '⤢ Fullscreen'}
                 </button>
             </div>
+
 
             {filtered.length === 0 && milestones.length === 0 ? (
                 <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -772,6 +1083,249 @@ export default function JobGantt({ jobs = [], users = [], milestones = [], onJob
                 ))}
                 <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: 'var(--text-muted)' }}>Drag divider to resize · Double-click cells to edit</span>
             </div>
+
+            {/* MILESTONE MODAL */}
+            {showMilestoneModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <form onSubmit={handleAddMilestone} style={{ background: '#1a0508', border: '1px solid rgba(159,18,57,0.5)', borderRadius: '8px', padding: '1.5rem', width: '400px', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ margin: 0, color: '#a78bfa', fontSize: '1.1rem' }}>◆ Add Milestone</h3>
+                        
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Milestone Title *</label>
+                            <input required type="text" value={newMilestone.title} onChange={e => setNewMilestone(prev => ({ ...prev, title: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                        </div>
+                        
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Description</label>
+                            <textarea value={newMilestone.description} onChange={e => setNewMilestone(prev => ({ ...prev, description: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none', height: '60px', resize: 'none' }} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Start Date *</label>
+                                <input required type="date" value={newMilestone.startDate} onChange={e => setNewMilestone(prev => ({ ...prev, startDate: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>End Date *</label>
+                                <input required type="date" value={newMilestone.endDate} onChange={e => setNewMilestone(prev => ({ ...prev, endDate: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Status</label>
+                                <select value={newMilestone.status} onChange={e => setNewMilestone(prev => ({ ...prev, status: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }}>
+                                    <option value="Planned">Planned</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="At Risk">At Risk</option>
+                                    <option value="Delayed">Delayed</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Priority</label>
+                                <select value={newMilestone.priority} onChange={e => setNewMilestone(prev => ({ ...prev, priority: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }}>
+                                    <option value="Low">Low</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Link to Task/Job (Optional)</label>
+                            <select value={newMilestone.jobId} onChange={e => setNewMilestone(prev => ({ ...prev, jobId: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }}>
+                                <option value="">Select Job...</option>
+                                {jobs.map(j => (
+                                    <option key={j.id} value={j.id}>{j.job_number ? `[${j.job_number}] ` : ''}{j.title}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                            <button type="button" onClick={() => setShowMilestoneModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                            <button type="submit" style={{ background: '#a78bfa', border: 'none', color: '#1a0508', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Save Milestone</button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* JOB (TASK) MODAL */}
+            {showJobModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <form onSubmit={handleAddJob} style={{ background: '#1a0508', border: '1px solid rgba(159,18,57,0.5)', borderRadius: '8px', padding: '1.5rem', width: '450px', display: 'flex', flexDirection: 'column', gap: '0.85rem', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ margin: 0, color: '#34d399', fontSize: '1.1rem' }}>📋 Add Task (Job)</h3>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Task Name *</label>
+                                <input required type="text" value={newJob.title} onChange={e => setNewJob(prev => ({ ...prev, title: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Job Number</label>
+                                <input type="text" value={newJob.jobNumber} onChange={e => setNewJob(prev => ({ ...prev, jobNumber: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '0.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Customer *</label>
+                                <select required value={newJob.customerId} onChange={e => setNewJob(prev => ({ ...prev, customerId: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }}>
+                                    <option value="">Select Customer...</option>
+                                    {customers.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Est. Hours (Work)</label>
+                                <input type="number" min="0" value={newJob.estimatedHours || ''} onChange={e => setNewJob(prev => ({ ...prev, estimatedHours: parseFloat(e.target.value) || 0 }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Start Date *</label>
+                                <input required type="date" value={newJob.scheduledDate} onChange={e => setNewJob(prev => ({ ...prev, scheduledDate: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Finish (Due Date) *</label>
+                                <input required type="date" value={newJob.dueDate} onChange={e => setNewJob(prev => ({ ...prev, dueDate: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Assigned Team (Select multiple) *</label>
+                            <div style={{ maxHeight: '100px', overflowY: 'auto', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '6px', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {users.map(u => {
+                                    const isSelected = newJob.assignedUserIds.includes(u.id);
+                                    return (
+                                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.72rem', color: '#fff' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={e => {
+                                                    if (e.target.checked) {
+                                                        setNewJob(prev => ({ ...prev, assignedUserIds: [...prev.assignedUserIds, u.id] }));
+                                                    } else {
+                                                        setNewJob(prev => ({ ...prev, assignedUserIds: prev.assignedUserIds.filter(id => id !== u.id) }));
+                                                    }
+                                                }}
+                                            />
+                                            {u.username}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Priority</label>
+                            <select value={newJob.priority} onChange={e => setNewJob(prev => ({ ...prev, priority: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }}>
+                                <option value="Low">Low</option>
+                                <option value="Normal">Normal</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                            <button type="button" onClick={() => setShowJobModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                            <button type="submit" style={{ background: '#059669', border: 'none', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Save Task</button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* SUBTASK MODAL */}
+            {showSubtaskModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <form onSubmit={handleAddSubtask} style={{ background: '#1a0508', border: '1px solid rgba(159,18,57,0.5)', borderRadius: '8px', padding: '1.5rem', width: '450px', display: 'flex', flexDirection: 'column', gap: '0.85rem', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        <h3 style={{ margin: 0, color: '#60a5fa', fontSize: '1.1rem' }}>↳ Add Subtask</h3>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Parent Task (Job) *</label>
+                            <select required value={newSubtask.jobId} onChange={e => {
+                                const selectedJob = jobs.find(j => String(j.id) === String(e.target.value));
+                                setNewSubtask(prev => ({ 
+                                    ...prev, 
+                                    jobId: e.target.value,
+                                    startDate: selectedJob?.scheduled_date || '',
+                                    dueDate: selectedJob?.due_date || ''
+                                }));
+                            }} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }}>
+                                <option value="">Select Parent Job...</option>
+                                {jobs.map(j => (
+                                    <option key={j.id} value={j.id}>{j.job_number ? `[${j.job_number}] ` : ''}{j.title}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Subtask Title *</label>
+                                <input required type="text" value={newSubtask.title} onChange={e => setNewSubtask(prev => ({ ...prev, title: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Est. Hours (Work)</label>
+                                <input type="number" min="0" value={newSubtask.estimatedHours || ''} onChange={e => setNewSubtask(prev => ({ ...prev, estimatedHours: parseFloat(e.target.value) || 0 }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Start Date</label>
+                                <input type="date" value={newSubtask.startDate} onChange={e => setNewSubtask(prev => ({ ...prev, startDate: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Finish Date</label>
+                                <input type="date" value={newSubtask.dueDate} onChange={e => setNewSubtask(prev => ({ ...prev, dueDate: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Assigned Team (Select multiple)</label>
+                            <div style={{ maxHeight: '100px', overflowY: 'auto', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', padding: '6px', borderRadius: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {users.map(u => {
+                                    const isSelected = newSubtask.assignedUserIds.includes(u.id);
+                                    return (
+                                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.72rem', color: '#fff' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={e => {
+                                                    if (e.target.checked) {
+                                                        setNewSubtask(prev => ({ ...prev, assignedUserIds: [...prev.assignedUserIds, u.id] }));
+                                                    } else {
+                                                        setNewSubtask(prev => ({ ...prev, assignedUserIds: prev.assignedUserIds.filter(id => id !== u.id) }));
+                                                    }
+                                                }}
+                                            />
+                                            {u.username}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Priority</label>
+                            <select value={newSubtask.priority} onChange={e => setNewSubtask(prev => ({ ...prev, priority: e.target.value }))} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '6px', borderRadius: '4px', outline: 'none' }}>
+                                <option value="Low">Low</option>
+                                <option value="Normal">Normal</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                            <button type="button" onClick={() => setShowSubtaskModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                            <button type="submit" style={{ background: '#3b82f6', border: 'none', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Save Subtask</button>
+                        </div>
+                    </form>
+                </div>
+            )}
         </div>
     );
 }
+
