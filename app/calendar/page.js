@@ -22,12 +22,13 @@ export default async function CalendarPage() {
 
     if (!userId) redirect('/login');
 
-    // Fetch jobs with assignments
+    // Fetch jobs with assignments and customer info
     const { data: jobsRaw } = await supabase
         .from('jobs')
         .select(`
             *,
-            assignments:job_assignments(user_id)
+            assignments:job_assignments(user_id),
+            customer:customers(name)
         `);
 
     // Fetch sub-tasks with assignments
@@ -44,6 +45,12 @@ export default async function CalendarPage() {
         .select('id, username')
         .order('username');
 
+    // Fetch customers
+    const { data: customers } = await supabase
+        .from('customers')
+        .select('id, name')
+        .order('name');
+
     // Fetch on-call schedule for current month
     const today = new Date();
     const onCallSchedule = await getOnCallScheduleForMonth(today.getFullYear(), today.getMonth());
@@ -51,7 +58,8 @@ export default async function CalendarPage() {
     // Transform assigned_ids
     const jobs = (jobsRaw || []).map(job => ({
         ...job,
-        assigned_ids: job.assignments?.map(a => a.user_id).join(',')
+        assigned_ids: job.assignments?.map(a => a.user_id).join(','),
+        customer_name: job.customer?.name || null
     }));
 
     const subTasks = (subTasksRaw || []).map(st => ({
@@ -100,6 +108,7 @@ export default async function CalendarPage() {
                 jobs={jobs}
                 subTasks={subTasks}
                 users={users || []}
+                customers={customers || []}
                 onCallSchedule={onCallSchedule}
                 currentUser={{ id: Number(userId), role: userRole }}
             />

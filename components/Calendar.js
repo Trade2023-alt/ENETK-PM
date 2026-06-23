@@ -45,6 +45,28 @@ function truncateTitle(title, maxLen = 22) {
     return title.length > maxLen ? title.slice(0, maxLen) + '…' : title;
 }
 
+function getDatesBetween(startDateStr, endDateStr) {
+    const dates = [];
+    if (!startDateStr || !endDateStr) return dates;
+    
+    const [startYear, startMonth, startDay] = startDateStr.split('-').map(Number);
+    const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
+    
+    let current = new Date(startYear, startMonth - 1, startDay);
+    const end = new Date(endYear, endMonth - 1, endDay);
+    
+    let count = 0;
+    while (current <= end && count < 100) {
+        const y = current.getFullYear();
+        const m = String(current.getMonth() + 1).padStart(2, '0');
+        const d = String(current.getDate()).padStart(2, '0');
+        dates.push(`${y}-${m}-${d}`);
+        current.setDate(current.getDate() + 1);
+        count++;
+    }
+    return dates;
+}
+
 // Toast notification component
 function Toast({ toasts, onDismiss }) {
     return (
@@ -158,7 +180,7 @@ function DayModal({ day, items, users, onClose, onNavigate }) {
     );
 }
 
-export default function Calendar({ jobs, subTasks = [], users = [], currentUser, onJobSelect, onCallSchedule = [] }) {
+export default function Calendar({ jobs, subTasks = [], users = [], customers = [], currentUser, onJobSelect, onCallSchedule = [] }) {
     const router = useRouter();
     const containerRef = useRef(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -193,6 +215,8 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
     const [quickAddPriority, setQuickAddPriority] = useState('Normal');
     const [draggedOverJobId, setDraggedOverJobId] = useState(null);
     const [jobSearch, setJobSearch] = useState('');
+    const [expandedJobs, setExpandedJobs] = useState({});
+    const [selectedCustomerId, setSelectedCustomerId] = useState('');
     const [localSubTasks, setLocalSubTasks] = useState(subTasks);
 
     useEffect(() => {
@@ -482,8 +506,13 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         if (showSubTasks) {
             filteredSubTasks.forEach(task => {
                 const item = { ...task, type: 'subtask' };
-                if (task.start_date) addToMap(task.start_date, item);
-                if (task.due_date) addToMap(task.due_date, item);
+                if (task.start_date && task.due_date) {
+                    const rangeDates = getDatesBetween(task.start_date, task.due_date);
+                    rangeDates.forEach(d => addToMap(d, item));
+                } else {
+                    if (task.start_date) addToMap(task.start_date, item);
+                    if (task.due_date) addToMap(task.due_date, item);
+                }
                 if (Array.isArray(task.additional_dates)) {
                     task.additional_dates.forEach(d => addToMap(d, item));
                 }
@@ -513,15 +542,41 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                     router.refresh();
                     addToast('Date updated');
                 } else if (dragData.itemType === 'subtask') {
+                    const targetSub = localSubTasks.find(t => t.id === dragData.itemId);
+                    let newStart = null;
+                    let newEnd = dateKey;
+                    
+                    if (targetSub && targetSub.start_date && targetSub.due_date) {
+                        const start = new Date(targetSub.start_date + 'T00:00:00');
+                        const end = new Date(targetSub.due_date + 'T00:00:00');
+                        const diffTime = Math.abs(end - start);
+                        const durationDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        newStart = dateKey;
+                        const dropDate = new Date(dateKey + 'T00:00:00');
+                        dropDate.setDate(dropDate.getDate() + durationDays);
+                        
+                        const y = dropDate.getFullYear();
+                        const m = String(dropDate.getMonth() + 1).padStart(2, '0');
+                        const d = String(dropDate.getDate()).padStart(2, '0');
+                        newEnd = `${y}-${m}-${d}`;
+                    }
+
                     // Optimistic update
                     setLocalSubTasks(prev => prev.map(t => {
                         if (t.id === dragData.itemId) {
-                            return { ...t, due_date: dateKey };
+                            return { ...t, start_date: newStart, due_date: newEnd };
                         }
                         return t;
                     }));
                     setIsUpdating(true);
-                    const { error } = await supabase.from('sub_tasks').update({ due_date: dateKey, updated_at: new Date().toISOString() }).eq('id', dragData.itemId);
+                    
+                    const updateData = { due_date: newEnd, updated_at: new Date().toISOString() };
+                    if (newStart) {
+                        updateData.start_date = newStart;
+                    }
+                    
+                    const { error } = await supabase.from('sub_tasks').update(updateData).eq('id', dragData.itemId);
                     if (error) throw error;
                     router.refresh();
                     addToast('Date updated');
@@ -536,7 +591,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                     status: 'Pending',
                     priority: 'Normal',
                     due_date: dateKey,
-                    assigned_ids: filterUser ? String(filterUser) : ''
+                    assigned_ids: ''
                 };
                 setLocalSubTasks(prev => [...prev, tempSub]);
 
@@ -550,13 +605,6 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                         due_date: dateKey
                     };
                     const pastedSub = await insertSubTaskSafely(subData);
-                    const newSubId = pastedSub.id;
-                    
-                    if (filterUser) {
-                        const assignments = [{ sub_task_id: newSubId, user_id: Number(filterUser) }];
-                        const { error: assignError } = await supabase.from('sub_task_assignments').insert(assignments);
-                        if (assignError) throw assignError;
-                    }
                     router.refresh();
                     addToast('Event created successfully');
                 } catch (err) {
@@ -623,6 +671,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
     };
 
     const handleRemoveAssignment = async (item, userId) => {
+        setContextMenu(null);
         if (!confirm(`Are you sure you want to remove this user from "${item.title}"?`)) return;
         
         // Optimistic assignment removal
@@ -651,6 +700,40 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         } catch (err) {
             console.error('Error removing user assignment:', err);
             addToast('Failed to remove assignment: ' + err.message, 'error');
+            router.refresh();
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleUnassignAll = async (item) => {
+        setContextMenu(null);
+        if (!confirm(`Are you sure you want to remove all assignments from "${item.title}"?`)) return;
+        
+        // Optimistic assignment removal
+        if (item.type === 'subtask') {
+            setLocalSubTasks(prev => prev.map(t => {
+                if (t.id === item.id) {
+                    return { ...t, assigned_ids: '' };
+                }
+                return t;
+            }));
+        }
+
+        try {
+            setIsUpdating(true);
+            if (item.type === 'job') {
+                const { error } = await supabase.from('job_assignments').delete().eq('job_id', item.id);
+                if (error) throw error;
+            } else if (item.type === 'subtask') {
+                const { error } = await supabase.from('sub_task_assignments').delete().eq('sub_task_id', item.id);
+                if (error) throw error;
+            }
+            router.refresh();
+            addToast('All assignments removed');
+        } catch (err) {
+            console.error('Error removing all user assignments:', err);
+            addToast('Failed to remove assignments: ' + err.message, 'error');
             router.refresh();
         } finally {
             setIsUpdating(false);
@@ -747,6 +830,57 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         } catch (err) {
             console.error('Error deleting subtask:', err);
             addToast('Failed to delete event: ' + err.message, 'error');
+            router.refresh();
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleStretchTask = async (item) => {
+        setContextMenu(null);
+        const currentStart = item.start_date || item.due_date || new Date().toISOString().split('T')[0];
+        const currentEnd = item.due_date || item.start_date || new Date().toISOString().split('T')[0];
+        
+        const startInput = prompt(`Enter start date for "${item.title}" (YYYY-MM-DD):`, currentStart);
+        if (startInput === null) return;
+        
+        const endInput = prompt(`Enter end date for "${item.title}" (YYYY-MM-DD):`, currentEnd);
+        if (endInput === null) return;
+        
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startInput) || !/^\d{4}-\d{2}-\d{2}$/.test(endInput)) {
+            alert('Invalid date format. Please use YYYY-MM-DD.');
+            return;
+        }
+
+        if (new Date(startInput + 'T00:00:00') > new Date(endInput + 'T00:00:00')) {
+            alert('Start date cannot be after end date.');
+            return;
+        }
+
+        // Optimistic local update
+        setLocalSubTasks(prev => prev.map(t => {
+            if (t.id === item.id) {
+                return { ...t, start_date: startInput, due_date: endInput };
+            }
+            return t;
+        }));
+
+        try {
+            setIsUpdating(true);
+            const { error } = await supabase.from('sub_tasks')
+                .update({ 
+                    start_date: startInput, 
+                    due_date: endInput,
+                    updated_at: new Date().toISOString() 
+                })
+                .eq('id', item.id);
+            
+            if (error) throw error;
+            router.refresh();
+            addToast('Event stretched across dates successfully');
+        } catch (err) {
+            console.error('Error stretching task:', err);
+            addToast('Failed to stretch event: ' + err.message, 'error');
             router.refresh();
         } finally {
             setIsUpdating(false);
@@ -1348,6 +1482,23 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                         >
                             ➕ Unscheduled Event
                         </div>
+                        <Link
+                            href="/jobs/new"
+                            className="cal-header-btn"
+                            style={{
+                                marginLeft: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                background: 'rgba(16,185,129,0.15)',
+                                borderColor: 'rgba(16,185,129,0.4)',
+                                color: '#a7f3d0',
+                                textDecoration: 'none',
+                                userSelect: 'none'
+                            }}
+                        >
+                            ➕ New Job
+                        </Link>
                     </div>
                 </div>
 
@@ -1457,6 +1608,22 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                             gap: '0.5rem'
                         }}>
                             <span>📁 Assign to Project</span>
+                            <select
+                                className="input"
+                                value={selectedCustomerId}
+                                onChange={e => setSelectedCustomerId(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.3rem 0.6rem',
+                                    fontSize: '0.78rem',
+                                    height: '32px'
+                                }}
+                            >
+                                <option value="">All Customers</option>
+                                {customers.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
                             <input
                                 type="text"
                                 className="input"
@@ -1482,6 +1649,9 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                         }}>
                             {jobs
                                 .filter(job => {
+                                    if (selectedCustomerId && String(job.customer_id) !== String(selectedCustomerId)) {
+                                        return false;
+                                    }
                                     if (!jobSearch) return true;
                                     const term = jobSearch.toLowerCase();
                                     return (
@@ -1492,6 +1662,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                 .map(job => {
                                     const isHovered = draggedOverJobId === job.id;
                                     const statusColor = job.status === 'Complete' ? '#10b981' : 'var(--primary)';
+                                    const isExpanded = !!expandedJobs[job.id];
                                     return (
                                         <div
                                             key={job.id}
@@ -1502,6 +1673,12 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                                 setDraggedOverJobId(null);
                                                 await handleDropTaskOnJob(e, job.id);
                                             }}
+                                            onClick={() => {
+                                                setExpandedJobs(prev => ({
+                                                    ...prev,
+                                                    [job.id]: !prev[job.id]
+                                                }));
+                                            }}
                                             style={{
                                                 padding: '0.6rem',
                                                 borderRadius: '8px',
@@ -1509,7 +1686,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                                 border: `1px solid ${isHovered ? 'var(--primary)' : 'var(--card-border)'}`,
                                                 boxShadow: isHovered ? '0 0 10px rgba(159,18,57,0.3)' : 'none',
                                                 transition: 'all 0.15s',
-                                                cursor: 'default',
+                                                cursor: 'pointer',
                                                 userSelect: 'none'
                                             }}
                                             onMouseEnter={e => {
@@ -1520,15 +1697,25 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                             }}
                                         >
                                             <div style={{
-                                                fontWeight: 600,
-                                                fontSize: '0.8rem',
-                                                color: '#f8fafc',
-                                                marginBottom: '0.2rem',
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis'
-                                            }} title={job.title}>
-                                                {job.job_number ? `[${job.job_number}] ` : ''}{job.title}
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                marginBottom: '0.2rem'
+                                            }}>
+                                                <div style={{
+                                                    fontWeight: 600,
+                                                    fontSize: '0.8rem',
+                                                    color: '#f8fafc',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    flex: 1
+                                                }} title={job.title}>
+                                                    {job.job_number ? `[${job.job_number}] ` : ''}{job.title}
+                                                </div>
+                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.4rem', flexShrink: 0 }}>
+                                                    {isExpanded ? '▼' : '▶'}
+                                                </span>
                                             </div>
                                             <div style={{
                                                 display: 'flex',
@@ -1543,6 +1730,84 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                                     fontWeight: 700
                                                 }}>🔧</span>
                                             </div>
+                                            {isExpanded && (
+                                                <div 
+                                                    style={{
+                                                        marginTop: '0.5rem',
+                                                        paddingTop: '0.5rem',
+                                                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '0.35rem'
+                                                    }}
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    {localSubTasks.filter(t => t.job_id === job.id).length === 0 ? (
+                                                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: '4px' }}>
+                                                            No sub-tasks
+                                                        </div>
+                                                    ) : (
+                                                        localSubTasks.filter(t => t.job_id === job.id).map(t => {
+                                                            const subAssignedIds = t.assigned_ids ? t.assigned_ids.split(',') : [];
+                                                            const subAssignedUsers = users.filter(u => subAssignedIds.includes(String(u.id)));
+                                                            const isSubDone = t.status === 'Complete' || t.status === 'Achieved';
+                                                            const isSubOverdue = !isSubDone && t.due_date && new Date(t.due_date) < today;
+                                                            const subColor = isSubDone ? '#10b981' : isSubOverdue ? '#ef4444' : 'var(--warning)';
+
+                                                            return (
+                                                                <div
+                                                                    key={t.id}
+                                                                    draggable
+                                                                    onDragStart={(e) => handleDragStartItem(e, { ...t, type: 'subtask' })}
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'space-between',
+                                                                        gap: '4px',
+                                                                        background: 'rgba(255,255,255,0.02)',
+                                                                        border: '1px solid rgba(255,255,255,0.05)',
+                                                                        borderLeft: `2.5px solid ${subColor}`,
+                                                                        borderRadius: '4px',
+                                                                        padding: '0.2rem 0.4rem',
+                                                                        fontSize: '0.7rem',
+                                                                        cursor: 'grab',
+                                                                        transition: 'background 0.15s'
+                                                                    }}
+                                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                                                                    title={`Sub-task: ${t.title}\nStatus: ${t.status}\nAssigned: ${subAssignedUsers.map(u => u.username).join(', ') || 'Unassigned'}\nScheduled: ${t.due_date || 'Unscheduled'}`}
+                                                                >
+                                                                    <span style={{
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        whiteSpace: 'nowrap',
+                                                                        flex: 1,
+                                                                        textDecoration: isSubDone ? 'line-through' : 'none',
+                                                                        opacity: isSubDone ? 0.75 : 1,
+                                                                        color: isSubDone ? '#10b981' : '#f8fafc'
+                                                                    }}>
+                                                                        📌 {truncateTitle(t.title, 16)}
+                                                                    </span>
+                                                                    {subAssignedUsers.length > 0 && (
+                                                                        <span style={{
+                                                                            flexShrink: 0,
+                                                                            background: 'rgba(255,255,255,0.1)',
+                                                                            borderRadius: '3px',
+                                                                            padding: '0 2px',
+                                                                            fontSize: '0.58rem',
+                                                                            fontWeight: 700,
+                                                                            color: 'var(--text-muted)'
+                                                                        }}>
+                                                                            {subAssignedUsers.slice(0, 1).map(u => getInitials(u.username))}
+                                                                            {subAssignedUsers.length > 1 ? '+' : ''}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })
@@ -1618,6 +1883,42 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                         </div>
                                     )}
                                 </div>
+                                {contextMenu.target.assigned_ids && contextMenu.target.assigned_ids.split(',').filter(Boolean).length > 0 && (
+                                    <div
+                                        onMouseEnter={() => setHoveredMenuItem('unassign')}
+                                        onMouseLeave={() => setHoveredMenuItem(null)}
+                                        style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', color: '#f8fafc', background: hoveredMenuItem === 'unassign' ? '#334155' : 'transparent', fontWeight: 500, position: 'relative', transition: 'background 0.15s' }}
+                                    >
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>👤 Remove Assignee</span>
+                                        <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>▶</span>
+                                        {hoveredMenuItem === 'unassign' && (
+                                            <div style={{
+                                                position: 'absolute', left: '100%', top: 0,
+                                                background: '#1e293b', border: '1px solid #334155',
+                                                borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                                                padding: '0.3rem 0', minWidth: '160px', zIndex: 10001,
+                                                maxHeight: '200px', overflowY: 'auto'
+                                            }}>
+                                                {users.filter(u => contextMenu.target.assigned_ids.split(',').includes(String(u.id))).map(u => (
+                                                    <div key={u.id}
+                                                        onClick={async (e) => { e.stopPropagation(); await handleRemoveAssignment(contextMenu.target, u.id); }}
+                                                        style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', color: '#ef4444', fontWeight: 500, transition: 'background 0.15s' }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = '#334155'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                                        ❌ {u.username}
+                                                    </div>
+                                                ))}
+                                                <div
+                                                    onClick={async (e) => { e.stopPropagation(); await handleUnassignAll(contextMenu.target); }}
+                                                    style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', color: '#ef4444', fontWeight: 600, borderTop: '1px solid #334155', transition: 'background 0.15s' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = '#334155'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                                    ❌ Remove All
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 {contextMenu.target.type === 'subtask' && (
                                     <>
                                         <div onClick={() => handleRenameTask(contextMenu.target)}
@@ -1625,6 +1926,12 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                                             onMouseEnter={e => e.currentTarget.style.background = '#334155'}
                                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                             ✏️ Rename Event
+                                        </div>
+                                        <div onClick={() => handleStretchTask(contextMenu.target)}
+                                            style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f8fafc', fontWeight: 500, transition: 'background 0.15s' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = '#334155'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                            📅 Set Date Range
                                         </div>
                                         <div onClick={() => handleDeleteTask(contextMenu.target)}
                                             style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', fontWeight: 500, transition: 'background 0.15s' }}
