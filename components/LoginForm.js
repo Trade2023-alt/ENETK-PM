@@ -1,8 +1,10 @@
 'use client'
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { login } from '@/app/actions/auth';
 import { useFormStatus } from 'react-dom';
+import { startAuthentication } from '@simplewebauthn/browser';
+import { generateAuthenticationOptions, verifyAuthentication } from '@/app/actions/webauthn';
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -15,6 +17,30 @@ function SubmitButton() {
 
 export default function LoginForm() {
     const [state, formAction] = useActionState(login, { error: null });
+    const [passkeyLoading, setPasskeyLoading] = useState(false);
+
+    const handlePasskeyLogin = async () => {
+        try {
+            setPasskeyLoading(true);
+            const options = await generateAuthenticationOptions();
+            if (options.error) throw new Error(options.error);
+
+            const authResp = await startAuthentication(options);
+            const verification = await verifyAuthentication(authResp);
+
+            if (verification.success) {
+                window.location.href = '/';
+            } else {
+                alert(verification.error || 'Authentication failed');
+            }
+        } catch (err) {
+            if (err.name !== 'NotAllowedError') {
+                alert('Passkey error: ' + err.message);
+            }
+        } finally {
+            setPasskeyLoading(false);
+        }
+    };
 
     return (
         <form action={formAction} className="card" style={{ maxWidth: '400px', width: '100%', margin: '0 auto' }}>
@@ -47,6 +73,25 @@ export default function LoginForm() {
             </div>
 
             <SubmitButton />
+
+            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--card-border)' }}></div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>OR</span>
+                    <div style={{ flex: 1, height: '1px', background: 'var(--card-border)' }}></div>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={handlePasskeyLogin}
+                    disabled={passkeyLoading}
+                    className="btn"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)' }}
+                >
+                    <span style={{ fontSize: '1.2rem' }}>👤</span>
+                    {passkeyLoading ? 'Waiting for Face ID / Touch ID...' : 'Sign in with Face ID / Passkey'}
+                </button>
+            </div>
 
             <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--card-border)' }}>
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Want to see our SCADA App?</p>

@@ -581,6 +581,30 @@ export default function Calendar({ jobs, subTasks = [], users = [], customers = 
                     router.refresh();
                     addToast('Date updated');
                 }
+            } else if (dragData.type === 'resize_end') {
+                if (dragData.itemType === 'subtask') {
+                    const targetSub = localSubTasks.find(t => t.id === dragData.itemId);
+                    if (targetSub) {
+                        const newEnd = dateKey;
+                        const start = targetSub.start_date || targetSub.due_date;
+                        
+                        // Optimistic update
+                        setLocalSubTasks(prev => prev.map(t => {
+                            if (t.id === dragData.itemId) {
+                                return { ...t, start_date: start, due_date: newEnd };
+                            }
+                            return t;
+                        }));
+                        setIsUpdating(true);
+                        
+                        const { error } = await supabase.from('sub_tasks')
+                            .update({ start_date: start, due_date: newEnd, updated_at: new Date().toISOString() })
+                            .eq('id', dragData.itemId);
+                        if (error) throw error;
+                        router.refresh();
+                        addToast('Event duration stretched');
+                    }
+                }
             } else if (dragData.type === 'create_event') {
                 // Optimistic local create
                 const tempId = -Date.now();
@@ -971,6 +995,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], customers = 
                     overflow: 'hidden',
                     textDecoration: isDone ? 'line-through' : 'none',
                     opacity: isDone ? 0.75 : 1,
+                    position: 'relative',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.15)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; }}
@@ -991,6 +1016,30 @@ export default function Calendar({ jobs, subTasks = [], users = [], customers = 
                         {assignedUsers.slice(0, 2).map(u => getInitials(u.username)).join(' ')}
                         {assignedUsers.length > 2 ? `+${assignedUsers.length - 2}` : ''}
                     </span>
+                )}
+                {!isJob && (
+                    <div
+                        draggable
+                        onDragStart={(e) => {
+                            e.stopPropagation();
+                            e.dataTransfer.setData('application/json', JSON.stringify({ type: 'resize_end', itemId: item.id, itemType: item.type }));
+                        }}
+                        style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: '8px',
+                            cursor: 'ew-resize',
+                            background: 'rgba(255,255,255,0.0)',
+                            borderTopRightRadius: '6px',
+                            borderBottomRightRadius: '6px',
+                            transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.0)'; }}
+                        title="Drag to stretch end date"
+                    />
                 )}
             </div>
         );

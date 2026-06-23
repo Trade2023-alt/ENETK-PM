@@ -5,6 +5,7 @@ import { logout } from '@/app/actions/auth';
 import { useState, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import ViewSwitcher from '@/components/ViewSwitcher';
+import PasskeyRegistration from '@/components/PasskeyRegistration';
 
 export default function Header({ userRole }) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -47,6 +48,8 @@ export default function Header({ userRole }) {
                     <span className={`badge ${userRole === 'admin' ? 'badge-danger' : 'badge-primary'}`}>
                         {userRole}
                     </span>
+                    
+                    {userRole !== 'guest' && <PasskeyRegistration />}
 
                     <button onClick={() => logout()} className="btn btn-secondary btn-sm">
                         Sign Out
