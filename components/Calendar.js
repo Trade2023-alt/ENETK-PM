@@ -1029,17 +1029,23 @@ export default function Calendar({ jobs, subTasks = [], users = [], customers = 
                             right: 0,
                             top: 0,
                             bottom: 0,
-                            width: '8px',
+                            width: '16px',
                             cursor: 'ew-resize',
-                            background: 'rgba(255,255,255,0.0)',
+                            background: 'rgba(255,255,255,0.15)',
                             borderTopRightRadius: '6px',
                             borderBottomRightRadius: '6px',
-                            transition: 'background 0.15s'
+                            transition: 'background 0.15s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 10
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.0)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.4)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
                         title="Drag to stretch end date"
-                    />
+                    >
+                        <div style={{ width: '2px', height: '40%', background: 'rgba(255,255,255,0.6)', borderRadius: '2px' }} />
+                    </div>
                 )}
             </div>
         );
