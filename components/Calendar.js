@@ -193,6 +193,11 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
     const [quickAddPriority, setQuickAddPriority] = useState('Normal');
     const [draggedOverJobId, setDraggedOverJobId] = useState(null);
     const [jobSearch, setJobSearch] = useState('');
+    const [localSubTasks, setLocalSubTasks] = useState(subTasks);
+
+    useEffect(() => {
+        setLocalSubTasks(subTasks);
+    }, [subTasks]);
 
     useEffect(() => {
         if (jobs && jobs.length > 0 && !quickAddJobId) {
@@ -441,9 +446,11 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         ? jobs.filter(j => j.assigned_ids && j.assigned_ids.split(',').includes(filterUser))
         : jobs;
 
-    const filteredSubTasks = filterUser
-        ? subTasks.filter(t => t.assigned_ids && t.assigned_ids.split(',').includes(filterUser))
-        : subTasks;
+    const filteredSubTasks = useMemo(() => {
+        return filterUser
+            ? localSubTasks.filter(t => t.assigned_ids && t.assigned_ids.split(',').includes(filterUser))
+            : localSubTasks;
+    }, [localSubTasks, filterUser]);
 
     const unscheduledSubTasks = useMemo(() => {
         return filteredSubTasks.filter(st => !st.start_date && !st.due_date && (!st.additional_dates || st.additional_dates.length === 0));
@@ -499,32 +506,69 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
             if (!dataStr) return;
             const dragData = JSON.parse(dataStr);
             if (dragData.type === 'item') {
-                setIsUpdating(true);
                 if (dragData.itemType === 'job') {
+                    setIsUpdating(true);
                     const { error } = await supabase.from('jobs').update({ scheduled_date: dateKey, updated_at: new Date().toISOString() }).eq('id', dragData.itemId);
                     if (error) throw error;
+                    router.refresh();
+                    addToast('Date updated');
                 } else if (dragData.itemType === 'subtask') {
+                    // Optimistic update
+                    setLocalSubTasks(prev => prev.map(t => {
+                        if (t.id === dragData.itemId) {
+                            return { ...t, due_date: dateKey };
+                        }
+                        return t;
+                    }));
+                    setIsUpdating(true);
                     const { error } = await supabase.from('sub_tasks').update({ due_date: dateKey, updated_at: new Date().toISOString() }).eq('id', dragData.itemId);
                     if (error) throw error;
+                    router.refresh();
+                    addToast('Date updated');
                 }
-                router.refresh();
-                addToast('Date updated');
             } else if (dragData.type === 'create_event') {
-                setIsUpdating(true);
-                const subData = {
+                // Optimistic local create
+                const tempId = -Date.now();
+                const tempSub = {
+                    id: tempId,
                     job_id: null,
                     title: 'New Event',
                     status: 'Pending',
                     priority: 'Normal',
-                    due_date: dateKey
+                    due_date: dateKey,
+                    assigned_ids: filterUser ? String(filterUser) : ''
                 };
-                await insertSubTaskSafely(subData);
-                router.refresh();
-                addToast('Event created successfully');
+                setLocalSubTasks(prev => [...prev, tempSub]);
+
+                setIsUpdating(true);
+                try {
+                    const subData = {
+                        job_id: null,
+                        title: 'New Event',
+                        status: 'Pending',
+                        priority: 'Normal',
+                        due_date: dateKey
+                    };
+                    const pastedSub = await insertSubTaskSafely(subData);
+                    const newSubId = pastedSub.id;
+                    
+                    if (filterUser) {
+                        const assignments = [{ sub_task_id: newSubId, user_id: Number(filterUser) }];
+                        const { error: assignError } = await supabase.from('sub_task_assignments').insert(assignments);
+                        if (assignError) throw assignError;
+                    }
+                    router.refresh();
+                    addToast('Event created successfully');
+                } catch (err) {
+                    // Rollback optimistic create
+                    setLocalSubTasks(prev => prev.filter(t => t.id !== tempId));
+                    throw err;
+                }
             }
         } catch (err) {
             console.error('Error updating item date via drag & drop:', err);
             addToast('Failed to update date: ' + err.message, 'error');
+            router.refresh();
         } finally {
             setIsUpdating(false);
         }
@@ -545,6 +589,19 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
                 const userId = dragData.userId;
                 const assignedIds = targetItem.assigned_ids ? targetItem.assigned_ids.split(',') : [];
                 if (assignedIds.includes(String(userId))) return;
+
+                // Optimistic assignment update
+                if (targetItem.type === 'subtask') {
+                    setLocalSubTasks(prev => prev.map(t => {
+                        if (t.id === targetItem.id) {
+                            const ids = t.assigned_ids ? t.assigned_ids.split(',') : [];
+                            ids.push(String(userId));
+                            return { ...t, assigned_ids: ids.join(',') };
+                        }
+                        return t;
+                    }));
+                }
+
                 setIsUpdating(true);
                 if (targetItem.type === 'job') {
                     const { error } = await supabase.from('job_assignments').insert([{ job_id: targetItem.id, user_id: userId }]);
@@ -559,6 +616,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         } catch (err) {
             console.error('Error assigning user via drag & drop:', err);
             addToast('Failed to assign user: ' + err.message, 'error');
+            router.refresh();
         } finally {
             setIsUpdating(false);
         }
@@ -566,6 +624,19 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
 
     const handleRemoveAssignment = async (item, userId) => {
         if (!confirm(`Are you sure you want to remove this user from "${item.title}"?`)) return;
+        
+        // Optimistic assignment removal
+        if (item.type === 'subtask') {
+            setLocalSubTasks(prev => prev.map(t => {
+                if (t.id === item.id) {
+                    const ids = t.assigned_ids ? t.assigned_ids.split(',') : [];
+                    const newIds = ids.filter(id => id !== String(userId)).join(',');
+                    return { ...t, assigned_ids: newIds };
+                }
+                return t;
+            }));
+        }
+
         try {
             setIsUpdating(true);
             if (item.type === 'job') {
@@ -580,6 +651,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         } catch (err) {
             console.error('Error removing user assignment:', err);
             addToast('Failed to remove assignment: ' + err.message, 'error');
+            router.refresh();
         } finally {
             setIsUpdating(false);
         }
@@ -592,6 +664,14 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
             if (!dataStr) return;
             const dragData = JSON.parse(dataStr);
             if (dragData.type === 'item' && dragData.itemType === 'subtask') {
+                // Optimistic assignment link update
+                setLocalSubTasks(prev => prev.map(t => {
+                    if (t.id === dragData.itemId) {
+                        return { ...t, job_id: jobId };
+                    }
+                    return t;
+                }));
+
                 setIsUpdating(true);
                 const { error } = await supabase
                     .from('sub_tasks')
@@ -604,6 +684,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         } catch (err) {
             console.error('Error assigning subtask to job via drag & drop:', err);
             addToast('Failed to assign project: ' + err.message, 'error');
+            router.refresh();
         } finally {
             setIsUpdating(false);
         }
@@ -617,6 +698,15 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
             alert('Title cannot be empty.');
             return;
         }
+
+        // Optimistic rename
+        setLocalSubTasks(prev => prev.map(t => {
+            if (t.id === item.id) {
+                return { ...t, title: newTitle.trim() };
+            }
+            return t;
+        }));
+
         setIsUpdating(true);
         try {
             const { error } = await supabase
@@ -629,6 +719,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         } catch (err) {
             console.error('Error renaming task:', err);
             addToast('Failed to rename task: ' + err.message, 'error');
+            router.refresh();
         } finally {
             setIsUpdating(false);
         }
@@ -637,6 +728,10 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
     const handleDeleteTask = async (item) => {
         setContextMenu(null);
         if (!confirm(`Are you sure you want to delete "${item.title}"?`)) return;
+        
+        // Optimistic delete
+        setLocalSubTasks(prev => prev.filter(t => t.id !== item.id));
+
         setIsUpdating(true);
         try {
             // Delete assignments first
@@ -652,6 +747,7 @@ export default function Calendar({ jobs, subTasks = [], users = [], currentUser,
         } catch (err) {
             console.error('Error deleting subtask:', err);
             addToast('Failed to delete event: ' + err.message, 'error');
+            router.refresh();
         } finally {
             setIsUpdating(false);
         }
